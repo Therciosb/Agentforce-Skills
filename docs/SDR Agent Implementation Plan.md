@@ -186,7 +186,7 @@ Create new bundle at `force-app/main/default/aiAuthoringBundles/sdr_agent_demo/`
 
 1. **system** – SDR-specific instructions, welcome/error messages
 2. **config** – `developer_name: sdr_agent_demo`, `agent_label`, `default_agent_user` (SDR agent user with Einstein Agent license)
-3. **variables** – `ContactId`, `EndUserId`, `RoutableId`, `context_loaded`, `agent_context`, `instruction_bundle_json`, `composed_instructions`, `save_success`; add `LeadId` if Phase 2 LTM extension is done
+3. **variables** – `ContactId`, `EndUserId`, `RoutableId`, `context_loaded`, `agent_memory`, `instruction_bundle_json`, `composed_instructions`, `save_success`; add `LeadId` if Phase 2 LTM extension is done
 4. **start_agent topic_selector** – Load LTM via `Get_Agent_ContextObject`, load role/core skills via `Load_And_Compose_Agent_Skills` (e.g. `role-sdr-agent`, `core-skill-ltmManagement-sdr-agent`, `core-skill-sdr-email-guidelines`), transition to `send_outreach` or `respond_to_prospect` based on intent
 5. **topic send_outreach** – Load `skill-send-outreach`. Use **Draft or Revise Email** (or SDR prompt template) to draft; use **Send_SDR_Email** Flow to send. Route to `respond_to_prospect` or `finalization`.
 6. **topic respond_to_prospect** – Load `skill-respond-to-prospect`, answer questions using composed instructions (Data Library content via skill text). Route to `manage_opt_out`, `handoff_to_rep`, or `finalization`.

@@ -75,7 +75,7 @@ The Agent Skills framework addresses these problems by:
 | **Agent_Skill_LoadAndCompose** | Invocable Apex action. Aggregates Loader + Composer. Primary entry point for agents. |
 | **Load_And_Compose_Agent_Skills** | Flow that invokes `Agent_Skill_LoadAndCompose`. Target for agent action `load_and_compose_skills`. |
 | **Agent_Skills_Admin** | Custom app with tabs and permission sets for Authors, Reviewers, Consumers. |
-| **Agent_Context__c** (LTM) | Persistent memory object. Read via `Get_Agent_ContextObject`, saved via `Save_Agent_ContextObject`. Required for LTM-enabled agents. |
+| **Agent_Context__c** (LTM) | Persistent memory object. Read via `Get_Agent_ContextObject` (returns `agent_memory` formatted string), saved via `Save_Agent_ContextObject` (scalar inputs only). Required for LTM-enabled agents. |
 
 ### 3.2 Instruction Taxonomy
 
@@ -134,7 +134,7 @@ variables:
     # LTM (if using persistent memory)
     ContactId: linked string
     context_loaded: mutable boolean = False
-    agent_context: mutable object
+    agent_memory: mutable string = ""
 
     # Instruction bundle state
     instruction_bundle_json: mutable object   # Raw JSON for merge
@@ -173,12 +173,11 @@ start_agent topic_selector:
 
     actions:
         load_user_memory:
-            description: "Load persistent memory context record for this contact."
+            description: "Load persistent memory (formatted string) for this contact."
             inputs:
                 contact_id: string
             outputs:
-                context_record: object
-                    complex_data_type_name: "lightning__recordInfoType"
+                agent_memory: string
             target: "flow://Get_Agent_ContextObject"
         load_and_compose_skills:
             description: "Load role and core skills into instruction bundle."
@@ -194,7 +193,7 @@ start_agent topic_selector:
             if @variables.context_loaded == False and @variables.ContactId and @variables.ContactId != "":
                 run @actions.load_user_memory
                     with contact_id=@variables.ContactId
-                    set @variables.agent_context=@outputs.context_record
+                    set @variables.agent_memory=@outputs.agent_memory
                     set @variables.context_loaded=True
 
             # 2. Load role + core skills
@@ -231,9 +230,10 @@ topic general_support:
                 set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
                 set @variables.composed_instructions=@outputs.instructionsBundle
 
-            # 2. Optional: inject LTM profile for personalization
-            | Profile (when agent_context available): style = {!@variables.agent_context.data.Communication_Style__c}, tier = {!@variables.agent_context.data.User_Tier__c}, last summary = {!@variables.agent_context.data.Last_Topic_Summary__c}.
-            | Start with a personalized greeting. Then follow the instructions below.
+            # 2. Optional: inject LTM profile for personalization (agent_memory is formatted string from flow)
+            | Here is your past context. Use it for personalization:
+            | {!@variables.agent_memory}
+            | If unresolved issue is indicated, acknowledge prior issues and ask whether they were resolved. If pending goal is set, ask if the user wants to continue it. Start with a personalized greeting. Then follow the instructions below.
 
             # 3. Inject composed instructions
             | {!@variables.composed_instructions}
@@ -263,11 +263,9 @@ topic finalization:
             # Optional: with maxReferenceDepth=2
             target: "flow://Load_And_Compose_Agent_Skills"
         save_context_tool:
-            description: "Persist long-term memory."
+            description: "Persist long-term memory (scalar inputs only)."
             inputs:
                 contact_id: string
-                context_record: object
-                    complex_data_type_name: "lightning__recordInfoType"
                 new_summary: string
                 new_goal: string
                 has_issue: boolean
@@ -284,14 +282,15 @@ topic finalization:
                 set @variables.composed_instructions=@outputs.instructionsBundle
 
             | Follow these instructions: {!@variables.composed_instructions}
-            | Before saying goodbye, call {!@actions.persist_memory} exactly once.
+            | Before saying goodbye, call {!@actions.persist_memory} exactly once with extracted new_summary, new_goal, has_issue, new_style.
 
         actions:
             persist_memory: @actions.save_context_tool
                 with contact_id=@variables.ContactId
-                with context_record=@variables.agent_context
                 with new_summary=...
                 with new_goal=...
+                with has_issue=...
+                with new_style=...
                 with has_issue=...
                 with new_style=...
 ```
@@ -307,7 +306,7 @@ topic finalization:
 ### 4.7 Key Rules for FDE Engineers
 
 1. **Output mapping**: Always `set @variables.x=@outputs.y` inside the same `run` block. Mapping outside the block can cause errors.
-2. **Record payload access**: For `lightning__recordInfoType` outputs, use `.data.<FieldApiName>` (e.g., `@variables.agent_context.data.Communication_Style__c`).
+2. **LTM memory access**: For `agent_memory` (formatted string from Get_Agent_ContextObject), inject directly in prompts: `{!@variables.agent_memory}`.
 3. **System instructions**: Keep `system.instructions` static. Do not interpolate dynamic content there. Use topic reasoning for dynamic instruction text.
 4. **Bundle continuity**: Pass `instruction_bundle_json` through every topic. Each topic merges its skills and updates the variable for the next.
 5. **Naming**: Use consistent CSV for `instructionNames` (e.g., `"role-customer-support-agent,core-skill-txt-response-guidelines"`). No spaces after commas.

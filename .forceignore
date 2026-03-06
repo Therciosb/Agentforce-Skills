@@ -9,3 +9,8 @@ package.xml
 
 # LWC Jest tests (exclude from deploy; run locally)
 **/__tests__/**
+
+# Bot metadata: Agent Script agents are managed via sf agent publish, not metadata deploy.
+# Deploying Bot/BotVersion from source fails validation (entryDialog, conversation variables).
+# Use: sf agent publish authoring-bundle --api-name <agent> --target-org <org>
+force-app/main/default/bots/**

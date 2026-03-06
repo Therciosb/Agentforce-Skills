@@ -355,47 +355,41 @@ Use to avoid conflicts between global system tone/rules and topic needs.
 
 ## 13) Long-Term Memory Reference Architecture (This Repo)
 
-This project implements persistent memory with object payload contracts.
+This project implements persistent memory with Apex-backed flows that return a formatted string and accept scalar inputs for save.
 
 ### 13.1 Data and Actions
 
 - Object: `Agent_Context__c`
-- Read flow target: `flow://Get_Agent_ContextObject`
-- Save flow target: `flow://Save_Agent_ContextObject`
+- Read flow target: `flow://Get_Agent_ContextObject` (invokes `LoadAgentMemory` Apex)
+- Save flow target: `flow://Save_Agent_ContextObject` (invokes `SaveAgentContext` Apex)
 - Skill load/compose: `flow://Load_And_Compose_Agent_Skills` (action `load_and_compose_skills`; aggregates Loader + Composer)
 
 ### 13.2 Read Contract
 
-- Input: `contact_id` (Text)
-- Output: `context_record` (SObject `Agent_Context__c`)
+- Inputs: `contact_id` (Text), `variable_name` (Text, optional)
+- Output: `agent_memory` (Text) — formatted merge of all memory fields for prompt injection
 
 ### 13.3 Save Contract
 
-- Inputs:
-  - `contact_id`
-  - `context_record` (SObject payload)
-  - `new_summary`
-  - `new_goal`
-  - `has_issue`
-  - `new_style`
+- Inputs (scalars only): `contact_id`, `new_summary`, `new_goal`, `has_issue`, `new_style`
 - Output: `success` (Boolean)
 
 ### 13.4 Script Pattern Used
 
 1. `start_agent` loads LTM (guarded by `context_loaded`) and role/core via `load_and_compose_skills`
-2. flow outputs mapped into `@variables.agent_context`, `@variables.instruction_bundle_json`, `@variables.composed_instructions`
+2. flow outputs mapped into `@variables.agent_memory`, `@variables.instruction_bundle_json`, `@variables.composed_instructions`
 3. each topic calls `load_and_compose_skills` with topic-specific `instructionNames` and `existingInstructionBundle`
-4. topic reasoning personalizes using `agent_context.data.*` and `composed_instructions`
-5. finalization performs a final deterministic save
+4. topic reasoning personalizes using `agent_memory` (formatted string) and `composed_instructions`
+5. finalization performs a final deterministic save with scalar inputs only
 
-### 13.5 Object Payload Access Rule
+### 13.5 Memory Access Rule
 
-For `lightning__recordInfoType`, access fields under `.data`:
-- `@variables.agent_context.data.Communication_Style__c`
-- `@variables.agent_context.data.User_Tier__c`
-- etc.
+Inject `agent_memory` (formatted string) directly in prompts:
 
-Do not omit `.data`.
+```
+Here is your past context. Use it for personalization:
+{!@variables.agent_memory}
+```
 
 ### 13.6 Mapping Rule (Critical)
 
@@ -404,7 +398,7 @@ Set outputs in the same `run` block:
 ```yaml
 run @actions.load_user_memory
     with contact_id=@variables.ContactId
-    set @variables.agent_context=@outputs.context_record
+    set @variables.agent_memory=@outputs.agent_memory
     set @variables.context_loaded=True
 ```
 

@@ -51,22 +51,22 @@ public with sharing class Agent_Skill_SeedService {
                 version,
                 locale,
                 'Manage LTM for service agents.',
-                'Use when agent_context is loaded (persistent memory available). Required for personalization and session-end persistence.',
+                'Use when agent_memory is loaded (persistent memory available). Required for personalization and session-end persistence.',
                 '# LTM MANAGEMENT SERVICE AGENT SKILL\n\n' +
                 '# PURPOSE\n' +
-                'Manage LTM (Long-Term Memory) for service agents. Hydrate prompts from agent_context and persist extracted values when the session or topic requires a memory checkpoint.\n\n' +
-                '# LTM HYDRATION (when agent_context is available)\n' +
-                'Use the profile values provided above for personalization: last summary, pending goal, unresolved issue, communication style, user tier. Contact name is in the context record Name field.\n\n' +
-                'If unresolved issue is true, acknowledge prior issues and ask whether they were resolved or persist. If pending goal is set, ask if the user wants to continue it. Adapt tone to communication style (Detailed vs Concise vs Formal) and tier (VIP vs Standard).\n\n' +
+                'Manage LTM (Long-Term Memory) for service agents. Hydrate prompts from agent_memory and persist extracted values when the session or topic requires a memory checkpoint.\n\n' +
+                '# LTM HYDRATION (when agent_memory is available)\n' +
+                'Here is your past context. Use it for personalization:\n{!@variables.agent_memory}\n\n' +
+                'If unresolved issue is indicated in the context, acknowledge prior issues and ask whether they were resolved or persist. If a pending goal is set, ask if the user wants to continue it. Adapt tone to communication style (Detailed vs Concise vs Formal) and tier (VIP vs Standard).\n\n' +
                 '# PERSISTENCE\n' +
                 'When the topic requires persisting context (e.g. session end, handoff, checkpoint), invoke the save action with extracted values. Never call with empty arguments.\n\n' +
                 '## Extraction rules\n' +
                 'Extract and pass these fields when invoking the save action:\n\n' +
-                '- **new_summary:** Extract when transitioning to a topic that persists session context (e.g. session end, handoff, checkpoint). Value: Detailed 4-5 sentence summary combining (a) last session summary from agent_context when available, and (b) this session: user inputs, assistant recommendations, actions taken, and outcomes.\n\n' +
+                '- **new_summary:** Extract when transitioning to a topic that persists session context (e.g. session end, handoff, checkpoint). Value: Detailed 4-5 sentence summary combining (a) last session summary from agent_memory when available, and (b) this session: user inputs, assistant recommendations, actions taken, and outcomes.\n\n' +
                 '- **new_goal:** Extract when the user has stated or implied an unfinished goal. Value: The goal in the user\'s words, or empty string if none.\n\n' +
                 '- **has_issue:** Extract when assessing whether the user\'s issue is resolved at the point of persistence. Value: True only if the user still has unresolved issues.\n\n' +
                 '- **new_style:** Extract when inferring communication preference from the conversation. Value: concise, detailed, or formal.',
-                'Agent_Context__c,Get_Agent_ContextObject,Save_Agent_ContextObject, Depends on Agent_Context__c (Contact__c, Last_Topic_Summary__c, Pending_Goal__c, Unresolved_Issue__c, Communication_Style__c, User_Tier__c). Read: Get_Agent_ContextObject. Save: Save_Agent_ContextObject (new_summary, new_goal, has_issue, new_style).'
+                'Agent_Context__c,Get_Agent_ContextObject,Save_Agent_ContextObject. Depends on agent_memory (formatted string from Get_Agent_ContextObject). Save: Save_Agent_ContextObject (new_summary, new_goal, has_issue, new_style).'
         ));
         repoItems.add(repoItem(
                 'core-skill-user-otp-authentication',

@@ -97,7 +97,7 @@ This document is the implemented in-repo plan baseline for the Agent Skills fram
 ## Agent Script Wiring
 
 - `start_agent`:
-  - loads memory (`flow://Get_Agent_ContextObject`)
+  - loads memory (`flow://Get_Agent_ContextObject`; maps `agent_memory` formatted string to `@variables.agent_memory`)
   - loads role/core with `flow://Load_And_Compose_Agent_Skills` (action: `load_and_compose_skills`)
   - maps `loadedInstructionBundle` to `@variables.instruction_bundle_json`
   - transitions to first topic
@@ -108,7 +108,7 @@ This document is the implemented in-repo plan baseline for the Agent Skills fram
   - places composed instructions at top
   - adds topic-specific routing/tool logic
 - `finalization`:
-  - persists context through `flow://Save_Agent_ContextObject`
+  - persists context through `flow://Save_Agent_ContextObject` (scalar inputs: new_summary, new_goal, has_issue, new_style)
 
 ## Demo Scenario
 

@@ -42,7 +42,7 @@ variables:
     EndUserId: linked string
     RoutableId: linked string
     context_loaded: mutable boolean = False
-    agent_context: mutable object
+    agent_memory: mutable string = ""
     instruction_bundle_json: mutable object
     composed_instructions: mutable string = ""
     save_success: mutable boolean = False
@@ -78,7 +78,8 @@ topic general_support:
                 set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
                 set @variables.composed_instructions=@outputs.instructionsBundle
 
-            | Profile (when agent_context available): style = {!@variables.agent_context.data.Communication_Style__c}, tier = {!@variables.agent_context.data.User_Tier__c}, last summary = {!@variables.agent_context.data.Last_Topic_Summary__c}, pending goal = {!@variables.agent_context.data.Pending_Goal__c}, unresolved issue = {!@variables.agent_context.data.Unresolved_Issue__c}. Contact name in context record Name field.
+            | Here is your past context. Use it for personalization:
+            | {!@variables.agent_memory}
             | Start with a personalized greeting using the customer name and profile above. If unresolved issue is true, acknowledge prior issues and ask whether they were resolved. If pending goal is set, ask if the user wants to continue it.
             | Then follow the instructions below.
             | {!@variables.composed_instructions}/n/n
@@ -125,7 +126,8 @@ topic troubleshooting_support:
                 with existingInstructionBundle=@variables.instruction_bundle_json
                 set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
                 set @variables.composed_instructions=@outputs.instructionsBundle
-            | Profile (when agent_context available): style = {!@variables.agent_context.data.Communication_Style__c}, tier = {!@variables.agent_context.data.User_Tier__c}, last summary = {!@variables.agent_context.data.Last_Topic_Summary__c}, pending goal = {!@variables.agent_context.data.Pending_Goal__c}, unresolved issue = {!@variables.agent_context.data.Unresolved_Issue__c}.
+            | Here is your past context. Use it for personalization:
+            | {!@variables.agent_memory}
             | Follow these instructions first:
             | {!@variables.composed_instructions}
             | Troubleshoot in clear, step-based order and confirm result after each step.
@@ -168,7 +170,8 @@ topic case_management:
                 with existingInstructionBundle=@variables.instruction_bundle_json
                 set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
                 set @variables.composed_instructions=@outputs.instructionsBundle
-            | Profile (when agent_context available): style = {!@variables.agent_context.data.Communication_Style__c}, tier = {!@variables.agent_context.data.User_Tier__c}, last summary = {!@variables.agent_context.data.Last_Topic_Summary__c}, pending goal = {!@variables.agent_context.data.Pending_Goal__c}, unresolved issue = {!@variables.agent_context.data.Unresolved_Issue__c}.
+            | Here is your past context. Use it for personalization:
+            | {!@variables.agent_memory}
             | Topic-specific: If last summary mentions an existing case (e.g. case number), reference it. If pending goal involves case status, prioritize that.
             | Follow these instructions first:
             | {!@variables.composed_instructions}
@@ -204,13 +207,10 @@ topic finalization:
                     description: "Raw instruction bundle JSON for merge."
             target: "flow://Load_And_Compose_Agent_Skills"
         save_context_tool:
-            description: "Persist long-term memory. Call this before saying goodbye to save extracted conversation data."
+            description: "Persist long-term memory. Call this before saying goodbye to save extracted conversation data (scalar inputs only)."
             inputs:
                 contact_id: string
                     description: "Contact id used to upsert context."
-                context_record: object
-                    description: "Agent_Context__c payload (base record)."
-                    complex_data_type_name: "lightning__recordInfoType"
                 new_summary: string
                     description: "Detailed 4-5 sentence summary combining last session summary (when available) with this session: user inputs, assistant recommendations, actions taken, and outcomes."
                 new_goal: string
@@ -232,7 +232,8 @@ topic finalization:
                 with maxReferenceDepth=2
                 set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
                 set @variables.composed_instructions=@outputs.instructionsBundle
-            | Profile (when agent_context available): style = {!@variables.agent_context.data.Communication_Style__c}, tier = {!@variables.agent_context.data.User_Tier__c}, last summary = {!@variables.agent_context.data.Last_Topic_Summary__c}, pending goal = {!@variables.agent_context.data.Pending_Goal__c}, unresolved issue = {!@variables.agent_context.data.Unresolved_Issue__c}.
+            | Here is your past context. Use it for personalization:
+            | {!@variables.agent_memory}
             | Topic-specific: Use LTM context to give a complete handoff summary, if applicable.
             | Follow these instructions first:
             | {!@variables.composed_instructions}
@@ -244,7 +245,6 @@ topic finalization:
             persist_memory: @actions.save_context_tool
                 description: "Required at session end. Saves context with LLM-extracted summary, goal, unresolved-issue flag, and communication style."
                 with contact_id=@variables.ContactId
-                with context_record=@variables.agent_context
                 with new_summary=...
                 with new_goal=...
                 with has_issue=...
@@ -261,14 +261,13 @@ start_agent topic_selector:
 
     actions:
         load_user_memory:
-            description: "Load persistent memory context record for this contact."
+            description: "Load persistent memory (formatted string) for this contact."
             inputs:
                 contact_id: string
                     description: "Contact identifier."
             outputs:
-                context_record: object
-                    description: "Agent_Context__c payload from flow."
-                    complex_data_type_name: "lightning__recordInfoType"
+                agent_memory: string
+                    description: "Formatted merge of memory fields for personalization."
             target: "flow://Get_Agent_ContextObject"
         load_and_compose_skills:
             description: "Load role and core skills into instruction bundle."
@@ -287,7 +286,7 @@ start_agent topic_selector:
             if @variables.context_loaded == False and @variables.ContactId and @variables.ContactId != "":
                 run @actions.load_user_memory
                     with contact_id=@variables.ContactId
-                    set @variables.agent_context=@outputs.context_record
+                    set @variables.agent_memory=@outputs.agent_memory
                     set @variables.context_loaded=True
 
             if @variables.context_loaded == False:

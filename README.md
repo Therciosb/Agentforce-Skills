@@ -31,7 +31,7 @@ For implementation details, Agent Script structure, and key rules, see [Agent-Sk
 
 - **Core framework** — The Loader, Composer, LoadAndCompose actions, `Agent_Skills_Repo__c`, and `Load_And_Compose_Agent_Skills` flow work independently. Deploy this project to any Salesforce org with Agentforce and you can build agents that load and compose skills.
 - **skill_load_test agent** — A minimal agent that demonstrates the framework without persistent memory. Use it to validate the skill loading pipeline.
-- **customer_support_skill_demo agent** — A full demo that includes optional Long-Term Memory (LTM) integration. LTM requires an `Agent_Context__c` object and read/save flows. You can implement these per the [LTM Integration Mapping](docs/LTM%20Integration%20Mapping.md) spec, or use any compatible implementation. The project includes `Get_Agent_ContextObject` and `Save_Agent_ContextObject` flows that call `Agent_Context__c`; the object schema is documented so you can create it in your org.
+- **customer_support_skill_demo agent** — A full demo that includes optional Long-Term Memory (LTM) integration. LTM requires an `Agent_Context__c` object and read/save flows. Implement per the [LTM Integration Mapping](docs/LTM%20Integration%20Mapping.md) spec: Get flow returns `agent_memory` (formatted string); Save flow accepts scalar inputs only (`new_summary`, `new_goal`, `has_issue`, `new_style`).
 
 ## Prerequisites
 
