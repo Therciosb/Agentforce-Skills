@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionCalls>
+        <name>Invoke_Agent_Skill_PromptComposer</name>
+        <label>Invoke Agent Skill Prompt Composer</label>
+        <locationX>176</locationX>
+        <locationY>134</locationY>
+        <actionName>Agent_Skill_PromptComposer</actionName>
+        <actionType>apex</actionType>
+        <connector>
+            <targetReference>Assign_Composed_Instructions</targetReference>
+        </connector>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>instructionBundle</name>
+            <value>
+                <elementReference>instructionBundle</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>requiredNames</name>
+            <value>
+                <elementReference>requiredNames</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>maxReferenceDepth</name>
+            <value>
+                <elementReference>maxReferenceDepth</elementReference>
+            </value>
+        </inputParameters>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </actionCalls>
+    <apiVersion>66.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
+    <assignments>
+        <name>Assign_Composed_Instructions</name>
+        <label>Assign Composed Instructions</label>
+        <locationX>176</locationX>
+        <locationY>242</locationY>
+        <assignmentItems>
+            <assignToReference>composedInstructions</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <elementReference>Invoke_Agent_Skill_PromptComposer.composedInstructions</elementReference>
+            </value>
+        </assignmentItems>
+    </assignments>
+    <environments>Default</environments>
+    <interviewLabel>Compose Agent Skills Prompt {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Compose Agent Skills Prompt</label>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Invoke_Agent_Skill_PromptComposer</targetReference>
+        </connector>
+    </start>
+    <status>Active</status>
+    <variables>
+        <description>Loaded instruction bundle JSON from Agent_Skill_Loader.</description>
+        <name>instructionBundle</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <description>CSV of skill/workflow seed names to include in composed output.</description>
+        <name>requiredNames</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <description>Maximum depth for reference expansion (optional, default 4).</description>
+        <name>maxReferenceDepth</name>
+        <dataType>Number</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+        <scale>0</scale>
+    </variables>
+    <variables>
+        <description>Prompt-ready concatenated instruction text.</description>
+        <name>composedInstructions</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+</Flow>

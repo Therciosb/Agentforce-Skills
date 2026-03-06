@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Agent_Skills_Repo__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>Agent_Skills_Admin</members>
+        <name>CustomApplication</name>
+    </types>
+    <types>
+        <members>Agent_Skills_Repo__c-Agent Skills Repo Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>Agent_Skills_Agent_Runtime</members>
+        <members>Agent_Skills_Author</members>
+        <members>Agent_Skills_Consumer</members>
+        <members>Agent_Skills_Reviewer</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Admin</members>
+        <name>Profile</name>
+    </types>
+    <types>
+        <members>Agent_Skills_Repo__c</members>
+        <name>CustomTab</name>
+    </types>
+    <version>65.0</version>
+</Package>

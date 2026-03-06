@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPlannerBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Minimal agent to isolate Agent_Skill_Loader load_role_and_core behavior.</description>
+    <localTopicLinks>
+        <genAiPluginName>general_support_16jKY0000008UyU</genAiPluginName>
+    </localTopicLinks>
+    <localTopicLinks>
+        <genAiPluginName>topic_selector_16jKY0000008UyU</genAiPluginName>
+    </localTopicLinks>
+    <localTopics>
+        <fullName>general_support_16jKY0000008UyU</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Reports whether instruction_bundle was loaded.</description>
+        <developerName>general_support_16jKY0000008UyU</developerName>
+        <genAiPluginInstructions>
+            <description>You are a minimal test agent. Respond only as instructed.</description>
+            <developerName>instruction0_179KY000000LuFX</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179KY000000LuFX</masterLabel>
+            <sortOrder>1</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localDeveloperName>general_support</localDeveloperName>
+        <masterLabel>General Support</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <localTopics>
+        <fullName>topic_selector_16jKY0000008UyU</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Load role and core skills, then transition to general support.</description>
+        <developerName>topic_selector_16jKY0000008UyU</developerName>
+        <genAiPluginInstructions>
+            <description>You are a minimal test agent. Respond only as instructed.</description>
+            <developerName>instruction0_179KY000000LuFW</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179KY000000LuFW</masterLabel>
+            <sortOrder>1</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localActionLinks>
+            <functionName>load_role_and_core_179KY000000LuFW</functionName>
+        </localActionLinks>
+        <localActions>
+            <fullName>load_role_and_core_179KY000000LuFW</fullName>
+            <description>Load role and core skills into instruction bundle.</description>
+            <developerName>load_role_and_core_179KY000000LuFW</developerName>
+            <invocationTarget>Agent_Skill_Loader</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>load_role_and_core</localDeveloperName>
+            <masterLabel>Load Role And Core</masterLabel>
+        </localActions>
+        <localDeveloperName>topic_selector</localDeveloperName>
+        <masterLabel>Entry Point</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <masterLabel>Skill Load Test</masterLabel>
+    <plannerType>Atlas__ConcurrentMultiAgentOrchestration</plannerType>
+</GenAiPlannerBundle>

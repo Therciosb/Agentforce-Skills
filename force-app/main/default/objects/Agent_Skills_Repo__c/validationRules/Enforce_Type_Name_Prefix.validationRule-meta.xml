@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Enforce_Type_Name_Prefix</fullName>
+    <active>true</active>
+    <description>Enforce that Name matches the prefix for the selected Type: role-*, core-skill-*, skill-*, workflow-*.</description>
+    <errorConditionFormula>OR(
+    AND(TEXT(Type__c) = &quot;Role&quot;, NOT(BEGINS(Name, &quot;role-&quot;))),
+    AND(TEXT(Type__c) = &quot;Core_Skill&quot;, NOT(BEGINS(Name, &quot;core-skill-&quot;))),
+    AND(TEXT(Type__c) = &quot;Skill&quot;, NOT(BEGINS(Name, &quot;skill-&quot;))),
+    AND(TEXT(Type__c) = &quot;Workflow&quot;, NOT(BEGINS(Name, &quot;workflow-&quot;)))
+)</errorConditionFormula>
+    <errorDisplayField>Name</errorDisplayField>
+    <errorMessage>Name must match the Type prefix: role- for Role, core-skill- for Core Skill, skill- for Skill, workflow- for Workflow.</errorMessage>
+</ValidationRule>

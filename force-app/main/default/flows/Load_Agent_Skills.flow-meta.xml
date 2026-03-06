@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionCalls>
+        <name>Invoke_Agent_Skill_Loader</name>
+        <label>Invoke Agent Skill Loader</label>
+        <locationX>176</locationX>
+        <locationY>134</locationY>
+        <actionName>Agent_Skill_Loader</actionName>
+        <actionType>apex</actionType>
+        <connector>
+            <targetReference>Assign_Loaded_Bundle</targetReference>
+        </connector>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>instructionNames</name>
+            <value>
+                <elementReference>instructionNames</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>existingInstructionBundle</name>
+            <value>
+                <elementReference>existingInstructionBundle</elementReference>
+            </value>
+        </inputParameters>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </actionCalls>
+    <apiVersion>66.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
+    <assignments>
+        <name>Assign_Loaded_Bundle</name>
+        <label>Assign Loaded Bundle</label>
+        <locationX>176</locationX>
+        <locationY>242</locationY>
+        <assignmentItems>
+            <assignToReference>loadedInstructionBundle</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <elementReference>Invoke_Agent_Skill_Loader.loadedInstructionBundle</elementReference>
+            </value>
+        </assignmentItems>
+    </assignments>
+    <environments>Default</environments>
+    <interviewLabel>Load Agent Skills {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Load Agent Skills</label>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Invoke_Agent_Skill_Loader</targetReference>
+        </connector>
+    </start>
+    <status>Active</status>
+    <variables>
+        <description>CSV list of role/skill/workflow names to load.</description>
+        <name>instructionNames</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <description>Existing bundle JSON to merge with newly loaded instructions (optional).</description>
+        <name>existingInstructionBundle</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <description>Aggregated instruction bundle JSON from Agent_Skill_Loader.</description>
+        <name>loadedInstructionBundle</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+</Flow>

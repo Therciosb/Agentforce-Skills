@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Agent_Skill_Loader</members>
+        <members>Agent_Skill_PromptComposer</members>
+        <members>Agent_Skill_SeedService</members>
+        <members>Agent_Skill_Loader_Test</members>
+        <members>Agent_Skill_PromptComposer_Test</members>
+        <name>ApexClass</name>
+    </types>
+    <version>65.0</version>
+</Package>

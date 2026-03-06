@@ -1,0 +1,300 @@
+# -----------------------------------------------------------------------------
+# Customer Support Skill Demo Agent
+# -----------------------------------------------------------------------------
+# Major blocks:
+# - system/config/variables: static behavior + runtime state
+# - topics: compose dynamic instruction context and execute support flows
+# - start_agent: deterministic initialization for memory and instruction bundle
+# -----------------------------------------------------------------------------
+
+
+system:
+    instructions: |
+        You are a customer support AI agent.
+        Follow policy and safety constraints at all times.
+        Do not invent product facts, case updates, or troubleshooting outcomes.
+    messages:
+        welcome: "Loading..."
+        error: "I am sorry, something went wrong. Please try again or ask for escalation to a human specialist."
+
+
+config:
+    developer_name: "customer_support_skill_demo"
+    agent_label: "Customer Support Skill Demo"
+    default_agent_user: "ltm_agent@00dky00000gxhj51777765750.ext"
+    description: "Demonstrates Agent Skills framework with deterministic instruction load/composition, references, and persistent memory."
+
+
+
+# -----------------------------------------------------------------------------
+# Test ContactIds (configure MessagingEndUser.ContactId to one of these)
+# -----------------------------------------------------------------------------
+# 003KY00000KNAGpYAP  Alexander Reed   - Product Q&A: iPhone 16 vs Galaxy S25 comparison, pending purchase decision
+# 003KY00000KNAGqYAP  Beverly Chen     - Troubleshooting: Wi-Fi modem issues, unresolved, escalation pending
+# 003KY00000KNAGrYAP  Charles Davies   - Case management: Case #7821 screen flickering, status In Progress
+# 003KY00000KNAGzYAP  Sarah Mitchell  - No prior context (fresh session)
+# 003KY00000JwOOyYAN  Teddy Pascow    - No prior context (fresh session)
+# -----------------------------------------------------------------------------
+
+
+variables:
+    ContactId: mutable string = "003KY00000KNAGqYAP"
+    EndUserId: linked string
+    RoutableId: linked string
+    context_loaded: mutable boolean = False
+    agent_context: mutable object
+    instruction_bundle_json: mutable object
+    composed_instructions: mutable string = ""
+    save_success: mutable boolean = False
+
+
+topic general_support:
+    label: "General Support Intake"
+    # Topic docstring:
+    # - Handles product information Q&A and initial support triage.
+    # - Routes to troubleshooting, case management, or finalization topics.
+    description: "Primary customer support intake for product Q&A and deterministic routing."
+
+    actions:
+        load_and_compose_skills:
+            description: "Load topic-specific skills, merge with existing bundle, and compose prompt-ready instructions."
+            inputs:
+                instructionNames: string
+                    description: "CSV list of topic-specific skill/workflow names."
+                existingInstructionBundle: string
+                    description: "Existing bundle JSON (role + core from start_agent)."
+            outputs:
+                instructionsBundle: string
+                    description: "Formatted prompt-ready instruction text."
+                loadedInstructionBundle: string
+                    description: "Raw instruction bundle JSON for merge."
+            target: "flow://Load_And_Compose_Agent_Skills"
+
+    reasoning:
+        instructions: ->
+            run @actions.load_and_compose_skills
+                with instructionNames="skill-product-information-qa,skill-support-case-management"
+                with existingInstructionBundle=@variables.instruction_bundle_json
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+                set @variables.composed_instructions=@outputs.instructionsBundle
+
+            | Profile (when agent_context available): style = {!@variables.agent_context.data.Communication_Style__c}, tier = {!@variables.agent_context.data.User_Tier__c}, last summary = {!@variables.agent_context.data.Last_Topic_Summary__c}, pending goal = {!@variables.agent_context.data.Pending_Goal__c}, unresolved issue = {!@variables.agent_context.data.Unresolved_Issue__c}. Contact name in context record Name field.
+            | Start with a personalized greeting using the customer name and profile above. If unresolved issue is true, acknowledge prior issues and ask whether they were resolved. If pending goal is set, ask if the user wants to continue it.
+            | Then follow the instructions below.
+            | {!@variables.composed_instructions}/n/n
+            | Then asses the user intent and route to the appropriate topic:
+            | - For troubleshooting requests, use {!@actions.go_to_troubleshooting}.
+            | - For case create/update/status requests, use {!@actions.go_to_case_management}.
+            | - When user indicates ending the conversation, or human handoff request, use {!@actions.go_to_finalization}.
+
+        actions:
+            go_to_troubleshooting: @utils.transition to @topic.troubleshooting_support
+                description: "Route to troubleshooting support."
+            go_to_case_management: @utils.transition to @topic.case_management
+                description: "Route to support case lifecycle handling."
+            go_to_finalization: @utils.transition to @topic.finalization
+                description: "Route to session termination or escalation, and memory checkpoint."
+
+
+topic troubleshooting_support:
+    label: "Troubleshooting Support"
+    # Topic docstring:
+    # - Runs troubleshooting flows for modem and selected iPhone/Samsung devices.
+    # - Applies reference expansion so escalation workflows are included automatically.
+    description: "Troubleshooting support for Wi-Fi modem, 5G modem, iPhone 16/16 Pro, and Galaxy S25/S25 Ultra."
+
+    actions:
+        load_and_compose_skills:
+            description: "Load topic-specific skills, merge with existing bundle, and compose prompt-ready instructions."
+            inputs:
+                instructionNames: string
+                    description: "CSV list of topic-specific skill/workflow names."
+                existingInstructionBundle: string
+                    description: "Existing bundle JSON (role + core from start_agent)."
+            outputs:
+                instructionsBundle: string
+                    description: "Formatted prompt-ready instruction text."
+                loadedInstructionBundle: string
+                    description: "Raw instruction bundle JSON for merge."
+            target: "flow://Load_And_Compose_Agent_Skills"
+
+    reasoning:
+        instructions: ->
+            run @actions.load_and_compose_skills
+                with instructionNames="skill-troubleshooting-support"
+                with existingInstructionBundle=@variables.instruction_bundle_json
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+                set @variables.composed_instructions=@outputs.instructionsBundle
+            | Profile (when agent_context available): style = {!@variables.agent_context.data.Communication_Style__c}, tier = {!@variables.agent_context.data.User_Tier__c}, last summary = {!@variables.agent_context.data.Last_Topic_Summary__c}, pending goal = {!@variables.agent_context.data.Pending_Goal__c}, unresolved issue = {!@variables.agent_context.data.Unresolved_Issue__c}.
+            | Follow these instructions first:
+            | {!@variables.composed_instructions}
+            | Troubleshoot in clear, step-based order and confirm result after each step.
+            | If issue resolved, unresolved, user wants to end the conversation or user asks for human handoff, use {!@actions.go_to_finalization}.
+            | If unresolved and new case is needed, or user requests case tracking/update, use {!@actions.go_to_case_management}.
+
+        actions:
+            go_to_case_management: @utils.transition to @topic.case_management
+                description: "Route to case management."
+            go_to_finalization: @utils.transition to @topic.finalization
+                description: "Route to session termination or escalation, and memory checkpoint."
+
+
+topic case_management:
+    label: "Case Management"
+    # Topic docstring:
+    # - Handles case creation, updates, and lifecycle summaries.
+    # - Uses composed skill/workflow context for consistent case operations.
+    description: "Support case lifecycle operations including create, update, and status communication."
+
+    actions:
+        load_and_compose_skills:
+            description: "Load topic-specific skills, merge with existing bundle, and compose prompt-ready instructions."
+            inputs:
+                instructionNames: string
+                    description: "CSV list of topic-specific skill/workflow names."
+                existingInstructionBundle: string
+                    description: "Existing bundle JSON (role + core from start_agent)."
+            outputs:
+                instructionsBundle: string
+                    description: "Formatted prompt-ready instruction text."
+                loadedInstructionBundle: string
+                    description: "Raw instruction bundle JSON for merge."
+            target: "flow://Load_And_Compose_Agent_Skills"
+
+    reasoning:
+        instructions: ->
+            run @actions.load_and_compose_skills
+                with instructionNames="skill-support-case-management,workflow-support-case-lifecycle"
+                with existingInstructionBundle=@variables.instruction_bundle_json
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+                set @variables.composed_instructions=@outputs.instructionsBundle
+            | Profile (when agent_context available): style = {!@variables.agent_context.data.Communication_Style__c}, tier = {!@variables.agent_context.data.User_Tier__c}, last summary = {!@variables.agent_context.data.Last_Topic_Summary__c}, pending goal = {!@variables.agent_context.data.Pending_Goal__c}, unresolved issue = {!@variables.agent_context.data.Unresolved_Issue__c}.
+            | Topic-specific: If last summary mentions an existing case (e.g. case number), reference it. If pending goal involves case status, prioritize that.
+            | Follow these instructions first:
+            | {!@variables.composed_instructions}
+            | Collect complete issue details, confirm consent, and summarize case actions.
+            | If user want to end conversation, or specialist handoff is required, use {!@actions.go_to_finalization}.
+        actions:
+            go_to_finalization: @utils.transition to @topic.finalization
+                description: "Route to session termination or escalation, and memory checkpoint."
+
+
+topic finalization:
+    label: "Finalization and Escalation"
+    # Topic docstring:
+    # - Executes escalation workflow instructions.
+    # - Persists long-term memory context at session end.
+    description: "Escalation summary and memory checkpoint before session closure."
+
+    actions:
+        load_and_compose_skills:
+            description: "Load topic-specific skills, merge with existing bundle, and compose prompt-ready instructions."
+            inputs:
+                instructionNames: string
+                    description: "CSV list of topic-specific skill/workflow names."
+                existingInstructionBundle: string
+                    description: "Existing bundle JSON (role + core from start_agent)."
+                maxReferenceDepth: object
+                    description: "Maximum recursive reference depth (optional, default 4). Override to 2 for escalation."
+                    complex_data_type_name: "lightning__numberType"
+            outputs:
+                instructionsBundle: string
+                    description: "Formatted prompt-ready instruction text."
+                loadedInstructionBundle: string
+                    description: "Raw instruction bundle JSON for merge."
+            target: "flow://Load_And_Compose_Agent_Skills"
+        save_context_tool:
+            description: "Persist long-term memory. Call this before saying goodbye to save extracted conversation data."
+            inputs:
+                contact_id: string
+                    description: "Contact id used to upsert context."
+                context_record: object
+                    description: "Agent_Context__c payload (base record)."
+                    complex_data_type_name: "lightning__recordInfoType"
+                new_summary: string
+                    description: "Detailed 4-5 sentence summary combining last session summary (when available) with this session: user inputs, assistant recommendations, actions taken, and outcomes."
+                new_goal: string
+                    description: "Unfinished user goal to continue later, or empty string if none."
+                has_issue: boolean
+                    description: "True if the user still has an unresolved issue at session end."
+                new_style: string
+                    description: "Communication preference inferred from this session (e.g. concise, detailed, formal)."
+            outputs:
+                success: boolean
+                    description: "Whether save operation succeeded."
+            target: "flow://Save_Agent_ContextObject"
+
+    reasoning:
+        instructions: ->
+            run @actions.load_and_compose_skills
+                with instructionNames="workflow-escalate-to-human"
+                with existingInstructionBundle=@variables.instruction_bundle_json
+                with maxReferenceDepth=2
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+                set @variables.composed_instructions=@outputs.instructionsBundle
+            | Profile (when agent_context available): style = {!@variables.agent_context.data.Communication_Style__c}, tier = {!@variables.agent_context.data.User_Tier__c}, last summary = {!@variables.agent_context.data.Last_Topic_Summary__c}, pending goal = {!@variables.agent_context.data.Pending_Goal__c}, unresolved issue = {!@variables.agent_context.data.Unresolved_Issue__c}.
+            | Topic-specific: Use LTM context to give a complete handoff summary, if applicable.
+            | Follow these instructions first:
+            | {!@variables.composed_instructions}
+            | Summarize the issue, actions taken and next steps for the customer in a structured formatted response.
+            | Confirm escalation details and expected follow-up timeline, if applicable.
+            | Ask if there is anything else needed before ending the session.
+            | Before saying goodbye, call {!@actions.persist_memory} exactly once (extraction rules are in LTM skill).
+        actions:
+            persist_memory: @actions.save_context_tool
+                description: "Required at session end. Saves context with LLM-extracted summary, goal, unresolved-issue flag, and communication style."
+                with contact_id=@variables.ContactId
+                with context_record=@variables.agent_context
+                with new_summary=...
+                with new_goal=...
+                with has_issue=...
+                with new_style=...
+
+
+start_agent topic_selector:
+    label: "Entry Point"
+    # Topic docstring:
+    # - Deterministically loads persistent memory context.
+    # - Loads role and core skills into instruction_bundle_json.
+    # - Each topic loads only its topic-specific skills and merges with bundle.
+    description: "Initial bootstrap: memory + role/core skills; topics add topic-specific skills."
+
+    actions:
+        load_user_memory:
+            description: "Load persistent memory context record for this contact."
+            inputs:
+                contact_id: string
+                    description: "Contact identifier."
+            outputs:
+                context_record: object
+                    description: "Agent_Context__c payload from flow."
+                    complex_data_type_name: "lightning__recordInfoType"
+            target: "flow://Get_Agent_ContextObject"
+        load_and_compose_skills:
+            description: "Load role and core skills into instruction bundle."
+            inputs:
+                instructionNames: string
+                    description: "CSV list of role and core skill names."
+            outputs:
+                loadedInstructionBundle: string
+                    description: "Aggregated instruction bundle JSON for merge."
+                instructionsBundle: string
+                    description: "Formatted prompt (not consumed in start_agent)."
+            target: "flow://Load_And_Compose_Agent_Skills"
+
+    reasoning:
+        instructions: ->
+            if @variables.context_loaded == False and @variables.ContactId and @variables.ContactId != "":
+                run @actions.load_user_memory
+                    with contact_id=@variables.ContactId
+                    set @variables.agent_context=@outputs.context_record
+                    set @variables.context_loaded=True
+
+            if @variables.context_loaded == False:
+                set @variables.context_loaded=True
+
+            run @actions.load_and_compose_skills
+                with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-user-otp-authentication,core-skill-txt-response-guidelines"
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+
+            transition to @topic.general_support

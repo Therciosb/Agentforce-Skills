@@ -1,0 +1,42 @@
+{
+  "required" : [ ],
+  "unevaluatedProperties" : false,
+  "properties" : {
+    "includeDeprecated" : {
+      "title" : "Include Deprecated",
+      "description" : "Whether to include deprecated items.",
+      "lightning:type" : "lightning__booleanType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    },
+    "includeReferenceExpansion" : {
+      "title" : "Include Reference Expansion",
+      "description" : "Include recursive dependencies from references.",
+      "lightning:type" : "lightning__booleanType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    },
+    "instructionBundle" : {
+      "title" : "Instruction Bundle",
+      "description" : "Loaded instruction bundle JSON from Agent_Skill_Loader.",
+      "lightning:type" : "lightning__textType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    },
+    "maxReferenceDepth" : {
+      "title" : "Max Reference Depth",
+      "description" : "Maximum recursive reference depth.",
+      "lightning:type" : "lightning__integerType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    },
+    "requiredNames" : {
+      "title" : "Required Names",
+      "description" : "CSV escalation seed names.",
+      "lightning:type" : "lightning__textType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    }
+  },
+  "lightning:type" : "lightning__objectType"
+}

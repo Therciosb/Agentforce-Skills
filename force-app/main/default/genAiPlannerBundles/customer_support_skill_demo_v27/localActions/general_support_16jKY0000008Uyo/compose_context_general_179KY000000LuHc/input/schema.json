@@ -1,0 +1,21 @@
+{
+  "required" : [ ],
+  "unevaluatedProperties" : false,
+  "properties" : {
+    "instructionBundle" : {
+      "title" : "Instruction Bundle",
+      "description" : "Loaded instruction bundle JSON from Agent_Skill_Loader.",
+      "lightning:type" : "lightning__textType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    },
+    "requiredNames" : {
+      "title" : "Required Names",
+      "description" : "CSV skill/workflow seed names.",
+      "lightning:type" : "lightning__textType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    }
+  },
+  "lightning:type" : "lightning__objectType"
+}

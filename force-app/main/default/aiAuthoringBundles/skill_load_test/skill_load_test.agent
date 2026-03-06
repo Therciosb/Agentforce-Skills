@@ -1,0 +1,83 @@
+# -----------------------------------------------------------------------------
+# Skill Load Test Agent
+# -----------------------------------------------------------------------------
+# Minimal agent to isolate Load_And_Compose in both start_agent and general_support.
+# - start_agent: loads role and core skills via Load_And_Compose_Agent_Skills
+# - general_support: uses Load_And_Compose with instructionNames="" (no topic skills),
+#   existingInstructionBundle from start_agent; merge + compose
+# -----------------------------------------------------------------------------
+
+
+system:
+    instructions: |
+        You are a minimal test agent. Respond only as instructed.
+    messages:
+        welcome: "Loading my skills..."
+        error: "An error occurred."
+
+
+config:
+    developer_name: "skill_load_test"
+    agent_label: "Skill Load Test"
+    default_agent_user: "ltm_agent@00dky00000gxhj51777765750.ext"
+    description: "Minimal agent to isolate Agent_Skill_Loader and Agent_Skill_PromptComposer behavior."
+
+
+variables:
+    instruction_bundle_json: mutable object
+    composed_instructions: mutable string = ""
+
+
+topic general_support:
+    label: "General Support"
+    description: "Uses Load_And_Compose with empty topic skills, reports results."
+
+    actions:
+        load_and_compose_skills:
+            description: "Load and compose; topic-specific instructionNames empty."
+            inputs:
+                instructionNames: string
+                    description: "CSV of topic-specific skills (empty for this topic)."
+                existingInstructionBundle: string
+                    description: "Existing bundle JSON from start_agent."
+            outputs:
+                instructionsBundle: string
+                    description: "Formatted prompt-ready instruction text."
+                loadedInstructionBundle: string
+                    description: "Raw instruction bundle JSON."
+            target: "flow://Load_And_Compose_Agent_Skills"
+
+    reasoning:
+        instructions: ->
+            run @actions.load_and_compose_skills
+                with instructionNames="skill-product-information-qa"
+                with existingInstructionBundle=@variables.instruction_bundle_json
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+                set @variables.composed_instructions=@outputs.instructionsBundle
+
+            | Greet the user and follow the instructions below in full:
+            | {!@variables.composed_instructions}
+
+
+start_agent topic_selector:
+    label: "Entry Point"
+    description: "Load role and core skills, then transition to general support."
+
+    actions:
+        load_and_compose_skills:
+            description: "Load role and core skills into instruction bundle."
+            inputs:
+                instructionNames: string
+                    description: "CSV list of role and core skill names."
+            outputs:
+                loadedInstructionBundle: string
+                    description: "Aggregated instruction bundle JSON for merge."
+            target: "flow://Load_And_Compose_Agent_Skills"
+
+    reasoning:
+        instructions: ->
+            run @actions.load_and_compose_skills
+                with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-txt-response-guidelines"
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+
+            transition to @topic.general_support
