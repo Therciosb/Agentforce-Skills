@@ -28,6 +28,7 @@ This folder contains documentation for the Agent Skills framework and related Ag
 | Document                                                  | Description                                                                                                                                                                                                                            |
 | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [LTM Integration Mapping](LTM%20Integration%20Mapping.md) | Optional persistent memory: `Agent_Context__c` schema, Apex-backed flow contracts (`agent_memory` formatted string, scalar-only save), runtime pattern. **No dependency on LTM-Agentforce**—implement per spec or use any compatible solution. |
+| [LTM Structured Summary Implementation Plan](LTM%20Structured%20Summary%20Implementation%20Plan.md) | Plan to implement structured new_summary format (sectioned Markdown) in `core-skill-ltmManagement-service-agent`. |
 
 
 ## Agentforce Reference
