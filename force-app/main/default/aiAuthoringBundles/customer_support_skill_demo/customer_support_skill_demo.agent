@@ -14,7 +14,7 @@ system:
         Follow policy and safety constraints at all times.
         Do not invent product facts, case updates, or troubleshooting outcomes.
     messages:
-        welcome: "Loading..."
+        welcome: "I'm Ready to Help!"
         error: "I am sorry, something went wrong. Please try again or ask for escalation to a human specialist."
 
 
@@ -46,6 +46,54 @@ variables:
     instruction_bundle_json: mutable object
     composed_instructions: mutable string = ""
     save_success: mutable boolean = False
+
+
+start_agent topic_selector:
+    label: "Entry Point"
+    # Topic docstring:
+    # - Deterministically loads persistent memory context.
+    # - Loads role and core skills into instruction_bundle_json.
+    # - Each topic loads only its topic-specific skills and merges with bundle.
+    description: "Initial bootstrap: memory + role/core skills; topics add topic-specific skills."
+
+    actions:
+        load_user_memory:
+            description: "Load persistent memory (formatted string) for this contact."
+            inputs:
+                contact_id: string
+                    description: "Contact identifier."
+            outputs:
+                agent_memory: string
+                    description: "Formatted merge of memory fields for personalization."
+            target: "flow://Get_Agent_ContextObject"
+        load_and_compose_skills:
+            description: "Load role and core skills into instruction bundle."
+            inputs:
+                instructionNames: string
+                    description: "CSV list of role and core skill names."
+            outputs:
+                loadedInstructionBundle: string
+                    description: "Aggregated instruction bundle JSON for merge."
+                instructionsBundle: string
+                    description: "Formatted prompt (not consumed in start_agent)."
+            target: "flow://Load_And_Compose_Agent_Skills"
+
+    reasoning:
+        instructions: ->
+            if @variables.context_loaded == False and @variables.ContactId and @variables.ContactId != "":
+                run @actions.load_user_memory
+                    with contact_id=@variables.ContactId
+                    set @variables.agent_memory=@outputs.agent_memory
+                    set @variables.context_loaded=True
+
+            if @variables.context_loaded == False:
+                set @variables.context_loaded=True
+
+            run @actions.load_and_compose_skills
+                with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-user-otp-authentication,core-skill-txt-response-guidelines"
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+
+            transition to @topic.general_support
 
 
 topic general_support:
@@ -82,8 +130,9 @@ topic general_support:
             | {!@variables.agent_memory}
             | Start with a personalized greeting using the customer name and profile above. If unresolved issue is true, acknowledge prior issues and ask whether they were resolved. If pending goal is set, ask if the user wants to continue it.
             | Then follow the instructions below.
-            | {!@variables.composed_instructions}/n/n
-            | Then asses the user intent and route to the appropriate topic:
+            | {!@variables.composed_instructions}
+            |
+            | Then assess the user intent and route to the appropriate topic:
             | - For troubleshooting requests, use {!@actions.go_to_troubleshooting}.
             | - For case create/update/status requests, use {!@actions.go_to_case_management}.
             | - When user indicates ending the conversation, or human handoff request, use {!@actions.go_to_finalization}.
@@ -249,51 +298,3 @@ topic finalization:
                 with new_goal=...
                 with has_issue=...
                 with new_style=...
-
-
-start_agent topic_selector:
-    label: "Entry Point"
-    # Topic docstring:
-    # - Deterministically loads persistent memory context.
-    # - Loads role and core skills into instruction_bundle_json.
-    # - Each topic loads only its topic-specific skills and merges with bundle.
-    description: "Initial bootstrap: memory + role/core skills; topics add topic-specific skills."
-
-    actions:
-        load_user_memory:
-            description: "Load persistent memory (formatted string) for this contact."
-            inputs:
-                contact_id: string
-                    description: "Contact identifier."
-            outputs:
-                agent_memory: string
-                    description: "Formatted merge of memory fields for personalization."
-            target: "flow://Get_Agent_ContextObject"
-        load_and_compose_skills:
-            description: "Load role and core skills into instruction bundle."
-            inputs:
-                instructionNames: string
-                    description: "CSV list of role and core skill names."
-            outputs:
-                loadedInstructionBundle: string
-                    description: "Aggregated instruction bundle JSON for merge."
-                instructionsBundle: string
-                    description: "Formatted prompt (not consumed in start_agent)."
-            target: "flow://Load_And_Compose_Agent_Skills"
-
-    reasoning:
-        instructions: ->
-            if @variables.context_loaded == False and @variables.ContactId and @variables.ContactId != "":
-                run @actions.load_user_memory
-                    with contact_id=@variables.ContactId
-                    set @variables.agent_memory=@outputs.agent_memory
-                    set @variables.context_loaded=True
-
-            if @variables.context_loaded == False:
-                set @variables.context_loaded=True
-
-            run @actions.load_and_compose_skills
-                with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-user-otp-authentication,core-skill-txt-response-guidelines"
-                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
-
-            transition to @topic.general_support

@@ -12,7 +12,7 @@ system:
     instructions: |
         You are a minimal test agent. Respond only as instructed.
     messages:
-        welcome: "Loading my skills..."
+        welcome: "I'm Ready to Help!"
         error: "An error occurred."
 
 
@@ -26,6 +26,30 @@ config:
 variables:
     instruction_bundle_json: mutable object
     composed_instructions: mutable string = ""
+
+
+start_agent topic_selector:
+    label: "Entry Point"
+    description: "Load role and core skills, then transition to general support."
+
+    actions:
+        load_and_compose_skills:
+            description: "Load role and core skills into instruction bundle."
+            inputs:
+                instructionNames: string
+                    description: "CSV list of role and core skill names."
+            outputs:
+                loadedInstructionBundle: string
+                    description: "Aggregated instruction bundle JSON for merge."
+            target: "flow://Load_And_Compose_Agent_Skills"
+
+    reasoning:
+        instructions: ->
+            run @actions.load_and_compose_skills
+                with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-txt-response-guidelines"
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+
+            transition to @topic.general_support
 
 
 topic general_support:
@@ -57,27 +81,3 @@ topic general_support:
 
             | Greet the user and follow the instructions below in full:
             | {!@variables.composed_instructions}
-
-
-start_agent topic_selector:
-    label: "Entry Point"
-    description: "Load role and core skills, then transition to general support."
-
-    actions:
-        load_and_compose_skills:
-            description: "Load role and core skills into instruction bundle."
-            inputs:
-                instructionNames: string
-                    description: "CSV list of role and core skill names."
-            outputs:
-                loadedInstructionBundle: string
-                    description: "Aggregated instruction bundle JSON for merge."
-            target: "flow://Load_And_Compose_Agent_Skills"
-
-    reasoning:
-        instructions: ->
-            run @actions.load_and_compose_skills
-                with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-txt-response-guidelines"
-                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
-
-            transition to @topic.general_support

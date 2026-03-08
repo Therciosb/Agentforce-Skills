@@ -1,0 +1,28 @@
+{
+  "required" : [ ],
+  "unevaluatedProperties" : false,
+  "properties" : {
+    "existingInstructionBundle" : {
+      "title" : "Existing Instruction Bundle",
+      "description" : "Existing bundle JSON (role + core from start_agent).",
+      "lightning:type" : "lightning__textType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    },
+    "instructionNames" : {
+      "title" : "Instruction Names",
+      "description" : "CSV list of topic-specific skill/workflow names.",
+      "lightning:type" : "lightning__textType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    },
+    "maxReferenceDepth" : {
+      "title" : "Max Reference Depth",
+      "description" : "Maximum recursive reference depth (optional, default 4). Override to 2 for escalation.",
+      "lightning:type" : "lightning__numberType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    }
+  },
+  "lightning:type" : "lightning__objectType"
+}
