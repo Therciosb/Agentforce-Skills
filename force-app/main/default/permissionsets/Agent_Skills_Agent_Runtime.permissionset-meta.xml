@@ -15,6 +15,10 @@
         <apexClass>Agent_Skill_PromptComposer</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <classAccesses>
+        <apexClass>GenericRenderAction</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <flowAccesses>
         <enabled>true</enabled>
         <flow>Compose_Agent_Skills_Prompt</flow>
@@ -22,6 +26,10 @@
     <flowAccesses>
         <enabled>true</enabled>
         <flow>Load_And_Compose_Agent_Skills</flow>
+    </flowAccesses>
+    <flowAccesses>
+        <enabled>true</enabled>
+        <flow>Render_Data</flow>
     </flowAccesses>
     <objectPermissions>
         <allowCreate>false</allowCreate>

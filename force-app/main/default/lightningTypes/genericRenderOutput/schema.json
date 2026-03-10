@@ -1,0 +1,5 @@
+{
+  "lightning:type": "@apexClassType/c__GenericRenderOutput",
+  "title": "Generic Render Output",
+  "description": "Structured data or error for LWC rendering"
+}

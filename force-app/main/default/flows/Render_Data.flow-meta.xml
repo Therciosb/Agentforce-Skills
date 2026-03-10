@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionCalls>
+        <name>Invoke_GenericRenderAction</name>
+        <label>Invoke Generic Render Action</label>
+        <locationX>176</locationX>
+        <locationY>134</locationY>
+        <actionName>GenericRenderAction</actionName>
+        <actionType>apex</actionType>
+        <connector>
+            <targetReference>Assign_Outputs</targetReference>
+        </connector>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>data</name>
+            <value>
+                <elementReference>data</elementReference>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>display_type</name>
+            <value>
+                <elementReference>display_type</elementReference>
+            </value>
+        </inputParameters>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </actionCalls>
+    <apiVersion>66.0</apiVersion>
+    <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
+    <assignments>
+        <name>Assign_Outputs</name>
+        <label>Assign Outputs</label>
+        <locationX>176</locationX>
+        <locationY>242</locationY>
+        <assignmentItems>
+            <assignToReference>jsonData</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <elementReference>Invoke_GenericRenderAction.jsonData</elementReference>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>displayType</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <elementReference>Invoke_GenericRenderAction.displayType</elementReference>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>success</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <elementReference>Invoke_GenericRenderAction.success</elementReference>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>errorMessage</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <elementReference>Invoke_GenericRenderAction.errorMessage</elementReference>
+            </value>
+        </assignmentItems>
+    </assignments>
+    <environments>Default</environments>
+    <interviewLabel>Render Data {!$Flow.CurrentDateTime}</interviewLabel>
+    <label>Render Data</label>
+    <processType>AutoLaunchedFlow</processType>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Invoke_GenericRenderAction</targetReference>
+        </connector>
+    </start>
+    <status>Active</status>
+    <variables>
+        <description>JSON string following schema for the display type.</description>
+        <name>data</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <description>One of: table, card, list, key-value.</description>
+        <name>display_type</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
+    <variables>
+        <description>Valid JSON string for LWC to render.</description>
+        <name>jsonData</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+    <variables>
+        <description>One of: table, card, list, key-value.</description>
+        <name>displayType</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+    <variables>
+        <description>True if validation passed.</description>
+        <name>success</name>
+        <dataType>Boolean</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+    <variables>
+        <description>Error message when success is false.</description>
+        <name>errorMessage</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+</Flow>

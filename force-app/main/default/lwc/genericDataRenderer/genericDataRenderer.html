@@ -1,0 +1,44 @@
+<template>
+    <template lwc:if={hasError}>
+        <lightning-alert variant="error" class="slds-m-bottom_small">
+            {errorMessage}
+        </lightning-alert>
+    </template>
+    <template lwc:elseif={hasData}>
+        <template lwc:if={isTable}>
+            <lightning-datatable
+                key-field="id"
+                data={tableData}
+                columns={tableColumns}
+                hide-checkbox-column
+            ></lightning-datatable>
+        </template>
+        <template lwc:elseif={isCard}>
+            <lightning-card title={cardTitle} class="slds-m-bottom_small">
+                <div class="slds-p-around_medium">
+                    <dl class="slds-dl_horizontal">
+                        <template for:each={cardFields} for:item="field">
+                            <dt key={field.key} class="slds-dl_horizontal__label">{field.label}</dt>
+                            <dd key={field.key} class="slds-dl_horizontal__detail">{field.value}</dd>
+                        </template>
+                    </dl>
+                </div>
+            </lightning-card>
+        </template>
+        <template lwc:elseif={isList}>
+            <ul class="slds-list_dotted slds-m-bottom_small">
+                <template for:each={listItems} for:item="item">
+                    <li key={item.key}>{item.value}</li>
+                </template>
+            </ul>
+        </template>
+        <template lwc:elseif={isKeyValue}>
+            <dl class="slds-dl_horizontal slds-m-bottom_small">
+                <template for:each={keyValuePairs} for:item="pair">
+                    <dt key={pair.key} class="slds-dl_horizontal__label">{pair.keyLabel}</dt>
+                    <dd key={pair.key} class="slds-dl_horizontal__detail">{pair.value}</dd>
+                </template>
+            </dl>
+        </template>
+    </template>
+</template>

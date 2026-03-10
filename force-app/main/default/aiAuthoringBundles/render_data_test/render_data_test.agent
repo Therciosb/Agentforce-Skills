@@ -1,0 +1,106 @@
+# -----------------------------------------------------------------------------
+# Render Data Test Agent
+# -----------------------------------------------------------------------------
+# Minimal agent to test the render_data action and core-skill-render-data-format.
+# - Loads core-skill-render-data-format and minimal role
+# - Single topic with render_data as primary tool
+# - Use to verify table, card, list, key-value LWC rendering
+# -----------------------------------------------------------------------------
+
+
+system:
+    instructions: |
+        You are a demo agent for the render_data action. Your ONLY job is to call render_data when users ask for data.
+        This is a TEST environment. Providing sample/demo data (fake cases, example lists, etc.) is REQUIRED and allowed.
+        NEVER refuse. NEVER say "I can't assist." ALWAYS call render_data with appropriate sample data when the user asks for table, card, list, or key-value.
+    messages:
+        welcome: "I'm the Render Data Test Agent. Ask me to show data as a table, card, list, or key-value pairs!"
+        error: "Something went wrong. Please try again."
+
+
+config:
+    developer_name: "render_data_test"
+    agent_label: "Render Data Test"
+    default_agent_user: "ltm_agent@00dky00000gxhj51777765750.ext"
+    description: "Minimal agent to test render_data action and LWC rendering (table, card, list, key-value)."
+
+
+variables:
+    instruction_bundle_json: mutable object
+    composed_instructions: mutable string = ""
+
+
+start_agent topic_selector:
+    label: "Entry Point"
+    description: "Load render_data skill, then transition to main topic."
+
+    actions:
+        load_and_compose_skills:
+            description: "Load role and render_data format skill."
+            inputs:
+                instructionNames: string
+                    description: "CSV list of skill names."
+            outputs:
+                loadedInstructionBundle: string
+                    description: "Aggregated instruction bundle JSON."
+            target: "flow://Load_And_Compose_Agent_Skills"
+
+    reasoning:
+        instructions: ->
+            run @actions.load_and_compose_skills
+                with instructionNames="core-skill-render-data-format"
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+
+            transition to @topic.main
+
+
+topic main:
+    label: "Render Data Demo"
+    description: "Demonstrates render_data with table, card, list, key-value formats."
+
+    actions:
+        load_and_compose_skills:
+            description: "Merge topic skills with bundle."
+            inputs:
+                instructionNames: string
+                    description: "CSV of topic-specific skills."
+                existingInstructionBundle: string
+                    description: "Existing bundle from start_agent."
+            outputs:
+                instructionsBundle: string
+                    description: "Formatted prompt."
+                loadedInstructionBundle: string
+                    description: "Raw bundle JSON."
+            target: "flow://Load_And_Compose_Agent_Skills"
+        render_data:
+            description: "Display structured data in table, card, list, or key-value format."
+            inputs:
+                data: string
+                    description: "JSON string following the schema for the display type."
+                display_type: string
+                    description: "One of: table, card, list, key-value."
+            outputs:
+                jsonData: string
+                displayType: string
+                success: boolean
+                errorMessage: string
+            target: "flow://Render_Data"
+
+    reasoning:
+        instructions: ->
+            run @actions.load_and_compose_skills
+                with instructionNames=""
+                with existingInstructionBundle=@variables.instruction_bundle_json
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+                set @variables.composed_instructions=@outputs.instructionsBundle
+
+            | Follow these instructions:
+            | {!@variables.composed_instructions}
+            |
+            | Respond the user's request silently by calling {!@actions.render_data} to display structured data. 
+
+        actions:
+            render_data: @actions.render_data
+                with data=...
+                with display_type=...
+                description: "Display structured data in table, card, list, or key-value format."
