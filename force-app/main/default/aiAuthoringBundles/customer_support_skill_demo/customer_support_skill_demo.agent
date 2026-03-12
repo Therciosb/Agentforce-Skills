@@ -60,20 +60,12 @@ start_agent topic_selector:
         load_user_memory:
             description: "Load persistent memory for this contact."
             inputs:
-                contact_id: string
+                contactId: string
                     description: "Contact identifier."
             outputs:
-                summary: string
-                    description: "Previous conversation summary."
-                goal: string
-                    description: "Pending goal."
-                issue: boolean
-                    description: "Unresolved issue flag."
-                style: string
-                    description: "Communication style."
-                tier: string
-                    description: "User tier."
-            target: "flow://Get_Agent_Context"
+                agentMemory: string
+                    description: "Formatted merge of memory fields for personalization."
+            target: "apex://LoadAgentMemory"
         load_and_compose_skills:
             description: "Load role and core skills into instruction bundle."
             inputs:
@@ -84,21 +76,21 @@ start_agent topic_selector:
                     description: "Aggregated instruction bundle JSON for merge."
                 instructionsBundle: string
                     description: "Formatted prompt (not consumed in start_agent)."
-            target: "flow://Load_And_Compose_Agent_Skills"
+            target: "apex://Agent_Skill_LoadAndCompose"
 
     reasoning:
         instructions: ->
             if @variables.context_loaded == False and @variables.ContactId and @variables.ContactId != "":
                 run @actions.load_user_memory
-                    with contact_id=@variables.ContactId
-                    set @variables.agent_memory=@outputs.summary
+                    with contactId=@variables.ContactId
+                    set @variables.agent_memory=@outputs.agentMemory
                     set @variables.context_loaded=True
 
             if @variables.context_loaded == False:
                 set @variables.context_loaded=True
 
             run @actions.load_and_compose_skills
-                with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-user-otp-authentication,core-skill-txt-response-guidelines,core-skill-render-data-format"
+                with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-txt-response-guidelines"
                 set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
 
             transition to @topic.general_support
@@ -124,25 +116,12 @@ topic general_support:
                     description: "Formatted prompt-ready instruction text."
                 loadedInstructionBundle: string
                     description: "Raw instruction bundle JSON for merge."
-            target: "flow://Load_And_Compose_Agent_Skills"
-        render_data:
-            description: "Display structured data to the user. Use when you have data to show in table, card, list, or key-value format."
-            inputs:
-                data: string
-                    description: "JSON string following the schema for the display type (see core-skill-render-data-format)."
-                display_type: string
-                    description: "One of: table, card, list, key-value."
-            outputs:
-                jsonData: string
-                displayType: string
-                success: boolean
-                errorMessage: string
-            target: "flow://Render_Data"
+            target: "apex://Agent_Skill_LoadAndCompose"
 
     reasoning:
         instructions: ->
             run @actions.load_and_compose_skills
-                with instructionNames="skill-product-information-qa,skill-support-case-management"
+                with instructionNames="skill-product-information-qa"
                 with existingInstructionBundle=@variables.instruction_bundle_json
                 set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
                 set @variables.composed_instructions=@outputs.instructionsBundle
@@ -157,7 +136,6 @@ topic general_support:
             | - For troubleshooting requests, use {!@actions.go_to_troubleshooting}.
             | - For case create/update/status requests, use {!@actions.go_to_case_management}.
             | - When user indicates ending the conversation, or human handoff request, use {!@actions.go_to_finalization}.
-            | When you have structured data to display (e.g. from a query or list of items), use {!@actions.render_data} with data as JSON and display_type (table, card, list, or key-value).
 
         actions:
             go_to_troubleshooting: @utils.transition to @topic.troubleshooting_support
@@ -166,10 +144,6 @@ topic general_support:
                 description: "Route to support case lifecycle handling."
             go_to_finalization: @utils.transition to @topic.finalization
                 description: "Route to session termination or escalation, and memory checkpoint."
-            render_data: @actions.render_data
-                with data=...
-                with display_type=...
-                description: "Display structured data in table, card, list, or key-value format."
 
 
 topic troubleshooting_support:
@@ -192,20 +166,7 @@ topic troubleshooting_support:
                     description: "Formatted prompt-ready instruction text."
                 loadedInstructionBundle: string
                     description: "Raw instruction bundle JSON for merge."
-            target: "flow://Load_And_Compose_Agent_Skills"
-        render_data:
-            description: "Display structured data to the user. Use when you have data to show in table, card, list, or key-value format."
-            inputs:
-                data: string
-                    description: "JSON string following the schema for the display type (see core-skill-render-data-format)."
-                display_type: string
-                    description: "One of: table, card, list, key-value."
-            outputs:
-                jsonData: string
-                displayType: string
-                success: boolean
-                errorMessage: string
-            target: "flow://Render_Data"
+            target: "apex://Agent_Skill_LoadAndCompose"
 
     reasoning:
         instructions: ->
@@ -221,17 +182,12 @@ topic troubleshooting_support:
             | Troubleshoot in clear, step-based order and confirm result after each step.
             | If issue resolved, unresolved, user wants to end the conversation or user asks for human handoff, use {!@actions.go_to_finalization}.
             | If unresolved and new case is needed, or user requests case tracking/update, use {!@actions.go_to_case_management}.
-            | When you have structured data to display (e.g. troubleshooting steps, product list), use {!@actions.render_data} with data as JSON and display_type (table, card, list, or key-value).
 
         actions:
             go_to_case_management: @utils.transition to @topic.case_management
                 description: "Route to case management."
             go_to_finalization: @utils.transition to @topic.finalization
                 description: "Route to session termination or escalation, and memory checkpoint."
-            render_data: @actions.render_data
-                with data=...
-                with display_type=...
-                description: "Display structured data in table, card, list, or key-value format."
 
 
 topic case_management:
@@ -254,25 +210,12 @@ topic case_management:
                     description: "Formatted prompt-ready instruction text."
                 loadedInstructionBundle: string
                     description: "Raw instruction bundle JSON for merge."
-            target: "flow://Load_And_Compose_Agent_Skills"
-        render_data:
-            description: "Display structured data to the user. Use when you have data to show in table, card, list, or key-value format."
-            inputs:
-                data: string
-                    description: "JSON string following the schema for the display type (see core-skill-render-data-format)."
-                display_type: string
-                    description: "One of: table, card, list, key-value."
-            outputs:
-                jsonData: string
-                displayType: string
-                success: boolean
-                errorMessage: string
-            target: "flow://Render_Data"
+            target: "apex://Agent_Skill_LoadAndCompose"
 
     reasoning:
         instructions: ->
             run @actions.load_and_compose_skills
-                with instructionNames="skill-support-case-management,workflow-support-case-lifecycle"
+                with instructionNames="skill-support-case-management"
                 with existingInstructionBundle=@variables.instruction_bundle_json
                 set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
                 set @variables.composed_instructions=@outputs.instructionsBundle
@@ -283,14 +226,9 @@ topic case_management:
             | {!@variables.composed_instructions}
             | Collect complete issue details, confirm consent, and summarize case actions.
             | If user want to end conversation, or specialist handoff is required, use {!@actions.go_to_finalization}.
-            | When you have structured data to display (e.g. case list, case details), use {!@actions.render_data} with data as JSON and display_type (table, card, list, or key-value).
         actions:
             go_to_finalization: @utils.transition to @topic.finalization
                 description: "Route to session termination or escalation, and memory checkpoint."
-            render_data: @actions.render_data
-                with data=...
-                with display_type=...
-                description: "Display structured data in table, card, list, or key-value format."
 
 
 topic finalization:
@@ -308,39 +246,35 @@ topic finalization:
                     description: "CSV list of topic-specific skill/workflow names."
                 existingInstructionBundle: string
                     description: "Existing bundle JSON (role + core from start_agent)."
-                maxReferenceDepth: object
-                    description: "Maximum recursive reference depth (optional, default 4). Override to 2 for escalation."
-                    complex_data_type_name: "lightning__numberType"
             outputs:
                 instructionsBundle: string
                     description: "Formatted prompt-ready instruction text."
                 loadedInstructionBundle: string
                     description: "Raw instruction bundle JSON for merge."
-            target: "flow://Load_And_Compose_Agent_Skills"
+            target: "apex://Agent_Skill_LoadAndCompose"
         save_context_tool:
             description: "Persist long-term memory. Call this before saying goodbye to save extracted conversation data (scalar inputs only)."
             inputs:
-                contact_id: string
+                contactId: string
                     description: "Contact id used to upsert context."
-                new_summary: string
+                newSummary: string
                     description: "Detailed 4-5 sentence summary combining last session summary (when available) with this session: user inputs, assistant recommendations, actions taken, and outcomes."
-                new_goal: string
+                newGoal: string
                     description: "Unfinished user goal to continue later, or empty string if none."
-                has_issue: boolean
+                hasIssue: boolean
                     description: "True if the user still has an unresolved issue at session end."
-                new_style: string
+                newStyle: string
                     description: "Communication preference inferred from this session (e.g. concise, detailed, formal)."
             outputs:
                 success: boolean
                     description: "Whether save operation succeeded."
-            target: "flow://Save_Agent_ContextObject"
+            target: "apex://SaveAgentContext"
 
     reasoning:
         instructions: ->
             run @actions.load_and_compose_skills
                 with instructionNames="workflow-escalate-to-human"
                 with existingInstructionBundle=@variables.instruction_bundle_json
-                with maxReferenceDepth=2
                 set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
                 set @variables.composed_instructions=@outputs.instructionsBundle
             | Here is your past context. Use it for personalization:
@@ -355,8 +289,8 @@ topic finalization:
         actions:
             persist_memory: @actions.save_context_tool
                 description: "Required at session end. Saves context with LLM-extracted summary, goal, unresolved-issue flag, and communication style."
-                with contact_id=@variables.ContactId
-                with new_summary=...
-                with new_goal=...
-                with has_issue=...
-                with new_style=...
+                with contactId=@variables.ContactId
+                with newSummary=...
+                with newGoal=...
+                with hasIssue=...
+                with newStyle=...

@@ -1,9 +1,109 @@
-Name,ExternalId__c,Description__c,WhenToUse__c,InstructionBody__c,Status__c,Version__c,Locale__c
-workflow-support-case-lifecycle,workflow-support-case-lifecycle:v1:en-US,"Standard case lifecycle workflow.","Use when opening, updating, or closing customer support cases.","Step 1: Verify user identity. Step 2: Capture issue summary, severity, and business impact. Step 3: Create or update support case. Step 4: Confirm case number and ETA. Step 5: Summarize agreed next actions.",active,v1,en-US
-workflow-escalate-to-human,workflow-escalate-to-human:v1:en-US,"Escalation workflow for unresolved issues or explicit handoff requests.","Use when troubleshooting does not resolve issue, user requests human, or policy requires escalation.","Step 1: Summarize issue, attempted steps, and current status. Step 2: Route to human queue with priority and contact details. Step 3: Provide user confirmation with case or handoff reference.",active,v1,en-US
-workflow-troubleshooting-wifi-modem,workflow-troubleshooting-wifi-modem:v1:en-US,"Troubleshoot Wi-Fi modem connectivity issues.","Use when user has internet outage, unstable Wi-Fi, or modem light issues.","Collect modem model and LED status. Guide power cycle, cable checks, signal verification. Escalate if unresolved.",active,v1,en-US
-workflow-troubleshooting-5g-modem,workflow-troubleshooting-5g-modem:v1:en-US,"Troubleshoot 5G modem signal and throughput issues.","Use when 5G modem has low signal or unstable service.","Capture location, signal bars, firmware. Guide placement optimization and network refresh. Escalate if throughput below threshold.",active,v1,en-US
-workflow-troubleshooting-iphone-16,workflow-troubleshooting-iphone-16:v1:en-US,"Troubleshoot iPhone 16 device issues.","Use for iPhone 16 configuration, connectivity, or app behavior support.","Validate iOS version and affected feature. Guide settings reset and network diagnostics. Escalate if issue persists.",active,v1,en-US
-workflow-troubleshooting-iphone-16-pro,workflow-troubleshooting-iphone-16-pro:v1:en-US,"Troubleshoot iPhone 16 Pro device issues.","Use for iPhone 16 Pro technical issues.","Gather updates and reproducible scenario. Guide ProMotion, camera, and performance remediation. Escalate for unresolved defects.",active,v1,en-US
-workflow-troubleshooting-galaxy-s25,workflow-troubleshooting-galaxy-s25:v1:en-US,"Troubleshoot Samsung Galaxy S25 device issues.","Use for Galaxy S25 network, battery, and app-related issues.","Collect One UI version and recent changes. Run diagnostics and standard reset path. Escalate with detailed summary when unresolved.",active,v1,en-US
-workflow-troubleshooting-galaxy-s25-ultra,workflow-troubleshooting-galaxy-s25-ultra:v1:en-US,"Troubleshoot Samsung Galaxy S25 Ultra device issues.","Use for Galaxy S25 Ultra camera, connectivity, and performance issues.","Capture exact symptom and scenario. Guide corrective steps. Escalate for specialist support when needed.",active,v1,en-US
+Name,Type__c,ExternalId__c,Description__c,WhenToUse__c,InstructionBody__c,References__c,Status__c,Version__c,Locale__c
+workflow-escalate-to-human,Workflow,workflow-escalate-to-human:v1:en-US,"Escalation workflow for unresolved issues or explicit handoff requests.","Use when troubleshooting does not resolve issue, user requests human, or policy requires escalation.","# ESCALATE TO HUMAN
+## When
+User requests human; troubleshooting fails; frustration/repeats; outside scope (billing dispute, legal, safety, VIP); policy (refunds, complaints).
+
+## Before
+Acknowledge: ""I'll connect you now."" Expectation: ""Specialist shortly, ~30 sec wait."" ""I'll share our conversation so you won't repeat.""
+
+## Context Transfer
+Full history, customer ID, attempted solutions, escalation reason, sentiment. 3–5 sentence summary.
+
+## Routing
+By type: technical, billing, general. By tier: VIP/Enterprise vs Standard. By complexity.
+
+## Confirm
+Case/handoff reference. ""You're connected to [Agent]. They have full context.""",,active,v1,en-US
+workflow-support-case-lifecycle,Workflow,workflow-support-case-lifecycle:v1:en-US,"Standard case lifecycle workflow.","Use when opening, updating, or closing customer support cases.","# SUPPORT CASE LIFECYCLE
+## 1. Identity
+Invoke core-skill-user-otp-authentication. Do not proceed until OTP succeeds.
+
+## 2. Intake
+Capture issue in customer's words. Severity: Critical/High/Medium/Low. Business impact. Case type: Technical, Billing, Replacement, Refund, General.
+
+## 3. Create or Update
+Create with approved summary. Or update: progress notes, status (Open → In Progress → Completed). Log all activities.
+
+## 4. Confirm
+Provide case number. ETA (e.g., ""24–48 hours""). Summarize next actions.
+
+## 5. Close
+When resolved: status Completed. Confirm with customer. Ask if anything else needed.","core-skill-user-otp-authentication, workflow-escalate-to-human",active,v1,en-US
+workflow-troubleshooting-wifi-modem,Workflow,workflow-troubleshooting-wifi-modem:v1:en-US,"Troubleshoot Wi-Fi modem connectivity issues.","Use when user has internet outage, unstable Wi-Fi, or modem light issues.","# TROUBLESHOOTING WI-FI MODEM
+## 1. Gather
+Model, LED status (Power, WAN, LAN, Wi-Fi). Colors: Green=ok, Red=error, Amber=issue, Off=no power. When started.
+
+## 2. Power Cycle
+Unplug modem + router. Wait 60 sec. Plug modem first, wait for LEDs. Plug router, wait 2–3 min. Test.
+
+## 3. Cables
+Verify coax/Ethernet connections. Modem → router WAN (not LAN). Try different outlet.
+
+## 4. Outage
+Neighbors affected? Check ISP outage map.
+
+## 5. Escalate
+If persists after power cycle/cables or red LED remains: invoke workflow-escalate-to-human.",workflow-escalate-to-human,active,v1,en-US
+workflow-troubleshooting-5g-modem,Workflow,workflow-troubleshooting-5g-modem:v1:en-US,"Troubleshoot 5G modem signal and throughput issues.","Use when 5G modem has low signal or unstable service.","# TROUBLESHOOTING 5G MODEM
+## 1. Gather
+Model, location (indoor/outdoor). RSRP (higher/less negative = stronger). Firmware. Obstructions (concrete, metal reduce signal).
+
+## 2. Placement
+Near window, minimal obstructions. Avoid concrete, brick, metal. Rotate toward signal. Low-band: penetration; mid: balanced; mmWave: line of sight.
+
+## 3. Refresh
+Power cycle (60 sec). Firmware update. Check SIM/eSIM seating.
+
+## 4. Escalate
+RSRP < -100 dBm, SINR < 10 dB, or low throughput after steps: invoke workflow-escalate-to-human.",workflow-escalate-to-human,active,v1,en-US
+workflow-troubleshooting-iphone-16,Workflow,workflow-troubleshooting-iphone-16:v1:en-US,"Troubleshoot iPhone 16 device issues.","Use for iPhone 16 configuration, connectivity, or app behavior support.","# TROUBLESHOOTING IPHONE 16
+## 1. Gather
+iOS version (Settings > General > About). Affected feature (Wi-Fi, cellular, Bluetooth, VPN, app). When started.
+
+## 2. Pre-Reset
+Wi-Fi on, Airplane off. Restart (power + volume, slide off). Restart router/modem. Disable VPN temporarily.
+
+## 3. Reset Network
+If persists: Settings > General > Transfer or Reset > Reset Network Settings. Passcode, confirm. Reconnect Wi-Fi, re-pair Bluetooth. (Removes saved networks; no photos/apps affected.)
+
+## 4. Escalate
+If persists: invoke workflow-escalate-to-human.",workflow-escalate-to-human,active,v1,en-US
+workflow-troubleshooting-iphone-16-pro,Workflow,workflow-troubleshooting-iphone-16-pro:v1:en-US,"Troubleshoot iPhone 16 Pro device issues.","Use for iPhone 16 Pro technical issues.","# TROUBLESHOOTING IPHONE 16 PRO
+## 1. Gather
+iOS version. Symptom: 60Hz display, camera black, torch malfunction, app crash. When reproducible.
+
+## 2. ProMotion (60Hz)
+Settings > Accessibility > Motion: Limit Frame Rate OFF, Reduce Motion OFF. Force restart: Vol Up, Vol Down, hold Side until logo.
+
+## 3. Camera
+Force restart. Close apps; free storage. Torch on but no light: force restart. If persists: restore via computer (backup first).
+
+## 4. General
+Update iOS. Reset Network if connectivity. Hardware defects after software steps: invoke workflow-escalate-to-human.",workflow-escalate-to-human,active,v1,en-US
+workflow-troubleshooting-galaxy-s25,Workflow,workflow-troubleshooting-galaxy-s25:v1:en-US,"Troubleshoot Samsung Galaxy S25 device issues.","Use for Galaxy S25 network, battery, and app-related issues.","# TROUBLESHOOTING GALAXY S25
+## 1. Gather
+One UI version (Settings > About > Software). Recent changes. Symptom: network, battery, app crash, lag.
+
+## 2. Network
+Restart. Software update. Reset Network Settings. Disable VPN. Forget/reconnect Wi-Fi.
+
+## 3. Battery
+Motion Smoothness: Adaptive→Standard (60Hz). Restrict background apps. Adaptive Battery on. Overheating: lower brightness, disable Always-On, avoid heavy use while charging.
+
+## 4. Escalate
+If unresolved: invoke workflow-escalate-to-human. Suggest Samsung Members for error report.",workflow-escalate-to-human,active,v1,en-US
+workflow-troubleshooting-galaxy-s25-ultra,Workflow,workflow-troubleshooting-galaxy-s25-ultra:v1:en-US,"Troubleshoot Samsung Galaxy S25 Ultra device issues.","Use for Galaxy S25 Ultra camera, connectivity, and performance issues.","# TROUBLESHOOTING GALAXY S25 ULTRA
+## 1. Gather
+Symptom: camera quality/color/processing, display touch, overheating. Scenario: stock camera, Expert Raw, or third-party. One UI version.
+
+## 2. Camera
+Stock/Expert Raw use AI processing; third-party may differ. Disable AI enhancement in settings if desired. Hardware/persistent: escalate.
+
+## 3. Display/Touch
+Remove screen protector. Display > Touch Sensitivity. Lower brightness; disable Always-On.
+
+## 4. Overheating
+Adaptive Battery on. Lower brightness. Avoid heavy camera while charging.
+
+## 5. Escalate
+Unresolved camera/display: invoke workflow-escalate-to-human. Samsung Members for expert support.",workflow-escalate-to-human,active,v1,en-US

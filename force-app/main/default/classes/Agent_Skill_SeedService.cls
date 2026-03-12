@@ -44,7 +44,7 @@ public with sharing class Agent_Skill_SeedService {
                 'You are authorized to: troubleshoot product and connectivity issues (Wi-Fi, 5G, iPhone, Galaxy devices); create and update support cases; escalate to a human specialist when needed.\n\n' +
                 '# DEPENDENCIES (see References)\n' +
                 'Always invoke core-skill-user-otp-authentication before account-sensitive operations. Use workflow-support-case-lifecycle for case creation and updates. Use workflow-escalate-to-human when troubleshooting fails or the customer requests a human.',
-            'core-skill-user-otp-authentication,workflow-support-case-lifecycle,workflow-escalate-to-human'
+            ''
         ));
 
         repoItems.add(repoItem(
@@ -125,20 +125,71 @@ public with sharing class Agent_Skill_SeedService {
                 version,
                 locale,
                 'HTML markup structure for agent responses when output is rendered as rich text.',
-                'Use when the response channel supports HTML rendering (e.g., chat UI, email, knowledge articles). Omit if channel is plain text only.',
+                'Load only when the deployment channel supports HTML (e.g., chat UI, email). Omit from instructionNames if channel is plain text only. The agent cannot detect channel; the load decision is the signal.',
                 '# HTML FORMATTING\n' +
-                'Markup for rich-text channels (chat, email). Apply core-skill-txt-response-guidelines first for length/locale.\n\n' +
+                'Use HTML markup for all responses. This skill is loaded only when the channel supports rich text; if loaded, always apply HTML.\n\n' +
+                'Apply core-skill-txt-response-guidelines first for length/locale.\n\n' +
+                '## Length\n' +
+                'Length limits from core-skill-txt-response-guidelines apply to visible text. HTML tags add to total; keep markup minimal to stay within limits.\n\n' +
                 '## Allowed Elements\n' +
                 'Block: p, ul, ol, li, div, br, table, thead, tbody, tr, th, td, caption. Inline: strong, em, span, a. Headings: h2, h3. No script, iframe, object.\n\n' +
                 '## Structure\n' +
                 'Wrap sections in p/div. h2/h3 for breaks (no skip). ul for bullets, ol for steps. strong for key terms. a with href + visible text.\n\n' +
                 '## Lists & Tables\n' +
-                'ul for 2+ items; ol for steps. Max 1 nesting level. Tables: 2–3 cols, th scope col/row, caption when needed.\n\n' +
+                'ul for 2+ items; ol for steps. Max 1 nesting level (no ul inside ul). Tables: 2–3 cols, th scope col/row, caption when needed.\n\n' +
                 '## CTAs\n' +
-                'button only if platform supports. Else a with href. Short labels: "Create case", "Resend code", "Escalate".\n\n' +
+                'Prefer a with href for links. Use button only when the UI clearly supports it. Short labels: "Create case", "Resend code", "Escalate".\n\n' +
                 '## Accessibility\n' +
-                'Descriptive link text. Headings reflect structure. Don\'t rely on color alone.',
+                'Descriptive link text. Headings reflect structure. Don\'t rely on color alone.\n\n' +
+                '## Example (list)\n' +
+                '<p>Here are the steps:</p><ol><li>Power cycle the modem.</li><li>Wait 2 minutes.</li><li>Check the LED status.</li></ol>\n\n' +
+                '## Example (table)\n' +
+                '<p>Comparison:</p><table><thead><tr><th scope="col">Feature</th><th scope="col">iPhone 16</th><th scope="col">Galaxy S25</th></tr></thead><tbody><tr><td>Display</td><td>6.1 in</td><td>6.2 in</td></tr></tbody></table>',
                 'core-skill-txt-response-guidelines'
+        ));
+        repoItems.add(repoItem(
+                'core-skill-render-data-format',
+                version,
+                locale,
+                'Defines JSON schema per display type for render_data action.',
+                'Use when agent has structured data to display (table, card, list, key-value).',
+                '# RENDER DATA FORMAT\n\n' +
+                'Use the render_data action when you have structured data to display to the user. Produce the data string and display type following these rules.\n\n' +
+                '## When to Call\n\n' +
+                '- After gathering data from another action (e.g. Query Records, Get Record Details) and you want to present it in a structured format\n' +
+                '- When you have multiple items to show (list, table)\n' +
+                '- When you have a single record or object to show (card, key-value)\n\n' +
+                '## Display Types\n\n' +
+                '| Type | Use Case |\n' +
+                '|------|----------|\n' +
+                '| table | 2+ rows with columns (e.g. cases, accounts, products) |\n' +
+                '| card | Single record with labeled fields |\n' +
+                '| list | Simple list of items (strings or short objects) |\n' +
+                '| key-value | Pairs of label/value (e.g. record details) |\n\n' +
+                '## Data Format (JSON)\n\n' +
+                'Produce valid JSON. Escape quotes in string values.\n\n' +
+                '### table\n\n' +
+                'Schema: { "columns": ["col1", "col2", ...], "rows": [["val1", "val2", ...], ...] }\n\n' +
+                'Example:\n' +
+                '{"columns":["Case Number","Subject","Status"],"rows":[["00001001","Wi-Fi not connecting","In Progress"],["00001002","Billing question","Closed"]]}\n\n' +
+                '### card\n\n' +
+                'Schema: { "title": "string", "fields": [{"label": "string", "value": "string"}, ...] }\n\n' +
+                'Example:\n' +
+                '{"title":"Case 00001001","fields":[{"label":"Subject","value":"Wi-Fi not connecting"},{"label":"Status","value":"In Progress"},{"label":"Priority","value":"High"}]}\n\n' +
+                '### list\n\n' +
+                'Schema: { "items": ["item1", "item2", ...] }\n\n' +
+                'Example:\n' +
+                '{"items":["Power cycle the modem","Wait 2 minutes","Check LED status"]}\n\n' +
+                '### key-value\n\n' +
+                'Schema: { "pairs": [{"key": "string", "value": "string"}, ...] }\n\n' +
+                'Example:\n' +
+                '{"pairs":[{"key":"Account","value":"Acme Corp"},{"key":"Contact","value":"Jane Smith"},{"key":"Case","value":"00001001"}]}\n\n' +
+                '## Extraction Rules\n\n' +
+                'When invoking render_data:\n' +
+                '- **data:** Produce the JSON string following the schema for the chosen display_type. Ensure valid JSON (escape quotes, no trailing commas).\n' +
+                '- **display_type:** One of: table, card, list, key-value.\n\n' +
+                'If data from another action does not match a schema, transform it. For example, Query Records returns a list of records—map to table (columns + rows) or card (one per record).',
+                ''
         ));
         repoItems.add(repoItem(
                 'skill-product-information-qa',
@@ -198,7 +249,7 @@ public with sharing class Agent_Skill_SeedService {
                 '## 3. Escalation\n' +
                 '- If the product workflow does not resolve the issue, or the customer requests human support, invoke workflow-escalate-to-human.\n' +
                 '- Document attempted solutions and outcomes for handoff context.',
-                'workflow-troubleshooting-wifi-modem,workflow-troubleshooting-5g-modem,workflow-troubleshooting-iphone-16,workflow-troubleshooting-iphone-16-pro,workflow-troubleshooting-galaxy-s25,workflow-troubleshooting-galaxy-s25-ultra'
+                'workflow-escalate-to-human,workflow-troubleshooting-wifi-modem,workflow-troubleshooting-5g-modem,workflow-troubleshooting-iphone-16,workflow-troubleshooting-iphone-16-pro,workflow-troubleshooting-galaxy-s25,workflow-troubleshooting-galaxy-s25-ultra'
         ));
 
         // Product-specific troubleshooting workflows (converted from skills)
@@ -358,7 +409,7 @@ public with sharing class Agent_Skill_SeedService {
                 'Provide case number. ETA (e.g., "24–48 hours"). Summarize next actions.\n\n' +
                 '## 5. Close\n' +
                 'When resolved: status Completed. Confirm with customer. Ask if anything else needed.',
-                'core-skill-user-otp-authentication'
+                'core-skill-user-otp-authentication, workflow-escalate-to-human'
         ));
 
         repoItems.add(repoItem(
