@@ -2,7 +2,7 @@
 
 ## Agent_Skill_LoadAndCompose
 
-Invocable Apex action that aggregates Load + Compose. Invoked by the `Load_And_Compose_Agent_Skills` Flow, which is the primary action target for agents.
+Invocable Apex action that aggregates Load + Compose. Primary action target for agents (`apex://Agent_Skill_LoadAndCompose`). Also invoked by the optional `Load_And_Compose_Agent_Skills` Flow.
 
 ### Input
 

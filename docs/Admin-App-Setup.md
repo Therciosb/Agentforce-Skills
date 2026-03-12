@@ -1,11 +1,11 @@
 # Agent Skills Admin App Setup
 
-## Agent bot user (Load And Compose flow)
+## Agent bot user (Load And Compose)
 
-For agents that invoke `flow://Load_And_Compose_Agent_Skills`, assign the **Agent Skills Agent Runtime** permission set to the bot user (e.g. `default_agent_user` in the agent config). This grants:
+For agents that invoke `apex://Agent_Skill_LoadAndCompose` (or `flow://Load_And_Compose_Agent_Skills`), assign the **Agent Skills Agent Runtime** permission set to the bot user (e.g. `default_agent_user` in the agent config). This grants:
 
-- Apex class access: `Agent_Skill_LoadAndCompose`, `Agent_Skill_Loader`, `Agent_Skill_PromptComposer`
-- Flow access: `Load_And_Compose_Agent_Skills`, `Compose_Agent_Skills_Prompt`
+- Apex class access: `Agent_Skill_LoadAndCompose`, `Agent_Skill_Loader`, `Agent_Skill_PromptComposer`, `GenericRenderAction`
+- Flow access: `Load_And_Compose_Agent_Skills`, `Compose_Agent_Skills_Prompt`, `Render_Data` (optional; agents use Apex directly)
 - Read access to `Agent_Skills_Repo__c`
 
 **Setup:** Users → select the bot user → Permission Set Assignments → Add Assignments → Agent Skills Agent Runtime.

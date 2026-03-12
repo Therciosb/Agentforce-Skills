@@ -36,28 +36,28 @@
             <assignToReference>jsonData</assignToReference>
             <operator>Assign</operator>
             <value>
-                <elementReference>Invoke_GenericRenderAction.jsonData</elementReference>
+                <elementReference>Invoke_GenericRenderAction.result.jsonData</elementReference>
             </value>
         </assignmentItems>
         <assignmentItems>
             <assignToReference>displayType</assignToReference>
             <operator>Assign</operator>
             <value>
-                <elementReference>Invoke_GenericRenderAction.displayType</elementReference>
+                <elementReference>Invoke_GenericRenderAction.result.displayType</elementReference>
             </value>
         </assignmentItems>
         <assignmentItems>
             <assignToReference>success</assignToReference>
             <operator>Assign</operator>
             <value>
-                <elementReference>Invoke_GenericRenderAction.success</elementReference>
+                <elementReference>Invoke_GenericRenderAction.result.success</elementReference>
             </value>
         </assignmentItems>
         <assignmentItems>
             <assignToReference>errorMessage</assignToReference>
             <operator>Assign</operator>
             <value>
-                <elementReference>Invoke_GenericRenderAction.errorMessage</elementReference>
+                <elementReference>Invoke_GenericRenderAction.result.errorMessage</elementReference>
             </value>
         </assignmentItems>
     </assignments>

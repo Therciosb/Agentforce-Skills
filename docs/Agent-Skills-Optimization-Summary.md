@@ -41,7 +41,7 @@
 | Record | Before | After | Rationale |
 |--------|--------|-------|-----------|
 | **role-customer-support-agent** | core-skill-user-otp-authentication, workflow-support-case-lifecycle, workflow-escalate-to-human | *(unchanged)* | Correct; role depends on these directly |
-| **core-skill-ltmManagement-service-agent** | Agent_Context__c, Get_Agent_ContextObject, Save_Agent_ContextObject... | *(unchanged)* | LTM skill kept intact per constraints. Note: These are action/flow names, not instruction names; may need review if Composer expects instruction names only |
+| **core-skill-ltmManagement-service-agent** | Agent_Context__c, LoadAgentMemory, SaveAgentContext... | *(unchanged)* | LTM skill kept intact per constraints. Note: These are Apex action names, not instruction names; may need review if Composer expects instruction names only |
 | **core-skill-user-otp-authentication** | '' | *(unchanged)* | No dependencies |
 | **core-skill-txt-response-guidelines** | '' | *(unchanged)* | No dependencies |
 | **core-skill-HTML-formatting-guidelines** | core-skill-txt-response-guidelines | *(unchanged)* | Correct; HTML defers to txt guidelines |
@@ -113,7 +113,7 @@ No circular references. All chains terminate at leaf instructions (core-skill-us
 ### 5.2 Migration
 
 1. **Re-seed:** Run `Agent_Skill_SeedService.seedCustomerSupportDemo()` to overwrite `Agent_Skills_Repo__c` records with optimized content.
-2. **Verification:** Load composed instructions via `Load_And_Compose_Agent_Skills` and confirm reference expansion includes all expected instructions.
+2. **Verification:** Load composed instructions via `apex://Agent_Skill_LoadAndCompose` and confirm reference expansion includes all expected instructions.
 3. **LTM:** `core-skill-ltmManagement-service-agent` unchanged; no LTM migration needed.
 
 ### 5.3 Validation Checklist

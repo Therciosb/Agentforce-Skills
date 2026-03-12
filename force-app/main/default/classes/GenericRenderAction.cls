@@ -11,10 +11,12 @@ global with sharing class GenericRenderAction {
         label='Render Data'
         description='Renders structured data in the agent UI. Validates JSON and display type.'
     )
-    public static List<GenericRenderOutput> renderData(List<RenderDataInput> inputs) {
-        List<GenericRenderOutput> results = new List<GenericRenderOutput>();
+    public static List<RenderDataResponse> renderData(List<RenderDataInput> inputs) {
+        List<RenderDataResponse> results = new List<RenderDataResponse>();
         for (RenderDataInput input : inputs) {
-            results.add(processInput(input));
+            RenderDataResponse r = new RenderDataResponse();
+            r.result = processInput(input);
+            results.add(r);
         }
         return results;
     }
@@ -70,5 +72,18 @@ global with sharing class GenericRenderAction {
             description='One of: table, card, list, key-value'
         )
         global String display_type;
+    }
+
+    /**
+     * Wrapper so the platform exposes a single complex output (GenericRenderOutput)
+     * instead of flattening to primitives. Required for Custom Lightning Type to
+     * appear in Agent Action Output Rendering.
+     */
+    global class RenderDataResponse {
+        @InvocableVariable(
+            label='Result'
+            description='Render output for LWC display'
+        )
+        global GenericRenderOutput result;
     }
 }

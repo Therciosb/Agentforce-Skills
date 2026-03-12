@@ -33,9 +33,9 @@ Maximize use of platform and built-in SDR assets. Implement new Apex/Flow action
 
 | Asset                                         | Source                               | Use in SDR Agent                                                                                                 |
 | --------------------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| **Get_Agent_ContextObject**                   | LTM-Agentforce                       | Load persistent memory at session start                                                                          |
-| **Save_Agent_ContextObject**                  | LTM-Agentforce                       | Persist context at handoff/finalization                                                                          |
-| **Load_And_Compose_Agent_Skills**             | This project                         | Load SDR role, skills, workflows from Agent_Skills_Repo__c                                                       |
+| **LoadAgentMemory** (apex://)                 | LTM-Agentforce                       | Load persistent memory at session start                                                                          |
+| **SaveAgentContext** (apex://)                 | LTM-Agentforce                       | Persist context at handoff/finalization                                                                          |
+| **Agent_Skill_LoadAndCompose** / Load_And_Compose_Agent_Skills | This project                         | Load SDR role, skills, workflows from Agent_Skills_Repo__c (agents use `apex://Agent_Skill_LoadAndCompose`)       |
 | **Update Record**                             | Agentforce standard action           | BANT updates, Lead Status, opt-out (Do Not Contact)                                                              |
 | **Create Record**                             | Agentforce standard action           | Create Event for meeting scheduling                                                                              |
 | **Query Records** / **Get Record Details**    | Agentforce standard action           | Look up Lead/Contact, engagement history                                                                         |
@@ -56,9 +56,9 @@ flowchart TB
     end
 
     subgraph existing [Existing Assets]
-        getContext[Get_Agent_ContextObject]
-        saveContext[Save_Agent_ContextObject]
-        loadCompose[Load_And_Compose_Agent_Skills]
+        getContext[LoadAgentMemory]
+        saveContext[SaveAgentContext]
+        loadCompose[Agent_Skill_LoadAndCompose]
         updateRecord[Update Record standard]
         createRecord[Create Record standard]
         draftEmail[Draft or Revise Email standard]
@@ -100,12 +100,12 @@ flowchart TB
 | Built-in SDR Capability            | Agent Script Implementation                     | Asset Used                                                                                                             |
 | ---------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Send Outreach (intro + follow-up)  | `send_outreach` topic                           | **Draft or Revise Email** standard + **SDR Prompt Templates** for drafting; **Send_SDR_Email** Flow (new) for delivery |
-| Respond to Prospect (FAQ, pricing) | `respond_to_prospect` topic                     | **Load_And_Compose_Agent_Skills** + **Data Library** via skill instructions                                            |
+| Respond to Prospect (FAQ, pricing) | `respond_to_prospect` topic                     | **Agent_Skill_LoadAndCompose** + **Data Library** via skill instructions                                               |
 | Manage Opt-Out                     | `manage_opt_out` topic                          | **Update Record** standard (Do Not Contact, Lead Status)                                                               |
 | Lead qualification (BANT)          | `skill-lead-qualification` + topic instructions | **Update Record** standard                                                                                             |
 | Meeting scheduling                 | `skill-meeting-scheduling` + topic instructions | **Create Record** standard (Event)                                                                                     |
-| Handoff to rep                     | `handoff_to_rep` topic                          | **Save_Agent_ContextObject** (LTM)                                                                                     |
-| Persistent memory                  | `start_agent` + `finalization`                  | **Get_Agent_ContextObject**, **Save_Agent_ContextObject** (LTM)                                                        |
+| Handoff to rep                     | `handoff_to_rep` topic                          | **SaveAgentContext** (LTM)                                                                                             |
+| Persistent memory                  | `start_agent` + `finalization`                  | **LoadAgentMemory**, **SaveAgentContext** (LTM)                                                                        |
 
 
 ---
@@ -120,7 +120,7 @@ flowchart TB
 - Person Accounts (Contact record)
 - Existing contacts in nurture programs
 
-**Phase 2 (optional):** Extend LTM-Agentforce to support Lead via `Lead__c` lookup on `Agent_Context__c` and update `Get_Agent_ContextObject` / `Save_Agent_ContextObject` to accept `lead_id` or `contact_id`. Requires changes in the LTM-Agentforce project.
+**Phase 2 (optional):** Extend LTM-Agentforce to support Lead via `Lead__c` lookup on `Agent_Context__c` and update `LoadAgentMemory` / `SaveAgentContext` to accept `leadId` or `contactId`. Requires changes in the LTM-Agentforce project.
 
 ---
 
@@ -187,12 +187,12 @@ Create new bundle at `force-app/main/default/aiAuthoringBundles/sdr_agent_demo/`
 1. **system** – SDR-specific instructions, welcome/error messages
 2. **config** – `developer_name: sdr_agent_demo`, `agent_label`, `default_agent_user` (SDR agent user with Einstein Agent license)
 3. **variables** – `ContactId`, `EndUserId`, `RoutableId`, `context_loaded`, `agent_memory`, `instruction_bundle_json`, `composed_instructions`, `save_success`; add `LeadId` if Phase 2 LTM extension is done
-4. **start_agent topic_selector** – Load LTM via `Get_Agent_ContextObject`, load role/core skills via `Load_And_Compose_Agent_Skills` (e.g. `role-sdr-agent`, `core-skill-ltmManagement-sdr-agent`, `core-skill-sdr-email-guidelines`), transition to `send_outreach` or `respond_to_prospect` based on intent
+4. **start_agent topic_selector** – Load LTM via `apex://LoadAgentMemory`, load role/core skills via `apex://Agent_Skill_LoadAndCompose` (e.g. `role-sdr-agent`, `core-skill-ltmManagement-sdr-agent`, `core-skill-sdr-email-guidelines`), transition to `send_outreach` or `respond_to_prospect` based on intent
 5. **topic send_outreach** – Load `skill-send-outreach`. Use **Draft or Revise Email** (or SDR prompt template) to draft; use **Send_SDR_Email** Flow to send. Route to `respond_to_prospect` or `finalization`.
 6. **topic respond_to_prospect** – Load `skill-respond-to-prospect`, answer questions using composed instructions (Data Library content via skill text). Route to `manage_opt_out`, `handoff_to_rep`, or `finalization`.
 7. **topic manage_opt_out** – Load `skill-manage-opt-out`, invoke **Update Record** standard action (Do Not Contact, Lead Status). Transition to `finalization`.
-8. **topic handoff_to_rep** – Load `workflow-sdr-handoff-to-rep`, prepare handoff summary, call `Save_Agent_ContextObject`, transition to `finalization`
-9. **topic finalization** – Persist LTM via `Save_Agent_ContextObject` (same pattern as customer support [lines 228-248](force-app/main/default/aiAuthoringBundles/customer_support_skill_demo/customer_support_skill_demo.agent))
+8. **topic handoff_to_rep** – Load `workflow-sdr-handoff-to-rep`, prepare handoff summary, call `apex://SaveAgentContext`, transition to `finalization`
+9. **topic finalization** – Persist LTM via `apex://SaveAgentContext` (same pattern as customer support [lines 228-248](force-app/main/default/aiAuthoringBundles/customer_support_skill_demo/customer_support_skill_demo.agent))
 
 **Routing logic:** Use LLM-selectable transition tools (`go_to_respond_to_prospect`, `go_to_manage_opt_out`, `go_to_handoff`, `go_to_finalization`) as in the customer support agent.
 
@@ -235,8 +235,8 @@ Create new bundle at `force-app/main/default/aiAuthoringBundles/sdr_agent_demo/`
 
 ## Dependencies and Prerequisites
 
-- **LTM-Agentforce** deployed: `Agent_Context__c`, `Get_Agent_ContextObject`, `Save_Agent_ContextObject`
-- **Agent Skills** deployed: `Agent_Skills_Repo__c`, `Load_And_Compose_Agent_Skills`, `Agent_Skill_LoadAndCompose`
+- **LTM-Agentforce** deployed: `Agent_Context__c`, `LoadAgentMemory`, `SaveAgentContext` Apex classes
+- **Agent Skills** deployed: `Agent_Skills_Repo__c`, `Agent_Skill_LoadAndCompose`, optional `Load_And_Compose_Agent_Skills` Flow
 - **Sales Cloud + Einstein for Sales** (Enterprise/Performance/Unlimited)
 - **Einstein Agent license** for SDR agent user
 - **Data Library** configured with SDR content (FAQs, pricing, etc.)
@@ -261,7 +261,8 @@ Create new bundle at `force-app/main/default/aiAuthoringBundles/sdr_agent_demo/`
 
 | Category             | Reused (No New Code)                                                                   | New (Minimal)                                               |
 | -------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| **Flows**            | Get_Agent_ContextObject, Save_Agent_ContextObject, Load_And_Compose_Agent_Skills       | Send_SDR_Email only                                         |
+| **Flows**            | Load_And_Compose_Agent_Skills (optional) | Send_SDR_Email only                                    |
+| **Apex (LTM)**       | LoadAgentMemory, SaveAgentContext   | From LTM-Agentforce                                          |
 | **Apex**             | Agent_Skill_Loader, Agent_Skill_PromptComposer, Agent_Skill_LoadAndCompose             | None                                                        |
 | **Standard Actions** | Update Record, Create Record, Draft or Revise Email, Query Records, Get Record Details | None                                                        |
 | **Prompt Templates** | SDR Intro Email, Follow-up (when Lead Nurturing enabled)                               | None                                                        |

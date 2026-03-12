@@ -73,9 +73,9 @@ The Agent Skills framework addresses these problems by:
 | **Agent_Skill_Loader** | Invocable Apex action. Loads active records by name (CSV), optionally merges with existing bundle, expands references. Outputs JSON bundle. |
 | **Agent_Skill_PromptComposer** | Invocable Apex action. Takes bundle JSON, assembles prompt-ready text with deterministic ordering (role → core-skill → skill → workflow), expands references recursively. |
 | **Agent_Skill_LoadAndCompose** | Invocable Apex action. Aggregates Loader + Composer. Primary entry point for agents. |
-| **Load_And_Compose_Agent_Skills** | Flow that invokes `Agent_Skill_LoadAndCompose`. Target for agent action `load_and_compose_skills`. |
+| **Agent_Skill_LoadAndCompose** | Invocable Apex. Primary target for agent action `load_and_compose_skills`. Flow `Load_And_Compose_Agent_Skills` is an optional wrapper. |
 | **Agent_Skills_Admin** | Custom app with tabs and permission sets for Authors, Reviewers, Consumers. |
-| **Agent_Context__c** (LTM) | Persistent memory object. Read via `Get_Agent_ContextObject` (returns `agent_memory` formatted string), saved via `Save_Agent_ContextObject` (scalar inputs only). Required for LTM-enabled agents. |
+| **Agent_Context__c** (LTM) | Persistent memory object. Read via `apex://LoadAgentMemory` (returns `agentMemory` formatted string), saved via `apex://SaveAgentContext` (contactId, newSummary, newGoal, hasIssue, newStyle). Required for LTM-enabled agents. |
 
 ### 3.2 Instruction Taxonomy
 
@@ -112,7 +112,7 @@ The Agent Skills framework addresses these problems by:
 - Each topic calls Load_And_Compose with:
   - `instructionNames` = topic-specific skills/workflows (CSV)
   - `existingInstructionBundle` = `@variables.instruction_bundle_json`
-- Flow merges new skills into existing bundle, composes, returns `instructionsBundle` and updated `loadedInstructionBundle`.
+- Apex merges new skills into existing bundle, composes, returns `instructionsBundle` and updated `loadedInstructionBundle`.
 - Topic stores updated bundle back to `instruction_bundle_json` for downstream topics.
 
 ### 3.4 Reference Expansion
@@ -159,7 +159,7 @@ actions:
                 description: "Formatted prompt-ready instruction text."
             loadedInstructionBundle: string
                 description: "Raw instruction bundle JSON for merge."
-        target: "flow://Load_And_Compose_Agent_Skills"
+        target: "apex://Agent_Skill_LoadAndCompose"
 ```
 
 ### 4.3 start_agent Pattern
@@ -175,25 +175,25 @@ start_agent topic_selector:
         load_user_memory:
             description: "Load persistent memory (formatted string) for this contact."
             inputs:
-                contact_id: string
+                contactId: string
             outputs:
-                agent_memory: string
-            target: "flow://Get_Agent_ContextObject"
+                agentMemory: string
+            target: "apex://LoadAgentMemory"
         load_and_compose_skills:
             description: "Load role and core skills into instruction bundle."
             inputs:
                 instructionNames: string
             outputs:
                 loadedInstructionBundle: string
-            target: "flow://Load_And_Compose_Agent_Skills"
+            target: "apex://Agent_Skill_LoadAndCompose"
 
     reasoning:
         instructions: ->
             # 1. Load LTM (guarded by context_loaded)
             if @variables.context_loaded == False and @variables.ContactId and @variables.ContactId != "":
                 run @actions.load_user_memory
-                    with contact_id=@variables.ContactId
-                    set @variables.agent_memory=@outputs.agent_memory
+                    with contactId=@variables.ContactId
+                    set @variables.agent_memory=@outputs.agentMemory
                     set @variables.context_loaded=True
 
             # 2. Load role + core skills
@@ -219,7 +219,7 @@ topic general_support:
     actions:
         load_and_compose_skills:
             # ... (same definition as above)
-            target: "flow://Load_And_Compose_Agent_Skills"
+            target: "apex://Agent_Skill_LoadAndCompose"
 
     reasoning:
         instructions: ->
@@ -230,7 +230,7 @@ topic general_support:
                 set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
                 set @variables.composed_instructions=@outputs.instructionsBundle
 
-            # 2. Optional: inject LTM profile for personalization (agent_memory is formatted string from flow)
+            # 2. Optional: inject LTM profile for personalization (agent_memory is formatted string from LoadAgentMemory Apex)
             | Here is your past context. Use it for personalization:
             | {!@variables.agent_memory}
             | If unresolved issue is indicated, acknowledge prior issues and ask whether they were resolved. If pending goal is set, ask if the user wants to continue it. Start with a personalized greeting. Then follow the instructions below.
@@ -261,18 +261,18 @@ topic finalization:
         load_and_compose_skills:
             # ... with instructionNames="workflow-escalate-to-human"
             # Optional: with maxReferenceDepth=2
-            target: "flow://Load_And_Compose_Agent_Skills"
+            target: "apex://Agent_Skill_LoadAndCompose"
         save_context_tool:
             description: "Persist long-term memory (scalar inputs only)."
             inputs:
-                contact_id: string
-                new_summary: string
-                new_goal: string
-                has_issue: boolean
-                new_style: string
+                contactId: string
+                newSummary: string
+                newGoal: string
+                hasIssue: boolean
+                newStyle: string
             outputs:
                 success: boolean
-            target: "flow://Save_Agent_ContextObject"
+            target: "apex://SaveAgentContext"
 
     reasoning:
         instructions: ->
@@ -282,17 +282,15 @@ topic finalization:
                 set @variables.composed_instructions=@outputs.instructionsBundle
 
             | Follow these instructions: {!@variables.composed_instructions}
-            | Before saying goodbye, call {!@actions.persist_memory} exactly once with extracted new_summary, new_goal, has_issue, new_style.
+            | Before saying goodbye, call {!@actions.persist_memory} exactly once with extracted newSummary, newGoal, hasIssue, newStyle.
 
         actions:
             persist_memory: @actions.save_context_tool
-                with contact_id=@variables.ContactId
-                with new_summary=...
-                with new_goal=...
-                with has_issue=...
-                with new_style=...
-                with has_issue=...
-                with new_style=...
+                with contactId=@variables.ContactId
+                with newSummary=...
+                with newGoal=...
+                with hasIssue=...
+                with newStyle=...
 ```
 
 ### 4.6 Structural Summary
@@ -306,7 +304,7 @@ topic finalization:
 ### 4.7 Key Rules for FDE Engineers
 
 1. **Output mapping**: Always `set @variables.x=@outputs.y` inside the same `run` block. Mapping outside the block can cause errors.
-2. **LTM memory access**: For `agent_memory` (formatted string from Get_Agent_ContextObject), inject directly in prompts: `{!@variables.agent_memory}`.
+2. **LTM memory access**: For `agent_memory` (formatted string from LoadAgentMemory Apex), inject directly in prompts: `{!@variables.agent_memory}`.
 3. **System instructions**: Keep `system.instructions` static. Do not interpolate dynamic content there. Use topic reasoning for dynamic instruction text.
 4. **Bundle continuity**: Pass `instruction_bundle_json` through every topic. Each topic merges its skills and updates the variable for the next.
 5. **Naming**: Use consistent CSV for `instructionNames` (e.g., `"role-customer-support-agent,core-skill-txt-response-guidelines"`). No spaces after commas.

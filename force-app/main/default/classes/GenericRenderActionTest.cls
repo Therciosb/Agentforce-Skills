@@ -7,16 +7,17 @@ private class GenericRenderActionTest {
         input.display_type = 'table';
 
         Test.startTest();
-        List<GenericRenderOutput> results = GenericRenderAction.renderData(
+        List<GenericRenderAction.RenderDataResponse> results = GenericRenderAction.renderData(
             new List<GenericRenderAction.RenderDataInput>{ input }
         );
         Test.stopTest();
 
         System.assertEquals(1, results.size());
-        System.assertEquals(true, results[0].success);
-        System.assertNotEquals(null, results[0].jsonData);
-        System.assertEquals('table', results[0].displayType);
-        System.assertEquals(null, results[0].errorMessage);
+        GenericRenderOutput out = results[0].result;
+        System.assertEquals(true, out.success);
+        System.assertNotEquals(null, out.jsonData);
+        System.assertEquals('table', out.displayType);
+        System.assertEquals(null, out.errorMessage);
     }
 
     @IsTest
@@ -26,14 +27,14 @@ private class GenericRenderActionTest {
         input.display_type = 'card';
 
         Test.startTest();
-        List<GenericRenderOutput> results = GenericRenderAction.renderData(
+        List<GenericRenderAction.RenderDataResponse> results = GenericRenderAction.renderData(
             new List<GenericRenderAction.RenderDataInput>{ input }
         );
         Test.stopTest();
 
         System.assertEquals(1, results.size());
-        System.assertEquals(true, results[0].success);
-        System.assertEquals('card', results[0].displayType);
+        System.assertEquals(true, results[0].result.success);
+        System.assertEquals('card', results[0].result.displayType);
     }
 
     @IsTest
@@ -43,14 +44,14 @@ private class GenericRenderActionTest {
         input.display_type = 'list';
 
         Test.startTest();
-        List<GenericRenderOutput> results = GenericRenderAction.renderData(
+        List<GenericRenderAction.RenderDataResponse> results = GenericRenderAction.renderData(
             new List<GenericRenderAction.RenderDataInput>{ input }
         );
         Test.stopTest();
 
         System.assertEquals(1, results.size());
-        System.assertEquals(true, results[0].success);
-        System.assertEquals('list', results[0].displayType);
+        System.assertEquals(true, results[0].result.success);
+        System.assertEquals('list', results[0].result.displayType);
     }
 
     @IsTest
@@ -60,14 +61,14 @@ private class GenericRenderActionTest {
         input.display_type = 'key-value';
 
         Test.startTest();
-        List<GenericRenderOutput> results = GenericRenderAction.renderData(
+        List<GenericRenderAction.RenderDataResponse> results = GenericRenderAction.renderData(
             new List<GenericRenderAction.RenderDataInput>{ input }
         );
         Test.stopTest();
 
         System.assertEquals(1, results.size());
-        System.assertEquals(true, results[0].success);
-        System.assertEquals('key-value', results[0].displayType);
+        System.assertEquals(true, results[0].result.success);
+        System.assertEquals('key-value', results[0].result.displayType);
     }
 
     @IsTest
@@ -77,14 +78,14 @@ private class GenericRenderActionTest {
         input.display_type = 'table';
 
         Test.startTest();
-        List<GenericRenderOutput> results = GenericRenderAction.renderData(
+        List<GenericRenderAction.RenderDataResponse> results = GenericRenderAction.renderData(
             new List<GenericRenderAction.RenderDataInput>{ input }
         );
         Test.stopTest();
 
         System.assertEquals(1, results.size());
-        System.assertEquals(false, results[0].success);
-        System.assert(results[0].errorMessage.contains('Invalid JSON'));
+        System.assertEquals(false, results[0].result.success);
+        System.assert(results[0].result.errorMessage.contains('Invalid JSON'));
     }
 
     @IsTest
@@ -94,14 +95,14 @@ private class GenericRenderActionTest {
         input.display_type = 'invalid';
 
         Test.startTest();
-        List<GenericRenderOutput> results = GenericRenderAction.renderData(
+        List<GenericRenderAction.RenderDataResponse> results = GenericRenderAction.renderData(
             new List<GenericRenderAction.RenderDataInput>{ input }
         );
         Test.stopTest();
 
         System.assertEquals(1, results.size());
-        System.assertEquals(false, results[0].success);
-        System.assert(results[0].errorMessage.contains('Invalid display type'));
+        System.assertEquals(false, results[0].result.success);
+        System.assert(results[0].result.errorMessage.contains('Invalid display type'));
     }
 
     @IsTest
@@ -111,14 +112,14 @@ private class GenericRenderActionTest {
         input.display_type = 'table';
 
         Test.startTest();
-        List<GenericRenderOutput> results = GenericRenderAction.renderData(
+        List<GenericRenderAction.RenderDataResponse> results = GenericRenderAction.renderData(
             new List<GenericRenderAction.RenderDataInput>{ input }
         );
         Test.stopTest();
 
         System.assertEquals(1, results.size());
-        System.assertEquals(false, results[0].success);
-        System.assertEquals('Data is required', results[0].errorMessage);
+        System.assertEquals(false, results[0].result.success);
+        System.assertEquals('Data is required', results[0].result.errorMessage);
     }
 
     @IsTest
@@ -128,14 +129,14 @@ private class GenericRenderActionTest {
         input.display_type = '';
 
         Test.startTest();
-        List<GenericRenderOutput> results = GenericRenderAction.renderData(
+        List<GenericRenderAction.RenderDataResponse> results = GenericRenderAction.renderData(
             new List<GenericRenderAction.RenderDataInput>{ input }
         );
         Test.stopTest();
 
         System.assertEquals(1, results.size());
-        System.assertEquals(false, results[0].success);
-        System.assertEquals('Display type is required', results[0].errorMessage);
+        System.assertEquals(false, results[0].result.success);
+        System.assertEquals('Display type is required', results[0].result.errorMessage);
     }
 
     @IsTest
@@ -145,13 +146,13 @@ private class GenericRenderActionTest {
         input.display_type = 'LIST';
 
         Test.startTest();
-        List<GenericRenderOutput> results = GenericRenderAction.renderData(
+        List<GenericRenderAction.RenderDataResponse> results = GenericRenderAction.renderData(
             new List<GenericRenderAction.RenderDataInput>{ input }
         );
         Test.stopTest();
 
         System.assertEquals(1, results.size());
-        System.assertEquals(true, results[0].success);
-        System.assertEquals('list', results[0].displayType);
+        System.assertEquals(true, results[0].result.success);
+        System.assertEquals('list', results[0].result.displayType);
     }
 }

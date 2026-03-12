@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Bot xmlns="http://soap.sforce.com/2006/04/metadata">
+    <agentDSLEnabled>true</agentDSLEnabled>
+    <agentType>EinsteinServiceAgent</agentType>
+    <botMlDomain>
+        <label>Render Data Test</label>
+        <name>render_data_test</name>
+    </botMlDomain>
+    <botSource>None</botSource>
+    <botUser>ltm_agent@00dky00000gxhj51777765750.ext</botUser>
+    <description>Minimal agent to test render_data action and LWC rendering (table, card, list, key-value).</description>
+    <label>Render Data Test</label>
+    <logPrivateConversationData>false</logPrivateConversationData>
+    <richContentEnabled>true</richContentEnabled>
+    <sessionTimeout>0</sessionTimeout>
+    <type>ExternalCopilot</type>
+</Bot>

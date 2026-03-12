@@ -242,7 +242,7 @@ Data 360 is required for Sales Coach setup and powers Data Libraries used for RA
 
 - **Data 360 available:** Use Data Library for playbooks and best practices; leverage RAG for richer feedback.
 - **Data 360 restricted:** Rely on CRM-grounded prompt templates; consider custom retriever if external coaching content is critical.
-- **Full custom:** Build Agent Script Sales Coach with Agent Skills; use `Load_And_Compose_Agent_Skills` for coaching instructions; no Data 360 required.
+- **Full custom:** Build Agent Script Sales Coach with Agent Skills; use `apex://Agent_Skill_LoadAndCompose` for coaching instructions; no Data 360 required.
 
 ---
 

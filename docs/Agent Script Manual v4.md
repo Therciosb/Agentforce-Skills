@@ -360,9 +360,9 @@ This project implements persistent memory with Apex-backed flows that return a f
 ### 13.1 Data and Actions
 
 - Object: `Agent_Context__c`
-- Read flow target: `flow://Get_Agent_ContextObject` (invokes `LoadAgentMemory` Apex)
-- Save flow target: `flow://Save_Agent_ContextObject` (invokes `SaveAgentContext` Apex)
-- Skill load/compose: `flow://Load_And_Compose_Agent_Skills` (action `load_and_compose_skills`; aggregates Loader + Composer)
+- Read action target: `apex://LoadAgentMemory`
+- Save action target: `apex://SaveAgentContext`
+- Skill load/compose: `apex://Agent_Skill_LoadAndCompose` (action `load_and_compose_skills`; aggregates Loader + Composer)
 
 ### 13.2 Read Contract
 

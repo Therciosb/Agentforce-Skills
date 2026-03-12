@@ -3,8 +3,8 @@ GenericRenderAction.RenderDataInput input = new GenericRenderAction.RenderDataIn
 input.data = '{"columns":["Case Number","Subject","Status"],"rows":[["00001001","Wi-Fi not connecting","In Progress"],["00001002","Billing question","Closed"],["00001003","Password reset","New"]]}';
 input.display_type = 'table';
 
-List<GenericRenderOutput> results = GenericRenderAction.renderData(new List<GenericRenderAction.RenderDataInput>{ input });
-GenericRenderOutput out = results[0];
+List<GenericRenderAction.RenderDataResponse> results = GenericRenderAction.renderData(new List<GenericRenderAction.RenderDataInput>{ input });
+GenericRenderOutput out = results[0].result;
 
 System.debug('=== GenericRenderAction Test (Table) ===');
 System.debug('success: ' + out.success);

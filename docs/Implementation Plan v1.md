@@ -9,8 +9,8 @@ This document is the implemented in-repo plan baseline for the Agent Skills fram
 - Invocable Apex actions:
   - `Agent_Skill_Loader` (loads role/skill/workflow records)
   - `Agent_Skill_PromptComposer` (composes prompt-ready format)
-  - `Agent_Skill_LoadAndCompose` (aggregates Load + Compose; invoked via Flow)
-- Flow: `Load_And_Compose_Agent_Skills` (primary agent action target)
+  - `Agent_Skill_LoadAndCompose` (aggregates Load + Compose; primary agent action target)
+- Flow: `Load_And_Compose_Agent_Skills` (optional wrapper; agents use `apex://Agent_Skill_LoadAndCompose` directly)
 - Admin UI through Salesforce custom object tabs, app navigation, and permission sets.
 - Customer Support demo scenario with seeded role/skills/workflows.
 - Long-Term Memory alignment with `Agent_Context__c` and flow contracts.
@@ -97,18 +97,18 @@ This document is the implemented in-repo plan baseline for the Agent Skills fram
 ## Agent Script Wiring
 
 - `start_agent`:
-  - loads memory (`flow://Get_Agent_ContextObject`; maps `agent_memory` formatted string to `@variables.agent_memory`)
-  - loads role/core with `flow://Load_And_Compose_Agent_Skills` (action: `load_and_compose_skills`)
+  - loads memory (`apex://LoadAgentMemory`; maps `agentMemory` to `@variables.agent_memory`)
+  - loads role/core with `apex://Agent_Skill_LoadAndCompose` (action: `load_and_compose_skills`)
   - maps `loadedInstructionBundle` to `@variables.instruction_bundle_json`
   - transitions to first topic
 - Each topic:
-  - calls `flow://Load_And_Compose_Agent_Skills` with topic-specific `instructionNames` and `existingInstructionBundle`
+  - calls `apex://Agent_Skill_LoadAndCompose` with topic-specific `instructionNames` and `existingInstructionBundle`
   - maps `instructionsBundle` to `@variables.composed_instructions`, `loadedInstructionBundle` to `@variables.instruction_bundle_json`
 - Topic reasoning:
   - places composed instructions at top
   - adds topic-specific routing/tool logic
 - `finalization`:
-  - persists context through `flow://Save_Agent_ContextObject` (scalar inputs: new_summary, new_goal, has_issue, new_style)
+  - persists context through `apex://SaveAgentContext` (scalar inputs: contactId, newSummary, newGoal, hasIssue, newStyle)
 
 ## Demo Scenario
 
@@ -148,7 +148,7 @@ Workflows:
 For agents using persistent memory, implement per [LTM Integration Mapping](LTM%20Integration%20Mapping.md):
 
 - Object: `Agent_Context__c`
-- Flow contracts: `Get_Agent_ContextObject`, `Save_Agent_ContextObject`
+- Apex action contracts: `LoadAgentMemory`, `SaveAgentContext`
 - Runtime rules: map action outputs inside the same `run` block; use `.data.<FieldApiName>` for record payloads; keep `system.instructions` static
 
 ## Test Strategy

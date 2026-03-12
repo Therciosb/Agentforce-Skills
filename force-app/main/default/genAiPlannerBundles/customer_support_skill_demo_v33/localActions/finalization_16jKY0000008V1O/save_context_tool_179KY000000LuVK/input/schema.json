@@ -1,0 +1,42 @@
+{
+  "required" : [ ],
+  "unevaluatedProperties" : false,
+  "properties" : {
+    "contact_id" : {
+      "title" : "Contact Id",
+      "description" : "Contact id used to upsert context.",
+      "lightning:type" : "lightning__textType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    },
+    "has_issue" : {
+      "title" : "Has Issue",
+      "description" : "True if the user still has an unresolved issue at session end.",
+      "lightning:type" : "lightning__booleanType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    },
+    "new_goal" : {
+      "title" : "New Goal",
+      "description" : "Unfinished user goal to continue later, or empty string if none.",
+      "lightning:type" : "lightning__textType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    },
+    "new_style" : {
+      "title" : "New Style",
+      "description" : "Communication preference inferred from this session (e.g. concise, detailed, formal).",
+      "lightning:type" : "lightning__textType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    },
+    "new_summary" : {
+      "title" : "New Summary",
+      "description" : "Detailed 4-5 sentence summary combining last session summary (when available) with this session: user inputs, assistant recommendations, actions taken, and outcomes.",
+      "lightning:type" : "lightning__textType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    }
+  },
+  "lightning:type" : "lightning__objectType"
+}

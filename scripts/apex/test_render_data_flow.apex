@@ -6,6 +6,7 @@ inputs.put('display_type', 'table');
 Flow.Interview.Render_Data flow = new Flow.Interview.Render_Data(inputs);
 flow.start();
 
+// Flow maps result.jsonData etc. to output variables
 String jsonData = (String) flow.getVariableValue('jsonData');
 String displayType = (String) flow.getVariableValue('displayType');
 Boolean success = (Boolean) flow.getVariableValue('success');

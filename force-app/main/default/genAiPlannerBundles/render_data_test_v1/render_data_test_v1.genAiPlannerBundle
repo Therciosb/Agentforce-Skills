@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPlannerBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Minimal agent to test render_data action and LWC rendering (table, card, list, key-value).</description>
+    <localTopicLinks>
+        <genAiPluginName>main_16jKY0000008V0z</genAiPluginName>
+    </localTopicLinks>
+    <localTopicLinks>
+        <genAiPluginName>topic_selector_16jKY0000008V0z</genAiPluginName>
+    </localTopicLinks>
+    <localTopics>
+        <fullName>main_16jKY0000008V0z</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Demonstrates render_data with table, card, list, key-value formats.</description>
+        <developerName>main_16jKY0000008V0z</developerName>
+        <genAiPluginInstructions>
+            <description>You are a test agent for structured data display.
+Your main purpose is to demonstrate the render_data action.
+When the user asks for data in any format, use render_data to display it.</description>
+            <developerName>instruction0_179KY000000LuUu</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179KY000000LuUu</masterLabel>
+            <sortOrder>1</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localActionLinks>
+            <functionName>load_and_compose_skills_179KY000000LuUu</functionName>
+        </localActionLinks>
+        <localActionLinks>
+            <functionName>render_data_179KY000000LuUu</functionName>
+        </localActionLinks>
+        <localActions>
+            <fullName>render_data_179KY000000LuUu</fullName>
+            <description>Display structured data in table, card, list, or key-value format.</description>
+            <developerName>render_data_179KY000000LuUu</developerName>
+            <invocationTarget>GenericRenderAction</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>render_data</localDeveloperName>
+            <masterLabel>Render Data</masterLabel>
+        </localActions>
+        <localActions>
+            <fullName>load_and_compose_skills_179KY000000LuUu</fullName>
+            <description>Merge topic skills with bundle.</description>
+            <developerName>load_and_compose_skills_179KY000000LuUu</developerName>
+            <invocationTarget>Load_And_Compose_Agent_Skills</invocationTarget>
+            <invocationTargetType>flow</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>load_and_compose_skills</localDeveloperName>
+            <masterLabel>Load And Compose Skills</masterLabel>
+        </localActions>
+        <localDeveloperName>main</localDeveloperName>
+        <masterLabel>Render Data Demo</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <localTopics>
+        <fullName>topic_selector_16jKY0000008V0z</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Load render_data skill, then transition to main topic.</description>
+        <developerName>topic_selector_16jKY0000008V0z</developerName>
+        <genAiPluginInstructions>
+            <description>You are a test agent for structured data display.
+Your main purpose is to demonstrate the render_data action.
+When the user asks for data in any format, use render_data to display it.</description>
+            <developerName>instruction0_179KY000000LuUt</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179KY000000LuUt</masterLabel>
+            <sortOrder>1</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localActionLinks>
+            <functionName>load_and_compose_skills_179KY000000LuUt</functionName>
+        </localActionLinks>
+        <localActions>
+            <fullName>load_and_compose_skills_179KY000000LuUt</fullName>
+            <description>Load role and render_data format skill.</description>
+            <developerName>load_and_compose_skills_179KY000000LuUt</developerName>
+            <invocationTarget>Load_And_Compose_Agent_Skills</invocationTarget>
+            <invocationTargetType>flow</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>load_and_compose_skills</localDeveloperName>
+            <masterLabel>Load And Compose Skills</masterLabel>
+        </localActions>
+        <localDeveloperName>topic_selector</localDeveloperName>
+        <masterLabel>Entry Point</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <masterLabel>Render Data Test</masterLabel>
+    <plannerType>Atlas__ConcurrentMultiAgentOrchestration</plannerType>
+</GenAiPlannerBundle>

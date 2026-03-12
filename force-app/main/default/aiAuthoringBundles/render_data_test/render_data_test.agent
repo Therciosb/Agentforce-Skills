@@ -43,7 +43,7 @@ start_agent topic_selector:
             outputs:
                 loadedInstructionBundle: string
                     description: "Aggregated instruction bundle JSON."
-            target: "flow://Load_And_Compose_Agent_Skills"
+            target: "apex://Agent_Skill_LoadAndCompose"
 
     reasoning:
         instructions: ->
@@ -59,19 +59,7 @@ topic main:
     description: "Demonstrates render_data with table, card, list, key-value formats."
 
     actions:
-        load_and_compose_skills:
-            description: "Merge topic skills with bundle."
-            inputs:
-                instructionNames: string
-                    description: "CSV of topic-specific skills."
-                existingInstructionBundle: string
-                    description: "Existing bundle from start_agent."
-            outputs:
-                instructionsBundle: string
-                    description: "Formatted prompt."
-                loadedInstructionBundle: string
-                    description: "Raw bundle JSON."
-            target: "flow://Load_And_Compose_Agent_Skills"
+
         render_data:
             description: "Display structured data in table, card, list, or key-value format."
             inputs:
@@ -80,24 +68,17 @@ topic main:
                 display_type: string
                     description: "One of: table, card, list, key-value."
             outputs:
-                jsonData: string
-                displayType: string
-                success: boolean
-                errorMessage: string
-            target: "flow://Render_Data"
+                result: object
+                    description: "Render output for LWC display (GenericRenderOutput)."
+                    complex_data_type_name: "c__genericRenderOutput"
+            target: "apex://GenericRenderAction"
 
     reasoning:
         instructions: ->
-            run @actions.load_and_compose_skills
-                with instructionNames=""
-                with existingInstructionBundle=@variables.instruction_bundle_json
-                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
-                set @variables.composed_instructions=@outputs.instructionsBundle
-
             | Follow these instructions:
             | {!@variables.composed_instructions}
             |
-            | Respond the user's request silently by calling {!@actions.render_data} to display structured data. 
+            | CRITICAL: You MUST call {!@actions.render_data} to display ANY structured data (table, card, list, key-value). NEVER output tables, JSON, or formatted data in your text message. The render_data action displays the data; your message must NOT contain the actual data—only a brief intro or follow-up. If the user asks for data, invoke render_data with the data and display_type; do not type the data yourself. 
 
         actions:
             render_data: @actions.render_data

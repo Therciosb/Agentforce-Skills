@@ -29,7 +29,7 @@ For implementation details, Agent Script structure, and key rules, see [Agent-Sk
 
 **This project is fully standalone.** It does not depend on, require, or reference the LTM-Agentforce project.
 
-- **Core framework** — The Loader, Composer, LoadAndCompose actions, `Agent_Skills_Repo__c`, and `Load_And_Compose_Agent_Skills` flow work independently. Deploy this project to any Salesforce org with Agentforce and you can build agents that load and compose skills.
+- **Core framework** — The Loader, Composer, LoadAndCompose Apex actions, `Agent_Skills_Repo__c`, and optional `Load_And_Compose_Agent_Skills` flow work independently. Agents use `apex://Agent_Skill_LoadAndCompose` directly. Deploy this project to any Salesforce org with Agentforce and you can build agents that load and compose skills.
 - **skill_load_test agent** — A minimal agent that demonstrates the framework without persistent memory. Use it to validate the skill loading pipeline.
 - **customer_support_skill_demo agent** — A full demo that includes optional Long-Term Memory (LTM) integration. LTM requires an `Agent_Context__c` object and read/save flows. Implement per the [LTM Integration Mapping](docs/LTM%20Integration%20Mapping.md) spec: Get flow returns `agent_memory` (formatted string); Save flow accepts scalar inputs only (`new_summary`, `new_goal`, `has_issue`, `new_style`).
 
@@ -77,7 +77,7 @@ Agent-Skills/
 │   │   ├── skill_load_test/         # Minimal agent (no LTM)
 │   │   └── customer_support_skill_demo/  # Full demo (optional LTM)
 │   ├── classes/                     # Apex: Loader, Composer, LoadAndCompose, SeedService
-│   ├── flows/                       # Load_And_Compose_Agent_Skills, Get/Save_Agent_ContextObject
+│   ├── flows/                       # Load_And_Compose_Agent_Skills (optional); LTM uses LoadAgentMemory, SaveAgentContext Apex
 │   ├── objects/                     # Agent_Skills_Repo__c
 │   ├── customApplications/         # Agent_Skills_Admin app
 │   └── permissionsets/              # Agent_Skills_Author, Reviewer, Consumer, Agent_Runtime
@@ -94,7 +94,7 @@ Agent-Skills/
 | [Agent Script Manual v4](docs/Agent%20Script%20Manual%20v4.md) | Agent Script language, execution model, blocks, patterns |
 | [Apex Action Contracts](docs/Apex%20Action%20Contracts.md) | Loader, Composer, LoadAndCompose API details |
 | [Implementation Plan v1](docs/Implementation%20Plan%20v1.md) | Framework scope and implementation baseline |
-| [LTM Integration Mapping](docs/LTM%20Integration%20Mapping.md) | Optional persistent memory: object schema, flow contracts, runtime pattern |
+| [LTM Integration Mapping](docs/LTM%20Integration%20Mapping.md) | Optional persistent memory: object schema, Apex action contracts, runtime pattern |
 | [DMO Seeding Guide](docs/DMO%20Seeding%20Guide.md) | Seeding roles, skills, workflows |
 | [Admin-App-Setup](docs/Admin-App-Setup.md) | Permission sets, list views, tab visibility |
 | [Agentforce SDR Agent Reference](docs/Agentforce%20SDR%20Agent%20Reference.md) | Built-in SDR agent analysis |
@@ -106,7 +106,7 @@ Agent-Skills/
 ### For New Agents
 
 1. **Define your instruction taxonomy** — Roles (`role-*`), core skills (`core-skill-*`), skills (`skill-*`), workflows (`workflow-*`). Use `References__c` to link skills to workflows.
-2. **Create the `load_and_compose_skills` action** — Target `flow://Load_And_Compose_Agent_Skills`. See [Agent-Skills-Framework-for-FDE](docs/Agent-Skills-Framework-for-FDE.md) for the action contract.
+2. **Create the `load_and_compose_skills` action** — Target `apex://Agent_Skill_LoadAndCompose`. See [Agent-Skills-Framework-for-FDE](docs/Agent-Skills-Framework-for-FDE.md) for the action contract.
 3. **Wire `start_agent`** — Load role + core skills, store `loadedInstructionBundle` in `@variables.instruction_bundle_json`, transition to first topic.
 4. **Wire each topic** — Call Load_And_Compose with topic-specific `instructionNames` and `existingInstructionBundle`; inject `composed_instructions` into reasoning.
 5. **Assign Agent Skills Agent Runtime** to the agent bot user.

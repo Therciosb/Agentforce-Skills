@@ -39,5 +39,7 @@ This folder contains documentation for the Agent Skills framework and related Ag
 | [Agentforce SDR Agent Reference](Agentforce%20SDR%20Agent%20Reference.md)                   | Built-in SDR agent: capabilities, assets, cloud dependencies         |
 | [Agentforce Sales Coach Agent Reference](Agentforce%20Sales%20Coach%20Agent%20Reference.md) | Built-in Sales Coach agent: capabilities, assets, cloud dependencies |
 | [SDR Agent Implementation Plan](SDR%20Agent%20Implementation%20Plan.md)                     | Plan for Agent Script–based SDR agent                                |
+| [LWC in Agent Responses Guide](LWC-in-Agent-Responses-Guide.md)                               | Step-by-step: use custom LWC to render agent action output            |
+| [Generic Render Action Implementation Plan](Generic-Render-Action-Implementation-Plan.md)     | Plan: generic Apex action + core skill for agent to render data via LWC |
 
 
