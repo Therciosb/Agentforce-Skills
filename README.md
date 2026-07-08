@@ -24,6 +24,7 @@ For implementation details, Agent Script structure, and key rules, see [Agent-Sk
 - **Versioning and lifecycle** — `Status__c` (active/deprecated), `Version__c`, `Locale__c` for governance
 - **Admin UI** — Custom app for Authors, Reviewers, and Consumers
 - **Agent Script integration** — Designed for Agentforce agents authored in Agent Script
+- **Optional self-learning harness** — Let agents learn from their own runtime outcomes: surface relevant past lessons, record turn outcomes, capture new lessons, and reward helpful ones. Fully generic (keyed by `agent_api_name` + `topic_area`), with a SIA Console app and a CSV-driven test harness. See [Self-Learning-Harness-for-FDE](docs/Self-Learning-Harness-for-FDE.md).
 
 ## No Dependency on LTM-Agentforce
 

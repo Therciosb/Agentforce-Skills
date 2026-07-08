@@ -60,6 +60,20 @@ variables:
     instruction_bundle_json: mutable object
     composed_instructions: mutable string = ""
 
+    # === SELF-LEARNING HARNESS — session state ==========================
+    # Populated by the self-learning actions in troubleshooting_support.
+    # See docs/Self-Learning-Harness-for-FDE.md for the full contract.
+    session_key: mutable string = ""
+    improvement_context: mutable string = ""
+    lesson_count: mutable number = 0
+    applied_lesson_id: mutable string = ""
+    outcome_type: mutable string = ""
+    last_action_result: mutable string = ""
+    previous_action_failed: mutable boolean = False
+    lesson_resolved_this_turn: mutable boolean = False
+    failure_detected_this_turn: mutable boolean = False
+    # === END SELF-LEARNING HARNESS — session state ======================
+
 
 start_agent agent_router:
     description: "Initial bootstrap: memory + role/core skills; subagents add topic-specific skills."
@@ -240,12 +254,69 @@ subagent troubleshooting_support:
                     description: "Whether save succeeded."
             target: "apex://SaveAgentContext"
 
+        # === SELF-LEARNING HARNESS — flow-backed actions ================
+        Load_Improvement_Context:
+            description: "Load relevant lessons learned for the user's current request."
+            target: "flow://Load_Improvement_Context"
+            inputs:
+                agent_api_name: string
+                    description: "Agent API name."
+                topic_area: string
+                    description: "Topic area."
+                session_id: string
+                    description: "Session identifier."
+                user_message: string
+                    description: "The user's current request or message."
+            outputs:
+                improvement_context: string
+                    description: "Pre-formatted lessons context."
+                lesson_count: number
+                    description: "Number of lessons surfaced."
+                lesson_ids: string
+                    description: "Comma-separated IDs of surfaced lessons."
+        Publish_Reward_Event:
+            description: "Publish a reward/outcome event for the self-learning framework."
+            target: "flow://Publish_Reward_Event"
+            inputs:
+                session_id: string
+                    description: "Session identifier."
+                reward_category: string
+                    description: "Reward category, e.g. lesson."
+                domain_event: string
+                    description: "Raw outcome event, e.g. resolved / unresolved."
+                topic_area: string
+                    description: "Topic area."
+                lesson_id: string
+                    description: "Applied lesson id(s)."
+                agent_api_name: string
+                    description: "Agent API name."
+        Extract_And_Record_Lesson_Flow:
+            description: "Extract and record a new lesson from a failure-then-success pattern."
+            target: "flow://Extract_And_Record_Lesson_Flow"
+            inputs:
+                agent_api_name: string
+                    description: "Agent API name."
+                topic_area: string
+                    description: "Topic area."
+                session_id: string
+                    description: "Session identifier."
+                user_message: string
+                    description: "The user's current request or message."
+            outputs:
+                lesson_created: boolean
+                    description: "Whether a new lesson was recorded."
+        # === END SELF-LEARNING HARNESS — flow-backed actions ============
+
     before_reasoning:
         run @actions.load_skills_troubleshooting
             with instructionNames="skill-troubleshooting-support"
             with existingInstructionBundle=@variables.instruction_bundle_json
             set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
             set @variables.composed_instructions=@outputs.instructionsBundle
+
+        # Self-learning: derive a stable session key once per session.
+        if @variables.session_key == "":
+            set @variables.session_key=@variables.RoutableId
 
     reasoning:
         instructions: ->
@@ -255,7 +326,12 @@ subagent troubleshooting_support:
                 | {!@variables.agent_memory}
                 | Follow these instructions first:
                 | {!@variables.composed_instructions}
+                # Self-learning: surface relevant past lessons for this topic.
+                | Relevant lessons learned from past sessions:
+                | {!@variables.improvement_context}
                 | Troubleshoot in clear, step-based order and confirm result after each step.
+                | ALWAYS call {!@actions.load_lessons} first when the user presents a new issue, then apply any surfaced lessons.
+                | After each turn, call {!@actions.set_knowledge_outcome} to record whether the problem is resolved.
                 | If issue resolved, unresolved, user wants to end the conversation or user asks for human handoff, use {!@actions.go_to_finalization}.
                 | If unresolved and new case is needed, or user requests case tracking/update, use {!@actions.go_to_case_management}.
                 | Do NOT call update_memory.
@@ -277,6 +353,41 @@ subagent troubleshooting_support:
                 description: "Route to case management."
             go_to_finalization: @utils.transition to @subagent.finalization
                 description: "Route to session termination or escalation."
+
+            # === SELF-LEARNING HARNESS — reasoning tools ================
+            # See docs/Self-Learning-Harness-for-FDE.md. load_lessons and
+            # set_knowledge_outcome drive the core loop; report_lesson_outcome
+            # and create_lesson credit / capture lessons.
+            load_lessons: @actions.Load_Improvement_Context
+                description: "Load relevant lessons for the user's current question. ALWAYS call when the user presents a new issue or question."
+                with agent_api_name = "customer_support_skill_demo"
+                with topic_area = "troubleshooting"
+                with session_id = @variables.session_key
+                with user_message = ...
+                set @variables.improvement_context = @outputs.improvement_context
+                set @variables.lesson_count = @outputs.lesson_count
+                set @variables.applied_lesson_id = @outputs.lesson_ids
+            set_knowledge_outcome: @utils.setVariables
+                description: "Record whether the problem is solved this turn. outcome_type: 'resolved' when fixed or confirmed working; 'unresolved' when it failed or persists. last_action_result: 1-2 sentence reasoning summary."
+                with outcome_type=...
+                with last_action_result=...
+            report_lesson_outcome: @actions.Publish_Reward_Event
+                description: "Report a surfaced lesson's outcome. Call ONCE when a surfaced lesson reached a terminal outcome this turn (resolved or not). Report the raw domain event only; the platform classifies success and assigns points."
+                with session_id = @variables.session_key
+                with reward_category = "lesson"
+                with domain_event = @variables.outcome_type
+                with topic_area = "troubleshooting"
+                with lesson_id = @variables.applied_lesson_id
+                with agent_api_name = "customer_support_skill_demo"
+                available when @variables.lesson_resolved_this_turn == True or @variables.failure_detected_this_turn == True
+            create_lesson: @actions.Extract_And_Record_Lesson_Flow
+                description: "Record a NEW lesson from a failure-then-success pattern. Only when no existing lesson was surfaced this session (otherwise the insight is already captured)."
+                with agent_api_name = "customer_support_skill_demo"
+                with topic_area = "troubleshooting"
+                with session_id = @variables.session_key
+                with user_message = ...
+                available when @variables.previous_action_failed == True and @variables.lesson_count == 0
+            # === END SELF-LEARNING HARNESS — reasoning tools ============
 
     after_reasoning:
         if @variables.context_dirty == True:

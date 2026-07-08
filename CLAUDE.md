@@ -82,13 +82,44 @@ Published agents materialize as `genAiPlannerBundles/<bundle>_v<N>/` — these a
 
 `GenericRenderAction` (`@InvocableMethod` "Render Data") validates a JSON payload + `display_type` (`table`/`card`/`list`/`key-value`), returns a `GenericRenderOutput`, and the `genericDataRenderer` LWC renders it in the agent UI. Bridged to agents via the `Render_Data` flow. See `docs/Generic-Render-Action-Implementation-Plan.md`, `docs/LWC-in-Agent-Responses-Guide.md`, and `docs/Render-Data-LWC-Troubleshooting.md`.
 
+### Self-Learning Harness (optional, reusable)
+
+A drop-in harness that lets any Agentforce agent **learn from its own runtime
+outcomes** — surface relevant past lessons at the start of a turn, record whether the
+turn resolved the problem, capture new lessons on failure-then-success, and reward
+lessons that prove helpful. Fully generic: keyed by `agent_api_name` + `topic_area`,
+with **no domain hardcoding**.
+
+- **Objects:** `AgentLessonLearned__c`, `AgentSession__c`, `AgentActionOutcome__c`,
+  `AgentImprovementConfig__c`, `AgentRewardConfig__c`, `AgentSubagentConfig__c`,
+  `AgentReward__e` (platform event).
+- **Apex:** `SelectRelevantLessons` (lesson pool + PT semantic rank),
+  `AgentRewardHandler` (+ `AgentRewardTrigger`), `ClassifyAgentOutcome`, `AesCalculator`,
+  `ConversationHistoryProvider`, `LessonJsonParser`/`LessonRelevanceParser`, and the
+  `Sia*Controller` back-ends for the console.
+- **Flows:** `Load_Improvement_Context` → `Check_Lessons_Learned` + `Get_Agent_Points`;
+  `Extract_And_Record_Lesson_Flow`; `Publish_Reward_Event`.
+- **Prompt templates:** `Select_Relevant_Lessons`, `Extract_And_Record_Lesson`.
+- **UI:** the `SIA_Console` Lightning app (11 `sia*` LWCs, tab, flexipage,
+  `SelfImprovingAgentContext` message channel, `SIA_App_Icon`).
+- **Permission sets:** `SIA_Framework_Access` (agent runtime user — also needs
+  `EinsteinGPTPromptTemplateUser`), `SIA_Admin` (console users).
+- **Wired example:** `customer_support_skill_demo`'s `troubleshooting_support` topic
+  demonstrates the load→outcome→lesson→reward loop. See
+  **`docs/Self-Learning-Harness-for-FDE.md`** for the full wiring guide and the
+  deterministic-`run`-vs-prose rule.
+- **Test harness:** `test-harness/` (`run_agent_tests.mjs`, `run_preview_tests.mjs`,
+  `run_runtime_tests.mjs`) drives CSV-defined multi-turn conversations against any
+  activated agent — see `test-harness/README.md`.
+
 ### Permission sets
 
-`Agent_Skills_Agent_Runtime` must be assigned to the **agent bot user** for runtime access. `Agent_Skills_Author`/`Reviewer`/`Consumer` gate the Admin app (`Agent_Skills_Admin`).
+`Agent_Skills_Agent_Runtime` must be assigned to the **agent bot user** for runtime access. `Agent_Skills_Author`/`Reviewer`/`Consumer` gate the Admin app (`Agent_Skills_Admin`). For the self-learning harness, assign `SIA_Framework_Access` to the agent bot user and `SIA_Admin` to SIA Console users.
 
 ## Key documentation
 
 - `docs/Agent-Skills-Framework-for-FDE.md` — primary engineering reference (composition flow + Agent Script rules)
+- `docs/Self-Learning-Harness-for-FDE.md` — self-learning harness components, runtime loop, and agent-wiring guide
 - `docs/Apex Action Contracts.md` — Loader/Composer/LoadAndCompose I/O contracts
 - `docs/Agent Script Manual v4.md` — Agent Script language and execution model
 - `docs/LTM Integration Mapping.md` — optional persistent-memory object schema and flow contracts
