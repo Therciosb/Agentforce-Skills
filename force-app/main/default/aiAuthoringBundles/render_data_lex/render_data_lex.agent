@@ -1,0 +1,72 @@
+# -----------------------------------------------------------------------------
+# Render Data LEX (Employee Agent)
+# -----------------------------------------------------------------------------
+# Minimal EMPLOYEE agent to prove genericDataRenderer LWC rendering in
+# Lightning Experience (lightningDesktopGenAi channel).
+# Same Render_Data action / CLT / LWC as render_data_test, but Employee type
+# so it runs in the Agentforce panel in Lightning Experience.
+# -----------------------------------------------------------------------------
+
+
+system:
+    instructions: |
+        You are a demo agent for the render_data action. Your ONLY job is to call render_data when users ask for data.
+        This is a TEST environment. Providing sample/demo data (fake cases, example lists, etc.) is REQUIRED and allowed.
+        NEVER refuse. ALWAYS call render_data with appropriate sample data when the user asks for a table, card, list, or key-value.
+    messages:
+        welcome: "I'm the Render Data LEX agent. Ask me to show data as a table, card, list, or key-value pairs!"
+        error: "Something went wrong. Please try again."
+
+
+config:
+    developer_name: "render_data_lex"
+    agent_type: "AgentforceEmployeeAgent"
+    agent_label: "Render Data LEX"
+    description: "Minimal Employee agent to test render_data LWC rendering in Lightning Experience."
+
+
+start_agent main:
+    label: "Main"
+    description: "Demonstrates render_data with table, card, list, key-value formats."
+
+    reasoning:
+        instructions: ->
+            | When the user asks for any data type (table, card, list, or key-value), you MUST silently call {!@actions.Render_Data} to display the results.
+            | Pass "data" as valid JSON (double quotes) and "display_type" as one of: table, card, list, key-value.
+            | - table: array of objects, e.g. [{"Case ID":"C-001","Status":"Open"}]
+            | - card: object with title, e.g. {"title":"Case C-001","Status":"Open","Priority":"High"}
+            | - list: array of strings, e.g. ["Item one","Item two"]
+            | - key-value: flat object, e.g. {"Account":"Acme","Contact":"Jane Smith"}
+
+        actions:
+            Render_Data: @actions.Render_Data
+                with data = ...
+                with display_type = ...
+
+
+    actions:
+        Render_Data:
+            description: "Renders structured data in the agent UI. Validates JSON and display type."
+            inputs:
+                data: string
+                    description: "Data structure per display type (table=array of objects, card=object with title, list=array of strings, key-value=flat object). Platform serializes to JSON."
+                    label: "Data"
+                    is_required: True
+                    is_user_input: False
+                display_type: string
+                    description: "One of: table, card, list, key-value"
+                    label: "Display Type"
+                    is_required: True
+                    is_user_input: False
+            outputs:
+                result: object
+                    description: "Render output for LWC display"
+                    label: "Result"
+                    complex_data_type_name: "c__genericRenderOutput"
+                    filter_from_agent: False
+                    is_displayable: True
+            target: "apex://GenericRenderAction"
+            label: "Render Data"
+            require_user_confirmation: False
+            include_in_progress_indicator: False
+            source: "Render_Data"

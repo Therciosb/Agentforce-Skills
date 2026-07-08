@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 # Minimal agent to test the render_data action and core-skill-render-data-format.
 # - Loads core-skill-render-data-format and minimal role
-# - Single topic with render_data as primary tool
+# - Single subagent with render_data as primary tool
 # - Use to verify table, card, list, key-value LWC rendering
 # -----------------------------------------------------------------------------
 
@@ -20,6 +20,7 @@ system:
 
 config:
     developer_name: "render_data_test"
+    agent_type: "AgentforceServiceAgent"
     agent_label: "Render Data Test"
     default_agent_user: "ltm_agent@00dky00000gxhj51777765750.ext"
     description: "Minimal agent to test render_data action and LWC rendering (table, card, list, key-value)."
@@ -30,9 +31,8 @@ variables:
     composed_instructions: mutable string = ""
 
 
-start_agent topic_selector:
-    label: "Entry Point"
-    description: "Load render_data skill, then transition to main topic."
+start_agent agent_router:
+    description: "Load render_data skill, then transition to main subagent."
 
     actions:
         load_and_compose_skills:
@@ -43,6 +43,8 @@ start_agent topic_selector:
             outputs:
                 loadedInstructionBundle: string
                     description: "Aggregated instruction bundle JSON."
+                instructionsBundle: string
+                    description: "Formatted prompt-ready instruction text."
             target: "apex://Agent_Skill_LoadAndCompose"
 
     reasoning:
@@ -50,38 +52,72 @@ start_agent topic_selector:
             run @actions.load_and_compose_skills
                 with instructionNames="core-skill-render-data-format"
                 set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+                set @variables.composed_instructions=@outputs.instructionsBundle
 
-            transition to @topic.main
+            transition to @subagent.main
 
 
-topic main:
-    label: "Render Data Demo"
+subagent main:
     description: "Demonstrates render_data with table, card, list, key-value formats."
-
-    actions:
-
-        render_data:
-            description: "Display structured data in table, card, list, or key-value format."
-            inputs:
-                data: string
-                    description: "JSON string following the schema for the display type."
-                display_type: string
-                    description: "One of: table, card, list, key-value."
-            outputs:
-                result: object
-                    description: "Render output for LWC display (GenericRenderOutput)."
-                    complex_data_type_name: "c__genericRenderOutput"
-            target: "apex://GenericRenderAction"
 
     reasoning:
         instructions: ->
             | Follow these instructions:
             | {!@variables.composed_instructions}
-            |
-            | CRITICAL: You MUST call {!@actions.render_data} to display ANY structured data (table, card, list, key-value). NEVER output tables, JSON, or formatted data in your text message. The render_data action displays the data; your message must NOT contain the actual data—only a brief intro or follow-up. If the user asks for data, invoke render_data with the data and display_type; do not type the data yourself. 
+            | When user asks for any data type (table, card, list, key-value), you MUST silently call {!@actions.Render_Data} with "data" and "display_type" parameters to display the results.
+
+            | If the user asks to find or search flights, you MUST call {!@actions.Find_Flights} to display the results.
 
         actions:
-            render_data: @actions.render_data
-                with data=...
-                with display_type=...
-                description: "Display structured data in table, card, list, or key-value format."
+            Render_Data: @actions.Render_Data
+                with data = ...
+                with display_type = ...
+            Find_Flights: @actions.Find_Flights
+                with originCity = ...
+                with destinationCity = ...
+
+
+    actions:
+        Find_Flights:
+            description: "Finds available flights between two cities. Official Salesforce CLT/LWC rendering control sample."
+            inputs:
+                originCity: string
+                    description: "Origin city for the flight search."
+                    is_required: False
+                    is_user_input: False
+                destinationCity: string
+                    description: "Destination city for the flight search."
+                    is_required: False
+                    is_user_input: False
+            outputs:
+                aFlight: object
+                    description: "Available flights for LWC display."
+                    complex_data_type_name: "c__flightResponse"
+                    is_displayable: True
+            target: "apex://FlightAgent"
+
+        Render_Data:
+            description: "Renders structured data in the agent UI. Validates JSON and display type."
+            inputs:
+                data: string
+                    description: "Data structure per display type (table=array of objects, card=object with title, list=array of strings, key-value=flat object). Platform serializes to JSON."
+                    label: "Data"
+                    is_required: True
+                    is_user_input: False
+                display_type: string
+                    description: "One of: table, card, list, key-value"
+                    label: "Display Type"
+                    is_required: True
+                    is_user_input: False
+            outputs:
+                result: object
+                    description: "Render output for LWC display"
+                    label: "Result"
+                    complex_data_type_name: "c__genericRenderOutput"
+                    filter_from_agent: False
+                    is_displayable: True
+            target: "apex://GenericRenderAction"
+            label: "Render Data"
+            require_user_confirmation: False
+            include_in_progress_indicator: False
+            source: "Render_Data"

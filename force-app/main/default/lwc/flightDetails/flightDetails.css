@@ -1,0 +1,158 @@
+/* Main Flight Card Container */
+.flight-card-container {
+    padding: 1rem;
+    background-color: #f8f8f8;
+    border-radius: 8px;
+    margin-top: 1rem;
+    
+}
+.flightTitle {
+  font-weight: 900;
+  text-align:center;
+}
+
+/* Flight Cards Grid Layout */
+.flight-list-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+/* Styling for each individual flight card */
+.flight-card {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+    transition: transform 0.3s, box-shadow 0.3s;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Hover effect for card */
+.flight-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Flight Info Section (ID and Discount Tag) */
+.flight-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.flight-id {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #0070d2;
+}
+
+.discount-tag {
+    background-color: #ff4e50;
+    color: white;
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    display: inline-block;
+}
+
+/* Price and Duration Section */
+.price-duration {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.price {
+    font-size: 1.75rem;
+    font-weight: bold;
+    color: #0070d2;
+}
+
+.duration {
+    font-size: 1rem;
+    color: #666;
+    align-self: center;
+}
+
+/* Timeline Section */
+.flight-timeline {
+    margin: 1.5rem 0;
+}
+
+.timeline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+}
+
+.time-point {
+    font-size: 0.9rem;
+    color: #333;
+    position: relative;
+    z-index: 1;
+}
+
+.departure {
+    font-weight: bold;
+    color: #0070d2;
+}
+
+.arrival {
+    font-weight: bold;
+    color: #0070d2;
+}
+
+.timeline-line {
+    height: 2px;
+    background-color: #0070d2;
+    position: absolute;
+    top: 50%;
+    width: 50%; /* The width is dynamic based on the flight's duration */
+}
+
+/* Additional Info Section */
+.additional-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.layovers,
+.pets {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.layovers lightning-icon,
+.pets lightning-icon {
+    fill: #ff7043;
+}
+
+/* Footer with Book Now Button */
+.card-footer {
+    display: flex;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+lightning-button {
+    width: 100%;
+    font-size: 1rem;
+    padding: 0.75rem;
+    background-color: #0070d2;
+    color: white;
+    border-radius: 6px;
+}
+
+/* Hover effect for button */
+.card-footer lightning-button:hover {
+    background-color: #005fa3;
+}

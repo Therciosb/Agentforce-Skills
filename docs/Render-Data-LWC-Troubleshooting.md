@@ -87,6 +87,33 @@
 
 ---
 
+### Issue 6: "Assigned to Active Agent" Not Showing in Setup
+
+**Symptom:** The Render_Data Agent Action in Setup shows "Assigned to Active Agent: No" even though the agent uses `apex://GenericRenderAction` and LWC rendering works.
+
+**Investigation findings:**
+
+| Target format | Result |
+|---------------|--------|
+| `apex://GenericRenderAction` | Works. Platform resolves to Agent Action for Output Rendering. LWC renders correctly. "Assigned to Active Agent" may remain unchecked. |
+| `flow://Render_Data` | Invokes the Flow (wraps Apex). GenAiPlannerBundle uses this. Output Rendering requires Apex class output—Flow returns flat primitives, so custom Lightning Type may not apply. |
+| `standardInvocableAction://Render_Data` | Causes internal error during publish ("Internal Error, try again later"). Would reference the Agent Action by API name directly. |
+| `agentAction://Render_Data` | Not supported; validation error. |
+
+**Root cause:** Agent Script supports `apex://`, `flow://`, and `generatePromptResponse://` targets. There is no documented target format that references a Setup-defined Agent Action by its API name. The "Assigned to Active Agent" flag appears to be set only when the agent explicitly references the Agent Action metadata (e.g., via Builder UI assignment), not when using `apex://ClassName`.
+
+**Recommendations:**
+
+1. **Keep `apex://GenericRenderAction`** — This is the correct target for LWC rendering. The platform resolves the Apex class to your Agent Action for Output Rendering. Functionality is correct; the Setup indicator may be a platform limitation.
+
+2. **Post-publish assignment (if available)** — After publishing from Agent Script, open the agent in **Agentforce Builder** and check if you can add the Render_Data Agent Action from the Asset Library to the topic. This may set "Assigned to Active Agent."
+
+3. **Report to Salesforce** — If "Assigned to Active Agent" is required for compliance or visibility, consider opening a case: Agent Script `apex://` targets that resolve to Setup Agent Actions should update the "Assigned to Active Agent" flag.
+
+4. **Alternative: Flow-based Agent Action** — If you create an Agent Action that references the **Render_Data Flow** (not the Apex) and use `flow://Render_Data` in the agent script, the Flow invocation might register as "Assigned to Active Agent." However, Flow outputs are primitive; Output Rendering with custom Lightning types typically requires Apex class output, so LWC rendering may not work with this approach.
+
+---
+
 ## Checklist for LWC Rendering
 
 - [ ] Agent Action created in Setup from `GenericRenderAction.renderData`
@@ -95,3 +122,31 @@
 - [ ] Agent Skills Agent Runtime permission set assigned to agent user (bot user)
 - [ ] Agent Action assigned to the agent (or apex:// target resolves to it)
 - [ ] Custom Lightning Type and LWC deployed to org
+
+---
+
+### Enhanced Chat v2: Still Plain Text After Action Succeeds
+
+**Symptom:** Action executes successfully (trace shows `FunctionStep` with `success: true`), but output appears as plain text in Enhanced Chat instead of the LWC (lightning-datatable, card, etc.).
+
+**Verify in Setup:**
+
+1. **Agent Action → Output Rendering**
+   - Setup → Quick Find → **Agentforce Assets** → **Agent Actions**
+   - Open the Render_Data (or GenericRenderAction) Agent Action
+   - Output → Result → **Output Rendering** must be set to **genericRenderOutput** (Custom Lightning Type)
+   - Output → Result → Advanced Settings → **Show in conversation** must be checked
+
+2. **Custom Lightning Type deployed**
+   - `lightningTypes/genericRenderOutput/` with `schema.json`, `enhancedWebChat/renderer.json`
+   - Deploy: `sf project deploy start --source-dir force-app/main/default/lightningTypes`
+
+3. **LWC deployed with correct sourceType**
+   - `genericDataRenderer` has `sourceType name="c__genericRenderOutput"` in js-meta.xml
+   - Deploy: `sf project deploy start --source-dir force-app/main/default/lwc/genericDataRenderer`
+
+4. **Connection / channel**
+   - Ensure the Enhanced Chat connection uses the agent that invokes the action
+   - Re-publish the agent after any Setup changes: `sf agent publish authoring-bundle --api-name render_data_test`
+
+**If still plain text:** The platform may not resolve `apex://GenericRenderAction` to the Agent Action's Output Rendering in Enhanced Chat. Try assigning the Render_Data Agent Action explicitly to the agent in Agentforce Builder (add from Asset Library to the topic).

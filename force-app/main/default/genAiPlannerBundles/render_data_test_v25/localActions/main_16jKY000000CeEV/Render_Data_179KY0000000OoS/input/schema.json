@@ -1,0 +1,22 @@
+{
+  "required" : [ "data", "display_type" ],
+  "unevaluatedProperties" : false,
+  "properties" : {
+    "data" : {
+      "title" : "Data",
+      "description" : "Data structure per display type (table=array of objects, card=object with title, list=array of strings, key-value=flat object). Platform serializes to JSON.",
+      "lightning:type" : "lightning__textType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    },
+    "display_type" : {
+      "title" : "Display Type",
+      "description" : "One of: table, card, list, key-value",
+      "lightning:type" : "lightning__textType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    }
+  },
+  "lightning:type" : "lightning__objectType",
+  "lightning:textIndexed" : true
+}

@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPlannerBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Demonstrates Agent Skills framework with deterministic instruction load/composition, references, and persistent memory.</description>
+    <localTopicLinks>
+        <genAiPluginName>agent_router_16jKY000000CeCj</genAiPluginName>
+    </localTopicLinks>
+    <localTopicLinks>
+        <genAiPluginName>case_management_16jKY000000CeCj</genAiPluginName>
+    </localTopicLinks>
+    <localTopicLinks>
+        <genAiPluginName>finalization_16jKY000000CeCj</genAiPluginName>
+    </localTopicLinks>
+    <localTopicLinks>
+        <genAiPluginName>general_support_16jKY000000CeCj</genAiPluginName>
+    </localTopicLinks>
+    <localTopicLinks>
+        <genAiPluginName>troubleshooting_support_16jKY000000CeCj</genAiPluginName>
+    </localTopicLinks>
+    <localTopics>
+        <fullName>general_support_16jKY000000CeCj</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Primary customer support intake for product Q&amp;A and deterministic routing.</description>
+        <developerName>general_support_16jKY000000CeCj</developerName>
+        <genAiPluginInstructions>
+            <description>You are a customer support AI agent.
+Follow policy and safety constraints at all times.
+Do not invent product facts, case updates, or troubleshooting outcomes.</description>
+            <developerName>instruction0_179KY0000000Oma</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179KY0000000Oma</masterLabel>
+            <sortOrder>1</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localActionLinks>
+            <functionName>load_and_compose_skills_179KY0000000Oma</functionName>
+        </localActionLinks>
+        <localActions>
+            <fullName>load_and_compose_skills_179KY0000000Oma</fullName>
+            <description>Load topic-specific skills, merge with existing bundle, and compose prompt-ready instructions.</description>
+            <developerName>load_and_compose_skills_179KY0000000Oma</developerName>
+            <invocationTarget>Agent_Skill_LoadAndCompose</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>load_and_compose_skills</localDeveloperName>
+            <masterLabel>Load And Compose Skills</masterLabel>
+        </localActions>
+        <localDeveloperName>general_support</localDeveloperName>
+        <masterLabel>General Support</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <localTopics>
+        <fullName>agent_router_16jKY000000CeCj</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Initial bootstrap: memory + role/core skills; subagents add topic-specific skills.</description>
+        <developerName>agent_router_16jKY000000CeCj</developerName>
+        <genAiPluginInstructions>
+            <description>You are a customer support AI agent.
+Follow policy and safety constraints at all times.
+Do not invent product facts, case updates, or troubleshooting outcomes.</description>
+            <developerName>instruction0_179KY0000000OmX</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179KY0000000OmX</masterLabel>
+            <sortOrder>1</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localActionLinks>
+            <functionName>load_user_memory_179KY0000000OmX</functionName>
+        </localActionLinks>
+        <localActionLinks>
+            <functionName>load_and_compose_skills_179KY0000000OmX</functionName>
+        </localActionLinks>
+        <localActions>
+            <fullName>load_and_compose_skills_179KY0000000OmX</fullName>
+            <description>Load role and core skills into instruction bundle.</description>
+            <developerName>load_and_compose_skills_179KY0000000OmX</developerName>
+            <invocationTarget>Agent_Skill_LoadAndCompose</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>load_and_compose_skills</localDeveloperName>
+            <masterLabel>Load And Compose Skills</masterLabel>
+        </localActions>
+        <localActions>
+            <fullName>load_user_memory_179KY0000000OmX</fullName>
+            <description>Load persistent memory for this contact.</description>
+            <developerName>load_user_memory_179KY0000000OmX</developerName>
+            <invocationTarget>LoadAgentMemory</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>load_user_memory</localDeveloperName>
+            <masterLabel>Load User Memory</masterLabel>
+        </localActions>
+        <localDeveloperName>agent_router</localDeveloperName>
+        <masterLabel>Agent Router</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <localTopics>
+        <fullName>troubleshooting_support_16jKY000000CeCj</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Troubleshooting support for Wi-Fi modem, 5G modem, iPhone 16/16 Pro, and Galaxy S25/S25 Ultra.</description>
+        <developerName>troubleshooting_support_16jKY000000CeCj</developerName>
+        <genAiPluginInstructions>
+            <description>You are a customer support AI agent.
+Follow policy and safety constraints at all times.
+Do not invent product facts, case updates, or troubleshooting outcomes.</description>
+            <developerName>instruction0_179KY0000000OmW</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179KY0000000OmW</masterLabel>
+            <sortOrder>1</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localActionLinks>
+            <functionName>load_and_compose_skills_179KY0000000OmW</functionName>
+        </localActionLinks>
+        <localActions>
+            <fullName>load_and_compose_skills_179KY0000000OmW</fullName>
+            <description>Load topic-specific skills, merge with existing bundle, and compose prompt-ready instructions.</description>
+            <developerName>load_and_compose_skills_179KY0000000OmW</developerName>
+            <invocationTarget>Agent_Skill_LoadAndCompose</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>load_and_compose_skills</localDeveloperName>
+            <masterLabel>Load And Compose Skills</masterLabel>
+        </localActions>
+        <localDeveloperName>troubleshooting_support</localDeveloperName>
+        <masterLabel>Troubleshooting Support</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <localTopics>
+        <fullName>case_management_16jKY000000CeCj</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Support case lifecycle operations including create, update, and status communication.</description>
+        <developerName>case_management_16jKY000000CeCj</developerName>
+        <genAiPluginInstructions>
+            <description>You are a customer support AI agent.
+Follow policy and safety constraints at all times.
+Do not invent product facts, case updates, or troubleshooting outcomes.</description>
+            <developerName>instruction0_179KY0000000OmZ</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179KY0000000OmZ</masterLabel>
+            <sortOrder>1</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localActionLinks>
+            <functionName>load_and_compose_skills_179KY0000000OmZ</functionName>
+        </localActionLinks>
+        <localActions>
+            <fullName>load_and_compose_skills_179KY0000000OmZ</fullName>
+            <description>Load topic-specific skills, merge with existing bundle, and compose prompt-ready instructions.</description>
+            <developerName>load_and_compose_skills_179KY0000000OmZ</developerName>
+            <invocationTarget>Agent_Skill_LoadAndCompose</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>load_and_compose_skills</localDeveloperName>
+            <masterLabel>Load And Compose Skills</masterLabel>
+        </localActions>
+        <localDeveloperName>case_management</localDeveloperName>
+        <masterLabel>Case Management</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <localTopics>
+        <fullName>finalization_16jKY000000CeCj</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Escalation summary and memory checkpoint before session closure.</description>
+        <developerName>finalization_16jKY000000CeCj</developerName>
+        <genAiPluginInstructions>
+            <description>You are a customer support AI agent.
+Follow policy and safety constraints at all times.
+Do not invent product facts, case updates, or troubleshooting outcomes.</description>
+            <developerName>instruction0_179KY0000000OmY</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179KY0000000OmY</masterLabel>
+            <sortOrder>1</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localActionLinks>
+            <functionName>load_and_compose_skills_179KY0000000OmY</functionName>
+        </localActionLinks>
+        <localActionLinks>
+            <functionName>save_context_tool_179KY0000000OmY</functionName>
+        </localActionLinks>
+        <localActions>
+            <fullName>save_context_tool_179KY0000000OmY</fullName>
+            <description>Persist long-term memory. Call this before saying goodbye to save extracted conversation data (scalar inputs only).</description>
+            <developerName>save_context_tool_179KY0000000OmY</developerName>
+            <invocationTarget>SaveAgentContext</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>save_context_tool</localDeveloperName>
+            <masterLabel>Save Context Tool</masterLabel>
+        </localActions>
+        <localActions>
+            <fullName>load_and_compose_skills_179KY0000000OmY</fullName>
+            <description>Load topic-specific skills, merge with existing bundle, and compose prompt-ready instructions.</description>
+            <developerName>load_and_compose_skills_179KY0000000OmY</developerName>
+            <invocationTarget>Agent_Skill_LoadAndCompose</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>load_and_compose_skills</localDeveloperName>
+            <masterLabel>Load And Compose Skills</masterLabel>
+        </localActions>
+        <localDeveloperName>finalization</localDeveloperName>
+        <masterLabel>Finalization</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <masterLabel>Customer Support Skill Demo</masterLabel>
+    <plannerType>Atlas__ConcurrentMultiAgentOrchestration</plannerType>
+</GenAiPlannerBundle>

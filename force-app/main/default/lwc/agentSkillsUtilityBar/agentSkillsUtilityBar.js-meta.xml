@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>66.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>Agent Skills Actions</masterLabel>
+    <targets>
+        <target>lightning__UtilityBar</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__UtilityBar">
+            <property name="label" type="String" default="Agent Skills" label="Label" description="Label for the utility bar item" required="true"/>
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

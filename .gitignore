@@ -1,5 +1,6 @@
 # Salesforce local dev
 .sfdx/
+.sf/
 .localdevserver/
 
 # LWC Jest coverage

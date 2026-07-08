@@ -1,10 +1,15 @@
 # -----------------------------------------------------------------------------
-# Customer Support Skill Demo Agent
+# Customer Support Skill Demo Agent (Per-Turn Checkpoint Memory)
 # -----------------------------------------------------------------------------
-# Major blocks:
-# - system/config/variables: static behavior + runtime state
-# - topics: compose dynamic instruction context and execute support flows
-# - start_agent: deterministic initialization for memory and instruction bundle
+# Architecture
+# - start_agent: loads memory + role/core skills
+# - Each conversational subagent uses the two-pass loop guard pattern:
+#   Pass 1 (context_dirty == False): load skills + LLM calls update_memory (no response)
+#   Pass 2 (context_dirty == True): LLM responds to user (skills already loaded)
+# - after_reasoning: deterministic save to DB, resets dirty flag
+# - finalization: final save as safety net for transition edge case
+#
+# NOTE: Action names must be unique across subagents (platform constraint).
 # -----------------------------------------------------------------------------
 
 
@@ -13,6 +18,7 @@ system:
         You are a customer support AI agent.
         Follow policy and safety constraints at all times.
         Do not invent product facts, case updates, or troubleshooting outcomes.
+        Be concise. Respond in 2-4 sentences unless the user asks for detail.
     messages:
         welcome: "I'm Ready to Help!"
         error: "I am sorry, something went wrong. Please try again or ask for escalation to a human specialist."
@@ -20,9 +26,10 @@ system:
 
 config:
     developer_name: "customer_support_skill_demo"
+    agent_type: "AgentforceServiceAgent"
     agent_label: "Customer Support Skill Demo"
     default_agent_user: "ltm_agent@00dky00000gxhj51777765750.ext"
-    description: "Demonstrates Agent Skills framework with deterministic instruction load/composition, references, and persistent memory."
+    description: "Demonstrates Agent Skills framework with per-turn checkpoint memory and deterministic instruction composition."
 
 
 
@@ -40,21 +47,22 @@ config:
 variables:
     ContactId: mutable string = "003KY00000KNAGqYAP"
     EndUserId: linked string
+        source: @MessagingSession.MessagingEndUserId
     RoutableId: linked string
+        source: @MessagingSession.Id
     context_loaded: mutable boolean = False
+    context_dirty: mutable boolean = False
     agent_memory: mutable string = ""
+    memory_summary: mutable string = ""
+    memory_goal: mutable string = ""
+    memory_has_issue: mutable boolean = False
+    memory_style: mutable string = ""
     instruction_bundle_json: mutable object
     composed_instructions: mutable string = ""
-    save_success: mutable boolean = False
 
 
-start_agent topic_selector:
-    label: "Entry Point"
-    # Topic docstring:
-    # - Deterministically loads persistent memory context.
-    # - Loads role and core skills into instruction_bundle_json.
-    # - Each topic loads only its topic-specific skills and merges with bundle.
-    description: "Initial bootstrap: memory + role/core skills; topics add topic-specific skills."
+start_agent agent_router:
+    description: "Initial bootstrap: memory + role/core skills; subagents add topic-specific skills."
 
     actions:
         load_user_memory:
@@ -65,8 +73,16 @@ start_agent topic_selector:
             outputs:
                 agentMemory: string
                     description: "Formatted merge of memory fields for personalization."
+                memorySummary: string
+                    description: "Last conversation summary."
+                memoryGoal: string
+                    description: "Pending goal."
+                hasIssue: boolean
+                    description: "Unresolved issue flag."
+                memoryStyle: string
+                    description: "Communication style."
             target: "apex://LoadAgentMemory"
-        load_and_compose_skills:
+        load_skills_init:
             description: "Load role and core skills into instruction bundle."
             inputs:
                 instructionNames: string
@@ -84,28 +100,28 @@ start_agent topic_selector:
                 run @actions.load_user_memory
                     with contactId=@variables.ContactId
                     set @variables.agent_memory=@outputs.agentMemory
+                    set @variables.memory_summary=@outputs.memorySummary
+                    set @variables.memory_goal=@outputs.memoryGoal
+                    set @variables.memory_has_issue=@outputs.hasIssue
+                    set @variables.memory_style=@outputs.memoryStyle
                     set @variables.context_loaded=True
 
             if @variables.context_loaded == False:
                 set @variables.context_loaded=True
 
-            run @actions.load_and_compose_skills
+            run @actions.load_skills_init
                 with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-txt-response-guidelines"
                 set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
 
-            transition to @topic.general_support
+            transition to @subagent.general_support
 
 
-topic general_support:
-    label: "General Support Intake"
-    # Topic docstring:
-    # - Handles product information Q&A and initial support triage.
-    # - Routes to troubleshooting, case management, or finalization topics.
+subagent general_support:
     description: "Primary customer support intake for product Q&A and deterministic routing."
 
     actions:
-        load_and_compose_skills:
-            description: "Load topic-specific skills, merge with existing bundle, and compose prompt-ready instructions."
+        load_skills_general:
+            description: "Load general support skills, merge with existing bundle, and compose instructions."
             inputs:
                 instructionNames: string
                     description: "CSV list of topic-specific skill/workflow names."
@@ -117,45 +133,84 @@ topic general_support:
                 loadedInstructionBundle: string
                     description: "Raw instruction bundle JSON for merge."
             target: "apex://Agent_Skill_LoadAndCompose"
+        save_context_general:
+            description: "Saves Agent_Context__c checkpoint from general support."
+            inputs:
+                contactId: string
+                    description: "Contact ID."
+                newSummary: string
+                    description: "Conversation summary."
+                newGoal: string
+                    description: "Pending goal or empty string."
+                hasIssue: boolean
+                    description: "Unresolved issue flag."
+                newStyle: string
+                    description: "Communication style."
+            outputs:
+                success: boolean
+                    description: "Whether save succeeded."
+            target: "apex://SaveAgentContext"
+
+    before_reasoning:
+        run @actions.load_skills_general
+            with instructionNames="skill-product-information-qa"
+            with existingInstructionBundle=@variables.instruction_bundle_json
+            set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+            set @variables.composed_instructions=@outputs.instructionsBundle
 
     reasoning:
         instructions: ->
-            run @actions.load_and_compose_skills
-                with instructionNames="skill-product-information-qa"
-                with existingInstructionBundle=@variables.instruction_bundle_json
-                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
-                set @variables.composed_instructions=@outputs.instructionsBundle
+            # Pass 2: respond to user
+            if @variables.context_dirty == True:
+                | Here is your past context. Use it for personalization:
+                | {!@variables.agent_memory}
+                | Start with a personalized greeting using the customer name and profile above. If unresolved issue is true, acknowledge prior issues and ask whether they were resolved. If pending goal is set, ask if the user wants to continue it.
+                | Then follow the instructions below.
+                | {!@variables.composed_instructions}
+                |
+                | Assess the user intent and route to the appropriate subagent:
+                | - For troubleshooting requests, use {!@actions.go_to_troubleshooting}.
+                | - For case create/update/status requests, use {!@actions.go_to_case_management}.
+                | - When user indicates ending the conversation, or human handoff request, use {!@actions.go_to_finalization}.
+                | Do NOT call update_memory.
 
-            | Here is your past context. Use it for personalization:
-            | {!@variables.agent_memory}
-            | Start with a personalized greeting using the customer name and profile above. If unresolved issue is true, acknowledge prior issues and ask whether they were resolved. If pending goal is set, ask if the user wants to continue it.
-            | Then follow the instructions below.
-            | {!@variables.composed_instructions}
-            |
-            | Then assess the user intent and route to the appropriate topic:
-            | - For troubleshooting requests, use {!@actions.go_to_troubleshooting}.
-            | - For case create/update/status requests, use {!@actions.go_to_case_management}.
-            | - When user indicates ending the conversation, or human handoff request, use {!@actions.go_to_finalization}.
+            # Pass 1: capture memory only
+            if @variables.context_dirty == False:
+                | Do NOT respond to the user. Call {!@actions.update_memory} exactly once.
+                | Follow the LTM persistence extraction rules from your instructions:
+                | {!@variables.composed_instructions}
 
         actions:
-            go_to_troubleshooting: @utils.transition to @topic.troubleshooting_support
+            update_memory: @utils.setVariables
+                description: "Record this turn. Do not respond to the user."
+                with memory_summary=...
+                with memory_goal=...
+                with memory_has_issue=...
+                with context_dirty=True
+            go_to_troubleshooting: @utils.transition to @subagent.troubleshooting_support
                 description: "Route to troubleshooting support."
-            go_to_case_management: @utils.transition to @topic.case_management
+            go_to_case_management: @utils.transition to @subagent.case_management
                 description: "Route to support case lifecycle handling."
-            go_to_finalization: @utils.transition to @topic.finalization
-                description: "Route to session termination or escalation, and memory checkpoint."
+            go_to_finalization: @utils.transition to @subagent.finalization
+                description: "Route to session termination or escalation."
+
+    after_reasoning:
+        if @variables.context_dirty == True:
+            run @actions.save_context_general
+                with contactId=@variables.ContactId
+                with newSummary=@variables.memory_summary
+                with newGoal=@variables.memory_goal
+                with hasIssue=@variables.memory_has_issue
+                with newStyle=@variables.memory_style
+                set @variables.context_dirty=False
 
 
-topic troubleshooting_support:
-    label: "Troubleshooting Support"
-    # Topic docstring:
-    # - Runs troubleshooting flows for modem and selected iPhone/Samsung devices.
-    # - Applies reference expansion so escalation workflows are included automatically.
+subagent troubleshooting_support:
     description: "Troubleshooting support for Wi-Fi modem, 5G modem, iPhone 16/16 Pro, and Galaxy S25/S25 Ultra."
 
     actions:
-        load_and_compose_skills:
-            description: "Load topic-specific skills, merge with existing bundle, and compose prompt-ready instructions."
+        load_skills_troubleshooting:
+            description: "Load troubleshooting skills, merge with existing bundle, and compose instructions."
             inputs:
                 instructionNames: string
                     description: "CSV list of topic-specific skill/workflow names."
@@ -167,39 +222,79 @@ topic troubleshooting_support:
                 loadedInstructionBundle: string
                     description: "Raw instruction bundle JSON for merge."
             target: "apex://Agent_Skill_LoadAndCompose"
+        save_context_troubleshooting:
+            description: "Saves Agent_Context__c checkpoint from troubleshooting."
+            inputs:
+                contactId: string
+                    description: "Contact ID."
+                newSummary: string
+                    description: "Conversation summary."
+                newGoal: string
+                    description: "Pending goal or empty string."
+                hasIssue: boolean
+                    description: "Unresolved issue flag."
+                newStyle: string
+                    description: "Communication style."
+            outputs:
+                success: boolean
+                    description: "Whether save succeeded."
+            target: "apex://SaveAgentContext"
+
+    before_reasoning:
+        run @actions.load_skills_troubleshooting
+            with instructionNames="skill-troubleshooting-support"
+            with existingInstructionBundle=@variables.instruction_bundle_json
+            set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+            set @variables.composed_instructions=@outputs.instructionsBundle
 
     reasoning:
         instructions: ->
-            run @actions.load_and_compose_skills
-                with instructionNames="skill-troubleshooting-support"
-                with existingInstructionBundle=@variables.instruction_bundle_json
-                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
-                set @variables.composed_instructions=@outputs.instructionsBundle
-            | Here is your past context. Use it for personalization:
-            | {!@variables.agent_memory}
-            | Follow these instructions first:
-            | {!@variables.composed_instructions}
-            | Troubleshoot in clear, step-based order and confirm result after each step.
-            | If issue resolved, unresolved, user wants to end the conversation or user asks for human handoff, use {!@actions.go_to_finalization}.
-            | If unresolved and new case is needed, or user requests case tracking/update, use {!@actions.go_to_case_management}.
+            # Pass 2: respond to user
+            if @variables.context_dirty == True:
+                | Here is your past context. Use it for personalization:
+                | {!@variables.agent_memory}
+                | Follow these instructions first:
+                | {!@variables.composed_instructions}
+                | Troubleshoot in clear, step-based order and confirm result after each step.
+                | If issue resolved, unresolved, user wants to end the conversation or user asks for human handoff, use {!@actions.go_to_finalization}.
+                | If unresolved and new case is needed, or user requests case tracking/update, use {!@actions.go_to_case_management}.
+                | Do NOT call update_memory.
+
+            # Pass 1: capture memory only
+            if @variables.context_dirty == False:
+                | Do NOT respond to the user. Call {!@actions.update_memory} exactly once.
+                | Follow the LTM persistence extraction rules from your instructions:
+                | {!@variables.composed_instructions}
 
         actions:
-            go_to_case_management: @utils.transition to @topic.case_management
+            update_memory: @utils.setVariables
+                description: "Record this turn. Do not respond to the user."
+                with memory_summary=...
+                with memory_goal=...
+                with memory_has_issue=...
+                with context_dirty=True
+            go_to_case_management: @utils.transition to @subagent.case_management
                 description: "Route to case management."
-            go_to_finalization: @utils.transition to @topic.finalization
-                description: "Route to session termination or escalation, and memory checkpoint."
+            go_to_finalization: @utils.transition to @subagent.finalization
+                description: "Route to session termination or escalation."
+
+    after_reasoning:
+        if @variables.context_dirty == True:
+            run @actions.save_context_troubleshooting
+                with contactId=@variables.ContactId
+                with newSummary=@variables.memory_summary
+                with newGoal=@variables.memory_goal
+                with hasIssue=@variables.memory_has_issue
+                with newStyle=@variables.memory_style
+                set @variables.context_dirty=False
 
 
-topic case_management:
-    label: "Case Management"
-    # Topic docstring:
-    # - Handles case creation, updates, and lifecycle summaries.
-    # - Uses composed skill/workflow context for consistent case operations.
+subagent case_management:
     description: "Support case lifecycle operations including create, update, and status communication."
 
     actions:
-        load_and_compose_skills:
-            description: "Load topic-specific skills, merge with existing bundle, and compose prompt-ready instructions."
+        load_skills_case:
+            description: "Load case management skills, merge with existing bundle, and compose instructions."
             inputs:
                 instructionNames: string
                     description: "CSV list of topic-specific skill/workflow names."
@@ -211,36 +306,77 @@ topic case_management:
                 loadedInstructionBundle: string
                     description: "Raw instruction bundle JSON for merge."
             target: "apex://Agent_Skill_LoadAndCompose"
+        save_context_case:
+            description: "Saves Agent_Context__c checkpoint from case management."
+            inputs:
+                contactId: string
+                    description: "Contact ID."
+                newSummary: string
+                    description: "Conversation summary."
+                newGoal: string
+                    description: "Pending goal or empty string."
+                hasIssue: boolean
+                    description: "Unresolved issue flag."
+                newStyle: string
+                    description: "Communication style."
+            outputs:
+                success: boolean
+                    description: "Whether save succeeded."
+            target: "apex://SaveAgentContext"
+
+    before_reasoning:
+        run @actions.load_skills_case
+            with instructionNames="skill-support-case-management"
+            with existingInstructionBundle=@variables.instruction_bundle_json
+            set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+            set @variables.composed_instructions=@outputs.instructionsBundle
 
     reasoning:
         instructions: ->
-            run @actions.load_and_compose_skills
-                with instructionNames="skill-support-case-management"
-                with existingInstructionBundle=@variables.instruction_bundle_json
-                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
-                set @variables.composed_instructions=@outputs.instructionsBundle
-            | Here is your past context. Use it for personalization:
-            | {!@variables.agent_memory}
-            | Topic-specific: If last summary mentions an existing case (e.g. case number), reference it. If pending goal involves case status, prioritize that.
-            | Follow these instructions first:
-            | {!@variables.composed_instructions}
-            | Collect complete issue details, confirm consent, and summarize case actions.
-            | If user want to end conversation, or specialist handoff is required, use {!@actions.go_to_finalization}.
+            # Pass 2: respond to user
+            if @variables.context_dirty == True:
+                | Here is your past context. Use it for personalization:
+                | {!@variables.agent_memory}
+                | Topic-specific: If last summary mentions an existing case (e.g. case number), reference it. If pending goal involves case status, prioritize that.
+                | Follow these instructions first:
+                | {!@variables.composed_instructions}
+                | Collect complete issue details, confirm consent, and summarize case actions.
+                | If user wants to end conversation, or specialist handoff is required, use {!@actions.go_to_finalization}.
+                | Do NOT call update_memory.
+
+            # Pass 1: capture memory only
+            if @variables.context_dirty == False:
+                | Do NOT respond to the user. Call {!@actions.update_memory} exactly once.
+                | Follow the LTM persistence extraction rules from your instructions:
+                | {!@variables.composed_instructions}
+
         actions:
-            go_to_finalization: @utils.transition to @topic.finalization
-                description: "Route to session termination or escalation, and memory checkpoint."
+            update_memory: @utils.setVariables
+                description: "Record this turn. Do not respond to the user."
+                with memory_summary=...
+                with memory_goal=...
+                with memory_has_issue=...
+                with context_dirty=True
+            go_to_finalization: @utils.transition to @subagent.finalization
+                description: "Route to session termination or escalation."
+
+    after_reasoning:
+        if @variables.context_dirty == True:
+            run @actions.save_context_case
+                with contactId=@variables.ContactId
+                with newSummary=@variables.memory_summary
+                with newGoal=@variables.memory_goal
+                with hasIssue=@variables.memory_has_issue
+                with newStyle=@variables.memory_style
+                set @variables.context_dirty=False
 
 
-topic finalization:
-    label: "Finalization and Escalation"
-    # Topic docstring:
-    # - Executes escalation workflow instructions.
-    # - Persists long-term memory context at session end.
-    description: "Escalation summary and memory checkpoint before session closure."
+subagent finalization:
+    description: "Escalation summary and final memory checkpoint before session closure."
 
     actions:
-        load_and_compose_skills:
-            description: "Load topic-specific skills, merge with existing bundle, and compose prompt-ready instructions."
+        load_skills_finalization:
+            description: "Load escalation workflow skills and compose instructions."
             inputs:
                 instructionNames: string
                     description: "CSV list of topic-specific skill/workflow names."
@@ -252,31 +388,41 @@ topic finalization:
                 loadedInstructionBundle: string
                     description: "Raw instruction bundle JSON for merge."
             target: "apex://Agent_Skill_LoadAndCompose"
-        save_context_tool:
-            description: "Persist long-term memory. Call this before saying goodbye to save extracted conversation data (scalar inputs only)."
+        save_context_final:
+            description: "Final persist of long-term memory before session close."
             inputs:
                 contactId: string
-                    description: "Contact id used to upsert context."
+                    description: "Contact ID."
                 newSummary: string
-                    description: "Detailed 4-5 sentence summary combining last session summary (when available) with this session: user inputs, assistant recommendations, actions taken, and outcomes."
+                    description: "Final conversation summary."
                 newGoal: string
-                    description: "Unfinished user goal to continue later, or empty string if none."
+                    description: "Pending goal or empty string."
                 hasIssue: boolean
-                    description: "True if the user still has an unresolved issue at session end."
+                    description: "Unresolved issue flag."
                 newStyle: string
-                    description: "Communication preference inferred from this session (e.g. concise, detailed, formal)."
+                    description: "Communication style."
             outputs:
                 success: boolean
-                    description: "Whether save operation succeeded."
+                    description: "Whether save succeeded."
             target: "apex://SaveAgentContext"
 
     reasoning:
         instructions: ->
-            run @actions.load_and_compose_skills
+            run @actions.load_skills_finalization
                 with instructionNames="workflow-escalate-to-human"
                 with existingInstructionBundle=@variables.instruction_bundle_json
                 set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
                 set @variables.composed_instructions=@outputs.instructionsBundle
+
+            # Final deterministic save before goodbye
+            run @actions.save_context_final
+                with contactId=@variables.ContactId
+                with newSummary=@variables.memory_summary
+                with newGoal=@variables.memory_goal
+                with hasIssue=@variables.memory_has_issue
+                with newStyle=@variables.memory_style
+                set @variables.context_dirty=False
+
             | Here is your past context. Use it for personalization:
             | {!@variables.agent_memory}
             | Topic-specific: Use LTM context to give a complete handoff summary, if applicable.
@@ -284,13 +430,4 @@ topic finalization:
             | {!@variables.composed_instructions}
             | Summarize the issue, actions taken and next steps for the customer in a structured formatted response.
             | Confirm escalation details and expected follow-up timeline, if applicable.
-            | Ask if there is anything else needed before ending the session.
-            | Before saying goodbye, call {!@actions.persist_memory} exactly once (extraction rules are in LTM skill).
-        actions:
-            persist_memory: @actions.save_context_tool
-                description: "Required at session end. Saves context with LLM-extracted summary, goal, unresolved-issue flag, and communication style."
-                with contactId=@variables.ContactId
-                with newSummary=...
-                with newGoal=...
-                with hasIssue=...
-                with newStyle=...
+            | Give a brief goodbye and confirm context is saved.

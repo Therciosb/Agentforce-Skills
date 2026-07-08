@@ -1,0 +1,13 @@
+<template>
+    <lightning-button-menu
+        icon-name="utility:settings"
+        alternative-text={label}
+        menu-alignment="right"
+        onselect={handleMenuSelect}
+    >
+        <lightning-menu-item value="new" label="New Skill" icon-name="utility:add"></lightning-menu-item>
+        <lightning-menu-item value="import" label="Import Skills" icon-name="utility:upload"></lightning-menu-item>
+        <lightning-menu-item value="export" label="Export Skills" icon-name="utility:download"></lightning-menu-item>
+        <lightning-menu-item value="bulkEdit" label="Bulk Edit" icon-name="utility:edit_form"></lightning-menu-item>
+    </lightning-button-menu>
+</template>

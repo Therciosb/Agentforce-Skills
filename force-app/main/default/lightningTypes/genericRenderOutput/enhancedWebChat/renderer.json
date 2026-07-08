@@ -1,8 +1,8 @@
 {
-  "renderer": {
-    "componentOverrides": {
-      "$": {
-        "definition": "c/genericDataRenderer"
+  "renderer" : {
+    "componentOverrides" : {
+      "$" : {
+        "definition" : "c/genericDataRenderer"
       }
     }
   }

@@ -35,7 +35,7 @@
         <inputParameters>
             <name>routingType</name>
             <value>
-                <stringValue>Bot</stringValue>
+                <stringValue>Copilot</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
@@ -70,15 +70,33 @@
         </inputParameters>
         <inputParameters>
             <name>botId</name>
-            <value>
-                <stringValue>0XxKY000000e2Ls0AI</stringValue>
-            </value>
         </inputParameters>
         <inputParameters>
             <name>botLabel</name>
+        </inputParameters>
+        <inputParameters>
+            <name>externalConversationBotId</name>
+        </inputParameters>
+        <inputParameters>
+            <name>externalConversationBotLabel</name>
+        </inputParameters>
+        <inputParameters>
+            <name>copilotId</name>
             <value>
-                <stringValue>Coral Cloud Experience Agent</stringValue>
+                <stringValue>0XxKY000000eAZs0AM</stringValue>
             </value>
+        </inputParameters>
+        <inputParameters>
+            <name>copilotLabel</name>
+            <value>
+                <stringValue>Render Data Test</stringValue>
+            </value>
+        </inputParameters>
+        <inputParameters>
+            <name>agentforceEmployeeAgentId</name>
+        </inputParameters>
+        <inputParameters>
+            <name>agentforceEmployeeAgentLabel</name>
         </inputParameters>
         <inputParameters>
             <name>isQueueVariable</name>
@@ -135,6 +153,7 @@
         <object>MessagingSession</object>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </recordLookups>
+    <runInMode>DefaultMode</runInMode>
     <start>
         <locationX>50</locationX>
         <locationY>0</locationY>
