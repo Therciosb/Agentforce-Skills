@@ -1,0 +1,102 @@
+<template>
+    <lightning-card title="Reward Rules" icon-name="custom:custom19">
+        <div slot="actions">
+            <lightning-button label="Add Rule" icon-name="utility:add" variant="neutral" onclick={handleAddRule} class="slds-m-right_x-small"></lightning-button>
+            <lightning-button label="Save All" variant="brand" onclick={handleSaveAll}></lightning-button>
+        </div>
+
+        <template lwc:if={isLoading}>
+            <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+        </template>
+
+        <template lwc:if={hasNoAgent}>
+            <div class="slds-p-around_medium">
+                <p class="slds-text-color_weak">Select an agent to view reward rules.</p>
+            </div>
+        </template>
+
+        <template lwc:if={hasRules}>
+            <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+                <template for:each={groupedRules} for:item="group">
+                    <div key={group.key} class="slds-m-bottom_medium">
+                        <h3 class="slds-text-title_caps slds-p-vertical_x-small slds-border_bottom">{group.label}</h3>
+                        <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_fixed-layout slds-m-top_xx-small">
+                            <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th scope="col" style="width:45%"><div class="slds-truncate">Action / Outcome</div></th>
+                                    <th scope="col" style="width:25%"><div class="slds-truncate slds-text-align_center">Points</div></th>
+                                    <th scope="col" style="width:15%"><div class="slds-truncate slds-text-align_center">Active</div></th>
+                                    <th scope="col" style="width:15%"><div class="slds-truncate slds-text-align_center">Remove</div></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={group.records} for:item="rule">
+                                    <tr key={rule.Id} class="slds-hint-parent">
+                                        <td>
+                                            <div class="slds-truncate rule-name" title={rule.action_name__c}>{rule.action_name__c}</div>
+                                        </td>
+                                        <td class="slds-text-align_center">
+                                            <lightning-input
+                                                type="number"
+                                                value={rule.points__c}
+                                                variant="label-hidden"
+                                                data-id={rule.Id}
+                                                data-field="points__c"
+                                                onchange={handleFieldChange}
+                                                class="points-input"
+                                            ></lightning-input>
+                                        </td>
+                                        <td class="slds-text-align_center">
+                                            <lightning-input
+                                                type="toggle"
+                                                checked={rule.is_active__c}
+                                                variant="label-hidden"
+                                                data-id={rule.Id}
+                                                data-field="is_active__c"
+                                                onchange={handleToggleChange}
+                                                message-toggle-active="On"
+                                                message-toggle-inactive="Off"
+                                                class="toggle-input"
+                                            ></lightning-input>
+                                        </td>
+                                        <td class="slds-text-align_center">
+                                            <lightning-button-icon
+                                                icon-name="utility:delete"
+                                                variant="bare"
+                                                alternative-text="Remove rule"
+                                                data-id={rule.Id}
+                                                onclick={handleRemoveRule}
+                                                class="slds-text-color_error"
+                                            ></lightning-button-icon>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </template>
+            </div>
+        </template>
+
+        <template lwc:if={showAddForm}>
+            <div class="slds-p-around_medium slds-box slds-m-around_medium slds-theme_shade">
+                <h3 class="slds-text-heading_small slds-m-bottom_small">New Rule</h3>
+                <div class="slds-grid slds-gutters slds-wrap">
+                    <div class="slds-col slds-size_1-of-3">
+                        <lightning-input label="Action / Outcome" value={newRule.name} onchange={handleNewRuleName} required></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-3">
+                        <lightning-input label="Topic Area (blank = global)" value={newRule.topicArea} onchange={handleNewRuleTopicArea}></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_1-of-3">
+                        <lightning-input label="Points" type="number" value={newRule.points} onchange={handleNewRulePoints} required></lightning-input>
+                    </div>
+                </div>
+                <div class="slds-m-top_small">
+                    <lightning-button label="Cancel" onclick={handleCancelAdd}></lightning-button>
+                    <lightning-button label="Add Rule" variant="brand" onclick={handleConfirmAdd} class="slds-m-left_x-small"></lightning-button>
+                </div>
+            </div>
+        </template>
+    </lightning-card>
+</template>

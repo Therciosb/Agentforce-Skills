@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>66.0</apiVersion>
+    <isExposed>false</isExposed>
+    <masterLabel>SIA Reward Rules Editor</masterLabel>
+    <description>Inline-editable datatable for managing agent reward configurations grouped by topic area</description>
+</LightningComponentBundle>

@@ -1,0 +1,111 @@
+<template>
+    <lightning-card title="Agent Overview">
+        <div class="slds-p-around_medium">
+            <!-- Period Selector -->
+            <div class="slds-m-bottom_medium">
+                <lightning-combobox
+                    name="period"
+                    label="Period"
+                    value={periodWeeks}
+                    options={periodOptions}
+                    onchange={handlePeriodChange}
+                    variant="label-inline"
+                ></lightning-combobox>
+            </div>
+
+            <!-- Loading -->
+            <template lwc:if={isLoading}>
+                <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+            </template>
+
+            <template lwc:if={hasData}>
+                <!-- Metric Cards -->
+                <div class="slds-grid slds-wrap slds-gutters slds-m-bottom_medium">
+                    <div class="slds-col slds-size_1-of-4 slds-p-around_xx-small">
+                        <c-sia-metric-card label="AES Average" value={metrics.aesAvg} format="decimal"></c-sia-metric-card>
+                    </div>
+                    <div class="slds-col slds-size_1-of-4 slds-p-around_xx-small">
+                        <c-sia-metric-card label="Improvement Rate" value={metrics.improvementRate} format="percent"></c-sia-metric-card>
+                    </div>
+                    <div class="slds-col slds-size_1-of-4 slds-p-around_xx-small">
+                        <c-sia-metric-card label="Sessions" value={metrics.sessionCount} format="number"></c-sia-metric-card>
+                    </div>
+                    <div class="slds-col slds-size_1-of-4 slds-p-around_xx-small">
+                        <c-sia-metric-card label="Promoted Lessons" value={metrics.promotedLessonCount} format="number"></c-sia-metric-card>
+                    </div>
+                </div>
+
+                <!-- AES Trend Chart -->
+                <div class="slds-box slds-m-bottom_medium">
+                    <h3 class="slds-text-heading_small slds-m-bottom_small">AES Trend</h3>
+                    <div class="chart-container">
+                        <canvas lwc:ref="trendCanvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- AES Breakdown -->
+                <div class="slds-box slds-m-bottom_medium">
+                    <h3 class="slds-text-heading_small slds-m-bottom_small">AES Breakdown</h3>
+                    <div class="slds-m-bottom_x-small">
+                        <div class="slds-grid slds-grid_align-spread">
+                            <span class="slds-text-body_small">Goal Achievement</span>
+                            <span class="slds-text-body_small slds-text-color_weak">{goalLabel}</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-goal" style={goalBarStyle}></div>
+                        </div>
+                    </div>
+                    <div class="slds-m-bottom_x-small">
+                        <div class="slds-grid slds-grid_align-spread">
+                            <span class="slds-text-body_small">Efficiency</span>
+                            <span class="slds-text-body_small slds-text-color_weak">{efficiencyLabel}</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-efficiency" style={efficiencyBarStyle}></div>
+                        </div>
+                    </div>
+                    <div class="slds-m-bottom_x-small">
+                        <div class="slds-grid slds-grid_align-spread">
+                            <span class="slds-text-body_small">Learning</span>
+                            <span class="slds-text-body_small slds-text-color_weak">{learningLabel}</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar bar-learning" style={learningBarStyle}></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Knowledge Health -->
+                <div class="slds-box">
+                    <h3 class="slds-text-heading_small slds-m-bottom_small">Knowledge Health</h3>
+                    <div class="slds-grid slds-wrap slds-gutters">
+                        <div class="slds-col slds-size_1-of-3 slds-text-align_center">
+                            <svg class="progress-ring" viewBox="0 0 120 120">
+                                <circle class="progress-ring__bg" cx="60" cy="60" r="50"></circle>
+                                <circle class="progress-ring__fill progress-ring__yield" cx="60" cy="60" r="50"
+                                    style={yieldDashStyle}></circle>
+                            </svg>
+                            <div class="slds-text-body_small">Yield: {yieldPct}%</div>
+                        </div>
+                        <div class="slds-col slds-size_1-of-3 slds-text-align_center">
+                            <svg class="progress-ring" viewBox="0 0 120 120">
+                                <circle class="progress-ring__bg" cx="60" cy="60" r="50"></circle>
+                                <circle class="progress-ring__fill progress-ring__utilization" cx="60" cy="60" r="50"
+                                    style={utilizationDashStyle}></circle>
+                            </svg>
+                            <div class="slds-text-body_small">Utilization: {utilizationPct}%</div>
+                        </div>
+                        <div class="slds-col slds-size_1-of-3 slds-text-align_center">
+                            <svg class="progress-ring" viewBox="0 0 120 120">
+                                <circle class="progress-ring__bg" cx="60" cy="60" r="50"></circle>
+                                <circle class="progress-ring__fill progress-ring__accuracy" cx="60" cy="60" r="50"
+                                    style={accuracyDashStyle}></circle>
+                            </svg>
+                            <div class="slds-text-body_small">Accuracy: {accuracyPct}%</div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>

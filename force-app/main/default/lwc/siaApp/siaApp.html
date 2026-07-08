@@ -1,0 +1,64 @@
+<template>
+    <div class="sia-app">
+        <header class="sia-header slds-grid slds-grid_vertical-align-center slds-p-around_small">
+            <div class="slds-col">
+                <h1 class="slds-text-heading_medium">Self-Improving Agent Console</h1>
+            </div>
+            <div class="slds-col slds-size_3-of-12">
+                <c-sia-agent-switcher onagentchange={handleAgentChange}></c-sia-agent-switcher>
+            </div>
+        </header>
+
+        <div class="slds-grid sia-body">
+            <nav class="sia-sidebar slds-col slds-size_2-of-12 slds-p-around_small">
+                <lightning-vertical-navigation selected-item={activeView} onselect={handleNavSelect}>
+                    <lightning-vertical-navigation-section label="Configure">
+                        <lightning-vertical-navigation-item label="Reward Rules" name="reward-rules"></lightning-vertical-navigation-item>
+                        <lightning-vertical-navigation-item label="Subagents" name="subagents"></lightning-vertical-navigation-item>
+                        <lightning-vertical-navigation-item label="Thresholds" name="thresholds"></lightning-vertical-navigation-item>
+                    </lightning-vertical-navigation-section>
+                    <lightning-vertical-navigation-section label="Monitor">
+                        <lightning-vertical-navigation-item label="Overview" name="overview"></lightning-vertical-navigation-item>
+                        <lightning-vertical-navigation-item label="Knowledge" name="knowledge"></lightning-vertical-navigation-item>
+                        <lightning-vertical-navigation-item label="Sessions" name="sessions"></lightning-vertical-navigation-item>
+                        <lightning-vertical-navigation-item label="Compare" name="compare"></lightning-vertical-navigation-item>
+                    </lightning-vertical-navigation-section>
+                </lightning-vertical-navigation>
+            </nav>
+
+            <main class="sia-content slds-col slds-size_10-of-12 slds-p-around_medium">
+                <template lwc:if={hasAgent}>
+                    <template lwc:if={isRewardRules}>
+                        <c-sia-reward-rules-editor agent-api-name={agentApiName}></c-sia-reward-rules-editor>
+                    </template>
+                    <template lwc:if={isSubagents}>
+                        <c-sia-subagent-configurator agent-api-name={agentApiName}></c-sia-subagent-configurator>
+                    </template>
+                    <template lwc:if={isThresholds}>
+                        <c-sia-threshold-editor agent-api-name={agentApiName}></c-sia-threshold-editor>
+                    </template>
+                    <template lwc:if={isOverview}>
+                        <c-sia-overview-dashboard agent-api-name={agentApiName}></c-sia-overview-dashboard>
+                    </template>
+                    <template lwc:if={isKnowledge}>
+                        <c-sia-knowledge-explorer agent-api-name={agentApiName} onlessonselected={handleLessonSelected}></c-sia-knowledge-explorer>
+                    </template>
+                    <template lwc:if={isLessonDetail}>
+                        <c-sia-lesson-detail-view lesson-id={selectedLessonId} onback={handleBackToKnowledge}></c-sia-lesson-detail-view>
+                    </template>
+                    <template lwc:if={isSessions}>
+                        <c-sia-session-explorer agent-api-name={agentApiName}></c-sia-session-explorer>
+                    </template>
+                    <template lwc:if={isCompare}>
+                        <c-sia-agent-comparison></c-sia-agent-comparison>
+                    </template>
+                </template>
+                <template lwc:else>
+                    <div class="slds-align_absolute-center slds-p-around_large">
+                        <p class="slds-text-color_weak">Select an agent to get started.</p>
+                    </div>
+                </template>
+            </main>
+        </div>
+    </div>
+</template>

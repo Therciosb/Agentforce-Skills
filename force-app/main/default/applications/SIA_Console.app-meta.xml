@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <brand>
+        <headerColor>#1B2631</headerColor>
+        <logo>SIA_App_Icon</logo>
+        <shouldOverrideOrgTheme>true</shouldOverrideOrgTheme>
+    </brand>
+    <description>Monitor and tune your self-improving Agentforce agents. Track effectiveness scores and session outcomes, explore the lessons agents learn from experience, and configure reward rules and confidence thresholds that drive continuous improvement.</description>
+    <formFactors>Large</formFactors>
+    <isNavAutoTempTabsDisabled>false</isNavAutoTempTabsDisabled>
+    <isNavPersonalizationDisabled>false</isNavPersonalizationDisabled>
+    <isNavTabPersistenceDisabled>false</isNavTabPersistenceDisabled>
+    <isOmniPinnedViewEnabled>false</isOmniPinnedViewEnabled>
+    <label>Self-Improving Agent Console</label>
+    <navType>Standard</navType>
+    <tabs>SIA_Console</tabs>
+    <uiType>Lightning</uiType>
+</CustomApplication>

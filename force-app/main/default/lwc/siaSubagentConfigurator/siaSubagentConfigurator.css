@@ -1,0 +1,30 @@
+.section-content {
+    padding: 12px 0;
+}
+
+.optimal-actions-container {
+    max-width: 150px;
+}
+
+.mapping-row {
+    display: grid;
+    grid-template-columns: 6fr 4fr 2fr;
+    gap: 12px;
+    align-items: end;
+}
+
+.mapping-delete-col {
+    display: flex;
+    align-items: flex-end;
+    padding-bottom: 4px;
+}
+
+.triggers-horizontal lightning-checkbox-group {
+    --slds-c-checkbox-group-layout: row;
+}
+
+/* Fallback for horizontal layout of checkboxes */
+.triggers-horizontal fieldset .slds-checkbox {
+    display: inline-block;
+    margin-right: 1.5rem;
+}

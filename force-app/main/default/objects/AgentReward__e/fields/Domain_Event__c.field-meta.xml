@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Domain_Event__c</fullName>
+    <description>The raw domain outcome event the subagent reported (e.g. &quot;resolved&quot;, &quot;unresolved&quot;, &quot;case_created&quot;). Classified to success/failure by AgentRewardHandler via AgentSubagentConfig.outcome_mapping_json — the platform decides meaning, not the agent.</description>
+    <externalId>false</externalId>
+    <isFilteringDisabled>false</isFilteringDisabled>
+    <isNameField>false</isNameField>
+    <isSortingDisabled>false</isSortingDisabled>
+    <label>Domain Event</label>
+    <length>80</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

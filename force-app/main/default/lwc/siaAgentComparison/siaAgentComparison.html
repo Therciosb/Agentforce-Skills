@@ -1,0 +1,56 @@
+<template>
+    <lightning-card title="Agent Comparison">
+        <div class="slds-p-around_medium">
+            <!-- Agent Selection -->
+            <div class="slds-m-bottom_medium">
+                <lightning-checkbox-group
+                    name="agents"
+                    label="Select Agents to Compare"
+                    options={agentOptions}
+                    value={selectedAgents}
+                    onchange={handleAgentSelection}
+                ></lightning-checkbox-group>
+            </div>
+
+            <!-- Loading -->
+            <template lwc:if={isLoading}>
+                <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+            </template>
+
+            <template lwc:if={hasSelection}>
+                <!-- Multi-line Chart -->
+                <div class="slds-box slds-m-bottom_medium">
+                    <h3 class="slds-text-heading_small slds-m-bottom_small">AES Trends</h3>
+                    <div class="chart-container">
+                        <canvas lwc:ref="comparisonCanvas"></canvas>
+                    </div>
+                    <!-- Legend -->
+                    <div class="slds-grid slds-wrap slds-m-top_small">
+                        <template for:each={legendItems} for:item="item">
+                            <div key={item.agent} class="slds-m-right_medium slds-grid slds-grid_vertical-align-center">
+                                <span class="legend-dot" style={item.dotStyle}></span>
+                                <span class="slds-text-body_small slds-m-left_xx-small">{item.agent}</span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Comparison Table -->
+                <template lwc:if={hasSummaries}>
+                    <lightning-datatable
+                        key-field="agentApiName"
+                        data={summaries}
+                        columns={summaryColumns}
+                        hide-checkbox-column
+                    ></lightning-datatable>
+                </template>
+            </template>
+
+            <template lwc:if={noSelection}>
+                <div class="slds-align_absolute-center slds-p-around_large slds-text-color_weak">
+                    Select at least one agent to compare.
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>

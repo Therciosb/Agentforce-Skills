@@ -1,0 +1,67 @@
+.chart-container {
+    width: 100%;
+    min-height: 200px;
+}
+
+.chart-container canvas {
+    width: 100%;
+    height: 200px;
+}
+
+.bar-container {
+    background: var(--slds-g-color-neutral-base-80, #ecebea);
+    border-radius: 4px;
+    height: 12px;
+    width: 100%;
+    margin-top: 4px;
+}
+
+.bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.bar-goal {
+    background: var(--sia-color-goal, #0D9488);
+}
+
+.bar-efficiency {
+    background: var(--sia-color-efficiency, #0176d3);
+}
+
+.bar-learning {
+    background: var(--sia-color-learning, #9b59b6);
+}
+
+.progress-ring {
+    width: 80px;
+    height: 80px;
+}
+
+.progress-ring__bg {
+    fill: none;
+    stroke: var(--slds-g-color-neutral-base-80, #ecebea);
+    stroke-width: 8;
+}
+
+.progress-ring__fill {
+    fill: none;
+    stroke-width: 8;
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+    transition: stroke-dasharray 0.3s ease;
+}
+
+.progress-ring__yield {
+    stroke: var(--sia-color-yield, #0D9488);
+}
+
+.progress-ring__utilization {
+    stroke: var(--sia-color-utilization, #0176d3);
+}
+
+.progress-ring__accuracy {
+    stroke: var(--sia-color-accuracy, #9b59b6);
+}

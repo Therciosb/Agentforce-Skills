@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningMessageChannel xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Publishes selected agent context for all SIA Console views</description>
+    <isExposed>true</isExposed>
+    <lightningMessageFields>
+        <description>Currently selected agent developer name</description>
+        <fieldName>agentApiName</fieldName>
+    </lightningMessageFields>
+    <masterLabel>Self Improving Agent Context</masterLabel>
+</LightningMessageChannel>

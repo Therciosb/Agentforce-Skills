@@ -1,0 +1,29 @@
+.sia-app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+}
+
+.sia-header {
+    background: var(--slds-g-color-neutral-base-100, #ffffff);
+    border-bottom: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.sia-body {
+    flex: 1;
+    overflow: hidden;
+}
+
+.sia-sidebar {
+    background: var(--slds-g-color-neutral-base-100, #ffffff);
+    border-right: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+    overflow-y: auto;
+    height: 100%;
+}
+
+.sia-content {
+    overflow-y: auto;
+    height: 100%;
+}

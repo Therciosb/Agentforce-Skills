@@ -1,0 +1,58 @@
+<template>
+    <lightning-card title="Knowledge Explorer">
+        <div class="slds-p-around_medium">
+            <!-- Filter Bar -->
+            <div class="slds-grid slds-wrap slds-gutters slds-m-bottom_medium">
+                <div class="slds-col slds-size_1-of-3">
+                    <lightning-combobox
+                        name="subagent"
+                        label="Subagent"
+                        value={selectedSubagent}
+                        options={subagentOptions}
+                        onchange={handleSubagentChange}
+                    ></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-3">
+                    <lightning-combobox
+                        name="status"
+                        label="Status"
+                        value={selectedStatus}
+                        options={statusOptions}
+                        onchange={handleStatusChange}
+                    ></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-3">
+                    <lightning-input
+                        type="search"
+                        label="Search"
+                        value={searchTerm}
+                        onchange={handleSearchChange}
+                        placeholder="Filter lessons..."
+                    ></lightning-input>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <template lwc:if={isLoading}>
+                <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+            </template>
+
+            <!-- Data Table -->
+            <template lwc:if={hasLessons}>
+                <lightning-datatable
+                    key-field="id"
+                    data={filteredLessons}
+                    columns={columns}
+                    onrowaction={handleRowClick}
+                    hide-checkbox-column
+                ></lightning-datatable>
+            </template>
+
+            <template lwc:if={noResults}>
+                <div class="slds-align_absolute-center slds-p-around_large slds-text-color_weak">
+                    No lessons found matching your criteria.
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>

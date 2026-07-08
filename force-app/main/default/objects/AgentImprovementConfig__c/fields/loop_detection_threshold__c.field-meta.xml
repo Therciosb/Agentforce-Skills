@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>loop_detection_threshold__c</fullName>
+    <defaultValue>3</defaultValue>
+    <description>Maximum retries before applying a penalty.</description>
+    <externalId>false</externalId>
+    <label>Loop Detection Threshold</label>
+    <precision>2</precision>
+    <required>true</required>
+    <scale>0</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

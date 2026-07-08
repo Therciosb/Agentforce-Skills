@@ -1,0 +1,16 @@
+.chart-container {
+    width: 100%;
+    min-height: 250px;
+}
+
+.chart-container canvas {
+    width: 100%;
+    height: 250px;
+}
+
+.legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}

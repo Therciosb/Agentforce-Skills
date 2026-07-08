@@ -1,0 +1,33 @@
+.status-bar {
+    padding: 0.5rem 1rem;
+    background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+    border-radius: 0.25rem;
+}
+
+.slds-badge_success {
+    background-color: var(--sia-color-success, #2e844a);
+    color: #fff;
+}
+
+.slds-badge_warning {
+    background-color: var(--sia-color-warning, #fe9339);
+    color: #fff;
+}
+
+.slds-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9001;
+}
+
+.slds-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9000;
+}

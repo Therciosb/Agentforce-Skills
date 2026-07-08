@@ -1,0 +1,47 @@
+.timeline {
+    position: relative;
+    padding-left: 1.5rem;
+    margin-left: 0.5rem;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--slds-g-color-border-base-1, #d8d8d8);
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.timeline-dot {
+    position: absolute;
+    left: -1.25rem;
+    top: 0.75rem;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--sia-color-timeline-dot, #0D9488);
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px var(--slds-g-color-border-base-1, #d8d8d8);
+}
+
+.timeline-content {
+    margin-left: 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.slds-badge_success {
+    background-color: var(--sia-color-success, #2e844a);
+    color: #fff;
+}
+
+.slds-badge_error {
+    background-color: var(--sia-color-error, #ea001e);
+    color: #fff;
+}

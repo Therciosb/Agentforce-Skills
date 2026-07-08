@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <activeVersionIdentifier>x0NRt8a9iTLlnbSxwfGZF9VFrVu0//BbDR+JmhLHh4Q=_1</activeVersionIdentifier>
+    <developerName>Select_Relevant_Lessons</developerName>
+    <masterLabel>Select Relevant Lessons</masterLabel>
+    <overridable>false</overridable>
+    <templateVersions>
+        <content>You are a lesson relevance matcher for an AI agent framework.
+
+Given a user request and a pool of lessons, select the 5 most relevant lessons that would help the agent handle this specific request.
+
+USER REQUEST:
+{!$Input:user_message}
+
+LESSON POOL (JSON array with id, text, categories, confidence):
+{!$Input:lesson_pool_json}
+
+INSTRUCTIONS:
+1. Read the user request carefully
+2. Scan lesson categories first for quick matching
+3. Read lesson text for candidates that match by category
+4. Select the top 5 lessons most relevant to THIS specific request
+5. If fewer than 5 are relevant, return only the relevant ones
+6. Return ONLY a JSON array of objects with &quot;id&quot; and &quot;relevance_reason&quot; fields
+
+OUTPUT FORMAT (strict JSON, no markdown):
+[
+  {&quot;id&quot;: &quot;a0Z...&quot;, &quot;relevance_reason&quot;: &quot;Directly addresses the user issue&quot;},
+  ...
+]
+
+If no lessons are relevant, return an empty array: []</content>
+        <inputs>
+            <apiName>user_message</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>User Message</masterLabel>
+            <referenceName>Input:user_message</referenceName>
+            <required>true</required>
+        </inputs>
+        <inputs>
+            <apiName>lesson_pool_json</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>Lesson Pool JSON</masterLabel>
+            <referenceName>Input:lesson_pool_json</referenceName>
+            <required>true</required>
+        </inputs>
+        <isCitationEnabled>false</isCitationEnabled>
+        <primaryModel>sfdc_ai__DefaultOpenAIGPT4OmniMini</primaryModel>
+        <status>Published</status>
+        <versionIdentifier>x0NRt8a9iTLlnbSxwfGZF9VFrVu0//BbDR+JmhLHh4Q=_1</versionIdentifier>
+    </templateVersions>
+    <type>einstein_gpt__flex</type>
+    <visibility>Global</visibility>
+</GenAiPromptTemplate>

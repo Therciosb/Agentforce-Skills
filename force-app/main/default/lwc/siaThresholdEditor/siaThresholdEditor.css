@@ -1,0 +1,39 @@
+.section-header {
+    padding: 8px 12px;
+    background-color: var(--slds-g-color-neutral-base-95, #f3f3f3);
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.threshold-section {
+    border: 1px solid var(--slds-g-color-border-1, #e5e5e5);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.field-grid {
+    display: grid;
+    gap: 12px 24px;
+}
+
+.field-grid_3col {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.field-grid_2col {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* Constrain number inputs to reasonable widths */
+.field-grid lightning-input {
+    max-width: 200px;
+}
+
+.toggle-field {
+    display: flex;
+    align-items: flex-end;
+}
+
+.field-spacer {
+    /* Empty cell placeholder to maintain grid alignment */
+}

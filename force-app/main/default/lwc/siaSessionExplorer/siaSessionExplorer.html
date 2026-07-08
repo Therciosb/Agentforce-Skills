@@ -1,0 +1,86 @@
+<template>
+    <lightning-card title="Session Explorer">
+        <div class="slds-p-around_medium">
+            <!-- Filter Bar -->
+            <div class="slds-grid slds-wrap slds-gutters slds-m-bottom_medium">
+                <div class="slds-col slds-size_1-of-3">
+                    <lightning-combobox
+                        name="period"
+                        label="Period"
+                        value={periodWeeks}
+                        options={periodOptions}
+                        onchange={handlePeriodChange}
+                    ></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-3">
+                    <lightning-combobox
+                        name="outcome"
+                        label="Outcome"
+                        value={selectedOutcome}
+                        options={outcomeOptions}
+                        onchange={handleOutcomeChange}
+                    ></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-3">
+                    <lightning-combobox
+                        name="subagent"
+                        label="Subagent"
+                        value={selectedSubagent}
+                        options={subagentOptions}
+                        onchange={handleSubagentChange}
+                    ></lightning-combobox>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <template lwc:if={isLoading}>
+                <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+            </template>
+
+            <!-- Sessions Table -->
+            <template lwc:if={hasSessions}>
+                <lightning-datatable
+                    key-field="Id"
+                    data={sessions}
+                    columns={columns}
+                    onrowaction={handleRowAction}
+                    hide-checkbox-column
+                ></lightning-datatable>
+            </template>
+
+            <!-- Action Timeline -->
+            <template lwc:if={showTimeline}>
+                <div class="slds-box slds-m-top_medium">
+                    <h3 class="slds-text-heading_small slds-m-bottom_small">Action Timeline - {selectedSessionId}</h3>
+                    <template lwc:if={isLoadingTimeline}>
+                        <lightning-spinner alternative-text="Loading timeline" size="small"></lightning-spinner>
+                    </template>
+                    <template lwc:if={hasActions}>
+                        <div class="timeline">
+                            <template for:each={sessionActions} for:item="action">
+                                <div key={action.id} class="timeline-item">
+                                    <div class="timeline-dot"></div>
+                                    <div class="timeline-content slds-box slds-p-around_small">
+                                        <div class="slds-grid slds-grid_align-spread">
+                                            <span class="slds-text-title_bold">{action.actionName}</span>
+                                            <span class="slds-text-body_small slds-text-color_weak">{action.timestamp}</span>
+                                        </div>
+                                        <div class="slds-grid slds-m-top_xx-small">
+                                            <span class={action.outcomeClass}>{action.outcome}</span>
+                                            <span class="slds-m-left_small slds-text-body_small">+{action.points} pts</span>
+                                        </div>
+                                        <template lwc:if={action.lessonRef}>
+                                            <div class="slds-m-top_xx-small slds-text-body_small">
+                                                Lesson: {action.lessonRef}
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+</template>

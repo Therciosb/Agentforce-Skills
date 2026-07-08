@@ -1,0 +1,6 @@
+case_id,turn,utterance,expected_response,expected_outcome
+password_reset,1,How do I reset my password?,reset,resolved
+password_reset,2,"Thanks, that worked",,resolved
+billing_question,1,I was charged twice this month,,case_created
+billing_question,2,My email is user@example.com,case,case_created
+escalation,1,I need to speak to a human agent,,escalated

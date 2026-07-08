@@ -1,0 +1,10 @@
+.metric-card {
+    border-radius: 0.5rem;
+    border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
+    text-align: center;
+}
+
+.metric-value {
+    color: var(--sia-metric-color, var(--slds-g-color-brand-base-50, #0176d3));
+    font-weight: 700;
+}

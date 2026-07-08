@@ -1,0 +1,24 @@
+.rule-name {
+    font-family: 'Salesforce Mono', monospace;
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.points-input {
+    max-width: 100px;
+    margin: 0 auto;
+}
+
+.toggle-input {
+    display: flex;
+    justify-content: center;
+}
+
+:host .slds-table th,
+:host .slds-table td {
+    vertical-align: middle;
+}
+
+.group-header {
+    color: var(--slds-g-color-on-surface, #444);
+}

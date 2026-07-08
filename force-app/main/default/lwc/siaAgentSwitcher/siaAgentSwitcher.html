@@ -1,0 +1,15 @@
+<template>
+    <template lwc:if={hasAgents}>
+        <lightning-combobox
+            name="agentSwitcher"
+            label="Agent"
+            value={selectedAgent}
+            options={agentOptions}
+            onchange={handleAgentChange}
+            variant="label-inline"
+        ></lightning-combobox>
+    </template>
+    <template lwc:else>
+        <p class="slds-text-color_weak slds-p-top_xx-small">No agents configured</p>
+    </template>
+</template>

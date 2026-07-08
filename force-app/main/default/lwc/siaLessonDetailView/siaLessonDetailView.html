@@ -1,0 +1,144 @@
+<template>
+    <lightning-card>
+        <div class="slds-p-around_medium">
+            <!-- Back Button -->
+            <lightning-button
+                label="Back to Knowledge"
+                icon-name="utility:back"
+                variant="base"
+                onclick={handleBack}
+                class="slds-m-bottom_medium"
+            ></lightning-button>
+
+            <!-- Loading -->
+            <template lwc:if={isLoading}>
+                <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+            </template>
+
+            <template lwc:if={lesson}>
+                <!-- Status Bar -->
+                <div class="slds-grid slds-grid_align-spread slds-m-bottom_medium status-bar">
+                    <div class="slds-grid slds-grid_vertical-align-center">
+                        <span class={statusBadgeClass}>{lesson.status}</span>
+                        <span class="slds-m-left_small slds-text-body_small">{lesson.subagent}</span>
+                    </div>
+                    <div>
+                        <span class="slds-text-body_small">Confidence: {lesson.confidence}%</span>
+                    </div>
+                </div>
+
+                <!-- Lesson Text -->
+                <div class="slds-box slds-m-bottom_medium">
+                    <div class="slds-grid slds-grid_align-spread slds-m-bottom_small">
+                        <h3 class="slds-text-heading_small">Lesson</h3>
+                        <template lwc:if={isEditingLesson}>
+                            <div>
+                                <lightning-button label="Cancel" onclick={cancelEditLesson} class="slds-m-right_x-small"></lightning-button>
+                                <lightning-button label="Save" variant="brand" onclick={saveLesson}></lightning-button>
+                            </div>
+                        </template>
+                        <template lwc:else>
+                            <lightning-button label="Edit" icon-name="utility:edit" onclick={startEditLesson}></lightning-button>
+                        </template>
+                    </div>
+                    <template lwc:if={isEditingLesson}>
+                        <lightning-textarea value={editLessonText} onchange={handleLessonTextChange}></lightning-textarea>
+                    </template>
+                    <template lwc:else>
+                        <p class="slds-text-body_regular">{lesson.lessonText}</p>
+                    </template>
+                </div>
+
+                <!-- Admin Notes -->
+                <div class="slds-box slds-m-bottom_medium">
+                    <div class="slds-grid slds-grid_align-spread slds-m-bottom_small">
+                        <h3 class="slds-text-heading_small">Admin Notes</h3>
+                        <template lwc:if={isEditingNotes}>
+                            <div>
+                                <lightning-button label="Cancel" onclick={cancelEditNotes} class="slds-m-right_x-small"></lightning-button>
+                                <lightning-button label="Save" variant="brand" onclick={saveNotes}></lightning-button>
+                            </div>
+                        </template>
+                        <template lwc:else>
+                            <lightning-button label="Edit" icon-name="utility:edit" onclick={startEditNotes}></lightning-button>
+                        </template>
+                    </div>
+                    <template lwc:if={isEditingNotes}>
+                        <lightning-textarea value={editNotesText} onchange={handleNotesTextChange}></lightning-textarea>
+                    </template>
+                    <template lwc:else>
+                        <p class="slds-text-body_regular">{notesDisplay}</p>
+                    </template>
+                </div>
+
+                <!-- Metric Cards -->
+                <div class="slds-grid slds-wrap slds-gutters slds-m-bottom_medium">
+                    <div class="slds-col slds-size_1-of-4 slds-p-around_xx-small">
+                        <c-sia-metric-card label="Confidence" value={lesson.confidence} format="percent"></c-sia-metric-card>
+                    </div>
+                    <div class="slds-col slds-size_1-of-4 slds-p-around_xx-small">
+                        <c-sia-metric-card label="References" value={lesson.referenceCount} format="number"></c-sia-metric-card>
+                    </div>
+                    <div class="slds-col slds-size_1-of-4 slds-p-around_xx-small">
+                        <c-sia-metric-card label="Successes" value={lesson.successCount} format="number"></c-sia-metric-card>
+                    </div>
+                    <div class="slds-col slds-size_1-of-4 slds-p-around_xx-small">
+                        <c-sia-metric-card label="Success Rate" value={lesson.successRate} format="percent"></c-sia-metric-card>
+                    </div>
+                </div>
+
+                <!-- Usage History -->
+                <div class="slds-box slds-m-bottom_medium">
+                    <h3 class="slds-text-heading_small slds-m-bottom_small">Usage History</h3>
+                    <template lwc:if={hasUsageHistory}>
+                        <lightning-datatable
+                            key-field="id"
+                            data={usageHistory}
+                            columns={usageColumns}
+                            hide-checkbox-column
+                        ></lightning-datatable>
+                        <div class="slds-m-top_small slds-text-align_center">
+                            <lightning-button label="Load More" onclick={loadMoreUsage} disabled={noMoreUsage}></lightning-button>
+                        </div>
+                    </template>
+                    <template lwc:else>
+                        <p class="slds-text-color_weak">No usage history available.</p>
+                    </template>
+                </div>
+
+                <!-- Actions -->
+                <div class="slds-grid slds-grid_align-spread">
+                    <lightning-button-menu alternative-text="Deprecate actions" label="Deprecate" onselect={handleDeprecate}>
+                        <lightning-menu-item value="Hide" label="Hide"></lightning-menu-item>
+                        <lightning-menu-item value="Demote" label="Demote"></lightning-menu-item>
+                        <lightning-menu-item value="Archive" label="Archive"></lightning-menu-item>
+                    </lightning-button-menu>
+                    <lightning-button
+                        label="Remove Permanently"
+                        variant="destructive"
+                        onclick={handleRemoveClick}
+                    ></lightning-button>
+                </div>
+
+                <!-- Confirmation Modal -->
+                <template lwc:if={showConfirmModal}>
+                    <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+                        <div class="slds-modal__container">
+                            <div class="slds-modal__header">
+                                <h2 class="slds-text-heading_medium">Confirm Removal</h2>
+                            </div>
+                            <div class="slds-modal__content slds-p-around_medium">
+                                <p>Are you sure you want to permanently remove this lesson? This action cannot be undone.</p>
+                            </div>
+                            <div class="slds-modal__footer">
+                                <lightning-button label="Cancel" onclick={cancelRemove} class="slds-m-right_x-small"></lightning-button>
+                                <lightning-button label="Remove" variant="destructive" onclick={confirmRemove}></lightning-button>
+                            </div>
+                        </div>
+                    </section>
+                    <div class="slds-backdrop slds-backdrop_open"></div>
+                </template>
+            </template>
+        </div>
+    </lightning-card>
+</template>

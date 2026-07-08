@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <activeVersionIdentifier>Wr+meD83/psaXvj8QVV3MFWcCc3Nn6kwQPqcQdAqKzw=_8</activeVersionIdentifier>
+    <developerName>Extract_And_Record_Lesson</developerName>
+    <masterLabel>Extract And Record Lesson</masterLabel>
+    <overridable>false</overridable>
+    <templateVersions>
+        <content>You are a lesson extraction system for an AI agent framework.
+
+A failure-then-success pattern occurred in the &quot;{!$Input:topic_area}&quot; subagent.
+
+ACTION CONTEXT (includes outcome mapping that defines what each domain event means):
+{!$Input:action_context_json}
+
+The action_context_json contains:
+- failed_action: which action was called when it failed
+- failed_outcome: the domain event returned on failure (check outcome_mapping to understand what it means)
+- successful_action: which action was called when it succeeded
+- successful_outcome: the domain event returned on success
+- conversation_history: the actual conversation between user and agent showing what was tried and what the user said
+- outcome_mapping: array of domain_event to success/failure/partial mappings that define this subagent&apos;s domain
+
+IMPORTANT: The conversation_history field contains the REAL context of what happened — what the user reported, what fixes were attempted, what the user suggested as alternatives, and what ultimately worked. Use this to write a lesson that captures the WORKAROUND, not just the failure reason.
+
+INSTRUCTIONS:
+
+1. Examine the ACTUAL failed_input and successful_input. These contain the REAL data that failed and succeeded. Extract the specific pattern that caused failure.
+
+2. Parse the domain event names — they encode the REASON for failure.
+
+3. Write a lesson with these sections (as flowing text, not headers):
+
+   FAILURE PATTERN: State the EXACT input characteristic that caused failure. Use the literal values from the context — include the specific domain, text, format, or value that was rejected. Be concrete so a future agent can pattern-match (e.g., &quot;emails ending in @contractor.com&quot; not &quot;external emails&quot;).
+
+   ROOT CAUSE: One sentence on why the system rejects this specific pattern.
+
+   WHAT SUCCEEDS: Describe valid inputs broadly — everything EXCEPT the failing pattern. Do not restrict to the single successful input from this case.
+
+   AGENT GUIDANCE: How to handle this conversationally — detect the pattern, inform the user clearly, and ask for an alternative.
+
+   KEY PRINCIPLES:
+   - Include the SPECIFIC failing value/pattern from the context. This specificity is what makes the lesson useful.
+   - The &quot;what succeeds&quot; section stays BROAD — only exclude what is known to fail.
+   - The lesson should enable PROACTIVE detection — the agent can warn BEFORE attempting the action if it spots the pattern.
+
+   EXAMPLES:
+
+   BAD: &quot;External emails are not supported.&quot;
+   WHY BAD: Which external emails? Agent cannot pattern-match against this.
+
+   BAD: &quot;Use @company.com emails only.&quot;
+   WHY BAD: Overly restrictive. Many domains are valid.
+
+   GOOD: &quot;The password reset system rejects emails containing @contractor.com — this specific domain is blocked because contractor accounts are managed through a separate portal. Any other email domain will be accepted. If a user provides a @contractor.com address, inform them that contractor accounts require a different process and ask if they have an alternative email address.&quot;
+
+   GOOD: &quot;Software requests are denied when the justification field is &apos;none&apos;, empty, or has no substantive text. The approval system requires at least a brief explanation of purpose. Any justification that names a project, describes usage, or identifies the benefiting team will be approved. When the user provides an insufficient justification, explain that a brief business reason is needed and offer to help them phrase one.&quot;
+
+4. Assign 2-4 domain-specific category tags.
+
+OUTPUT FORMAT (strict JSON only, no markdown):
+{
+  &quot;record&quot;: true,
+  &quot;lesson_text&quot;: &quot;[Your lesson text here]&quot;,
+  &quot;categories&quot;: &quot;category1,category2,category3&quot;
+}</content>
+        <inputs>
+            <apiName>topic_area</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>Topic Area</masterLabel>
+            <referenceName>Input:topic_area</referenceName>
+            <required>true</required>
+        </inputs>
+        <inputs>
+            <apiName>outcome_type</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>Outcome Type</masterLabel>
+            <referenceName>Input:outcome_type</referenceName>
+            <required>true</required>
+        </inputs>
+        <inputs>
+            <apiName>action_context_json</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>Action Context JSON</masterLabel>
+            <referenceName>Input:action_context_json</referenceName>
+            <required>false</required>
+        </inputs>
+        <inputs>
+            <apiName>existing_lessons_json</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>Existing Lessons JSON</masterLabel>
+            <referenceName>Input:existing_lessons_json</referenceName>
+            <required>false</required>
+        </inputs>
+        <inputs>
+            <apiName>existing_categories</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>Existing Categories</masterLabel>
+            <referenceName>Input:existing_categories</referenceName>
+            <required>false</required>
+        </inputs>
+        <isCitationEnabled>false</isCitationEnabled>
+        <primaryModel>sfdc_ai__DefaultOpenAIGPT4OmniMini</primaryModel>
+        <status>Published</status>
+        <versionIdentifier>Wr+meD83/psaXvj8QVV3MFWcCc3Nn6kwQPqcQdAqKzw=_8</versionIdentifier>
+    </templateVersions>
+    <type>einstein_gpt__flex</type>
+    <visibility>Global</visibility>
+</GenAiPromptTemplate>

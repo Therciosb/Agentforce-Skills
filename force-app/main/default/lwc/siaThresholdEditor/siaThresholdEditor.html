@@ -1,0 +1,146 @@
+<template>
+    <lightning-card title="Threshold Configuration" icon-name="custom:custom25">
+        <template lwc:if={isLoading}>
+            <lightning-spinner alternative-text="Loading thresholds" size="medium"></lightning-spinner>
+        </template>
+        <template lwc:else>
+            <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+                <template lwc:if={hasNoAgent}>
+                    <p class="slds-text-body_regular slds-text-color_weak">Select an agent to view threshold configuration.</p>
+                </template>
+                <template lwc:else>
+                    <!-- Knowledge Thresholds -->
+                    <div class="threshold-section slds-m-bottom_large">
+                        <h3 class="slds-text-heading_small section-header slds-m-bottom_small">Knowledge Thresholds</h3>
+                        <div class="field-grid field-grid_3col">
+                            <lightning-input
+                                type="number"
+                                step="0.01"
+                                label="Promotion Confidence"
+                                value={config.promotion_confidence__c}
+                                data-field="promotion_confidence__c"
+                                onchange={handleChange}
+                            ></lightning-input>
+                            <lightning-input
+                                type="number"
+                                label="Promotion References"
+                                value={config.promotion_references__c}
+                                data-field="promotion_references__c"
+                                onchange={handleChange}
+                            ></lightning-input>
+                            <lightning-input
+                                type="number"
+                                label="Max Lessons Per Topic"
+                                value={config.max_lessons_per_topic__c}
+                                data-field="max_lessons_per_topic__c"
+                                onchange={handleChange}
+                            ></lightning-input>
+                            <lightning-input
+                                type="number"
+                                step="0.01"
+                                label="Demotion Confidence"
+                                value={config.demotion_confidence__c}
+                                data-field="demotion_confidence__c"
+                                onchange={handleChange}
+                            ></lightning-input>
+                            <lightning-input
+                                type="number"
+                                step="0.01"
+                                label="Hide Confidence"
+                                value={config.hide_confidence__c}
+                                data-field="hide_confidence__c"
+                                onchange={handleChange}
+                            ></lightning-input>
+                            <div class="field-spacer"></div>
+                            <lightning-input
+                                type="number"
+                                step="0.01"
+                                label="Decay Rate Per Month"
+                                value={config.decay_rate_per_month__c}
+                                data-field="decay_rate_per_month__c"
+                                onchange={handleChange}
+                            ></lightning-input>
+                            <lightning-input
+                                type="number"
+                                label="Decay Grace Period (Days)"
+                                value={config.decay_grace_period_days__c}
+                                data-field="decay_grace_period_days__c"
+                                onchange={handleChange}
+                            ></lightning-input>
+                        </div>
+                    </div>
+
+                    <!-- Lesson Selection -->
+                    <div class="threshold-section slds-m-bottom_large">
+                        <h3 class="slds-text-heading_small section-header slds-m-bottom_small">Lesson Selection</h3>
+                        <div class="field-grid field-grid_2col">
+                            <lightning-input
+                                type="number"
+                                label="Lesson Selection Pool Size"
+                                field-level-help="Max lessons sent to relevance Prompt Template"
+                                value={config.lesson_selection_pool_size__c}
+                                data-field="lesson_selection_pool_size__c"
+                                onchange={handleChange}
+                            ></lightning-input>
+                            <lightning-input
+                                type="number"
+                                step="0.01"
+                                label="Min Confidence for Pool"
+                                field-level-help="Minimum confidence to enter selection pool"
+                                value={config.lesson_selection_min_confidence__c}
+                                data-field="lesson_selection_min_confidence__c"
+                                onchange={handleChange}
+                            ></lightning-input>
+                        </div>
+                    </div>
+
+                    <!-- Behavior Thresholds -->
+                    <div class="threshold-section">
+                        <h3 class="slds-text-heading_small section-header slds-m-bottom_small">Behavior Thresholds</h3>
+                        <div class="field-grid field-grid_2col">
+                            <lightning-input
+                                type="number"
+                                label="Loop Detection Threshold"
+                                value={config.loop_detection_threshold__c}
+                                data-field="loop_detection_threshold__c"
+                                onchange={handleChange}
+                            ></lightning-input>
+                            <lightning-input
+                                type="number"
+                                label="Points Floor"
+                                value={config.points_floor__c}
+                                data-field="points_floor__c"
+                                onchange={handleChange}
+                            ></lightning-input>
+                            <div class="toggle-field">
+                                <lightning-input
+                                    type="toggle"
+                                    label="A/B Mode Enabled"
+                                    checked={config.ab_mode_enabled__c}
+                                    data-field="ab_mode_enabled__c"
+                                    onchange={handleToggleChange}
+                                ></lightning-input>
+                            </div>
+                            <lightning-input
+                                type="number"
+                                step="1"
+                                label="A/B Treatment Percent"
+                                value={config.ab_treatment_pct__c}
+                                data-field="ab_treatment_pct__c"
+                                onchange={handleChange}
+                            ></lightning-input>
+                        </div>
+                    </div>
+
+                    <div class="slds-m-top_large slds-text-align_right">
+                        <lightning-button
+                            label="Save"
+                            variant="brand"
+                            onclick={handleSave}
+                        ></lightning-button>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </lightning-card>
+</template>
