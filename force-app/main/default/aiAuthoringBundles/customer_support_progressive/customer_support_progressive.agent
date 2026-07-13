@@ -133,10 +133,10 @@ start_agent agent_router:
                 with skills_to_load=...
 
     after_reasoning:
-        transition to @topic.generic_handler
+        transition to @subagent.generic_handler
 
 
-topic generic_handler:
+subagent generic_handler:
     label: "Generic Handler"
     description: "Single generic handler. Loads the router-selected skills and re-exposes the full support-demo tool catalog; behavior is driven by the loaded skills."
 
