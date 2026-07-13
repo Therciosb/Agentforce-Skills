@@ -8,10 +8,10 @@
 
 ## 1. Problem & Goal
 
-Today each Agentforce subagent in `customer_support_skill_demo` hardcodes its own
-`instructionNames` in a `before_reasoning` block, and the agent is partitioned into
-several specialized subagents (`troubleshooting_support`, `case_management`, etc.).
-Adding or reshaping capabilities means editing agent script and republishing.
+Today each Agentforce `topic` in `customer_support_skill_demo` hardcodes its own
+`instructionNames` in the first `run` of its `reasoning.instructions`, and the agent is
+partitioned into several specialized topics (`troubleshooting_support`, `case_management`,
+etc.). Adding or reshaping capabilities means editing agent script and republishing.
 
 We want to invert and collapse this:
 
@@ -102,24 +102,33 @@ cascade layer the feature relies on, and it is confirmed functional.
 
 ## 6. Architecture
 
+**Note on Agent Script conventions in THIS repo** (verified against the on-disk bundles
+`customer_support_skill_demo.agent` and `render_data_test.agent`): the framework uses
+`topic` blocks and `@topic.X` transitions (not `subagent`/`@subagent.`); skill loading is
+the **first `run` inside `reasoning.instructions`** (the repo does not use `before_reasoning`);
+and an action becomes an LLM-callable **tool only when it is re-exposed under
+`reasoning.actions:`** with slot-fill inputs — a bare `topic.actions:` declaration is only
+callable deterministically via `run @actions.X`.
+
 ```
-start_agent (agent_router)
+start_agent agent_router
   ├─ load_skills_init      apex://Agent_Skill_LoadAndCompose   role + core skills (flat) → instruction_bundle_json
   ├─ load_user_memory      apex://LoadAgentMemory              OPTIONAL LTM (guarded)
   ├─ get_skill_headers     apex://Agent_Skill_HeaderProvider   NEW: headers for candidate_skills → skill_headers
-  └─ reasoning
-        • sees user message + skill_headers
-        • set skills_to_load = "<chosen no-spaces CSV>"
-        • transition to @subagent.generic_handler
+  ├─ reasoning
+  │     • sees user message + skill_headers
+  │     • LLM calls select_skills (@utils.setVariables) → skills_to_load = "<chosen no-spaces CSV>"
+  └─ after_reasoning
+        • transition to @topic.generic_handler   (runs after the LLM turn, so selection happens first)
 
-subagent generic_handler
-  ├─ before_reasoning: load_skills   apex://Agent_Skill_LoadAndCompose
+topic generic_handler
+  ├─ reasoning.instructions (first run): load_skills   apex://Agent_Skill_LoadAndCompose
   │       instructionNames=skills_to_load, existingInstructionBundle=instruction_bundle_json
   │       → instruction_bundle_json (merged), composed_instructions
   │       (each selected skill cascades to its workflows via References__c)
-  └─ reasoning
-        • inject composed_instructions (+ optional agent_memory)
-        • expose ALL business action tools; use those the instructions call for
+  │     • inject composed_instructions (+ optional agent_memory); prose stays topic-agnostic
+  └─ reasoning.actions
+        • re-expose ALL business actions as slot-filled tools; the loaded instructions decide which apply
 ```
 
 ### 6.1 New Apex — `Agent_Skill_HeaderProvider`
@@ -156,26 +165,30 @@ skills_to_load:   mutable string = ""     # set by router reasoning, consumed by
   `skills_to_load` (no-spaces CSV) and transition.
 - `system.instructions` stays static.
 
-### 6.4 Generic subagent (`generic_handler`)
+### 6.4 Generic handler topic (`generic_handler`)
 
-- Top-level `actions:` declares `load_skills` (LoadAndCompose) plus the business-action
-  tools reusing existing targets (final list enumerated in the implementation plan; e.g.
-  `CreateCase`, `CreateEscalationTicket`, `Route_to_ESA`, `Render_Data`, order/support
-  lookups, and the `save_context` LTM action).
-- `before_reasoning`: LoadAndCompose with `instructionNames=@variables.skills_to_load`
-  and `existingInstructionBundle=@variables.instruction_bundle_json`.
-- `reasoning`: **minimal and topic-agnostic** — inject `composed_instructions` (+ optional
-  `agent_memory`) and a single generic line, e.g. "Use the tools available to you as
-  directed by the instructions above." **Do NOT enumerate or explain individual tools in
-  the reasoning block** — each tool's purpose lives in its action `description:` (declared
-  once), and the loaded skill dictates which tool applies. Enumerating tools here would
-  recouple the generic subagent to specific topics, defeating its purpose.
-- Every business action is still *declared* in the top-level `actions:` block with a clear
-  `description:`; declaration is what exposes it as a callable tool, not a mention in the
-  reasoning text.
+- `topic.actions:` declares `load_skills` (LoadAndCompose) plus every business-action
+  contract with its `target:` (final list in the implementation plan; e.g. `CreateCase`,
+  `CreateEscalationTicket`, `Route_to_ESA`, `Render_Data`, order/support lookups, and the
+  `save_context` LTM action). This is the deterministic contract layer.
+- Skill loading runs as the **first `run` block inside `reasoning.instructions`** (the repo
+  does not use `before_reasoning`): LoadAndCompose with
+  `instructionNames=@variables.skills_to_load` and
+  `existingInstructionBundle=@variables.instruction_bundle_json`.
+- `reasoning.instructions` prose: **minimal and topic-agnostic** — inject
+  `composed_instructions` (+ optional `agent_memory`) and a single generic line, e.g. "Use
+  the tools available to you as directed by the instructions above." **Do NOT enumerate or
+  explain individual tools in the reasoning prose** — each tool's purpose lives in its action
+  `description:`, and the loaded skill dictates which tool applies.
+- `reasoning.actions:` re-exposes each business action as a slot-filled tool wrapper
+  (`create_case: @actions.create_case with subject=...`, etc.). **This re-exposure is what
+  makes an action LLM-callable** — a bare `topic.actions:` declaration is deterministic-only
+  (callable via `run @actions.X`). This is declaration/plumbing, not topic coupling: the
+  prose stays generic. Pattern verified in `render_data_test.agent` and the demo's
+  `persist_memory` wrapper.
 - Loader's existing topic-scoped pruning (keeps `role-*`/`core-skill-*`, swaps
-  `skill-*`/`workflow-*`) means re-entering the subagent for a new intent cleanly replaces
-  the skill set — supporting multi-intent conversations through one subagent.
+  `skill-*`/`workflow-*`) means re-entering the topic for a new intent cleanly replaces
+  the skill set — supporting multi-intent conversations through one handler.
 
 ## 7. Full Review of Seeded Skills + Tool-Name Binding
 

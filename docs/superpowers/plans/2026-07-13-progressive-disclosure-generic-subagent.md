@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add router-level progressive disclosure (skill headers → selected skills) and a single generic subagent that loads the selected skills and exposes the full support-demo tool catalog, driven entirely by the loaded skills.
+**Goal:** Add router-level progressive disclosure (skill headers → selected skills) and a single generic handler topic that loads the selected skills and exposes the full support-demo tool catalog, driven entirely by the loaded skills.
 
-**Architecture:** A new invocable `Agent_Skill_HeaderProvider` returns lean `Name: WhenToUse__c` headers for a candidate skill list (no body, no reference expansion, no fallback). The router (`start_agent`) presents those headers, the LLM writes a no-spaces CSV of chosen skills to `@variables.skills_to_load`, then transitions to one `generic_handler` subagent that loads those skills (cascading to workflows via existing `References__c`) and declares all ten support-demo action tools. `Agent_Skill_PromptComposer` gains one additive post-composition pass that rewrites `[[tool:Name]]` indicators in instruction bodies into validated plain-text cues. Seed instruction bodies are revised to carry those indicators, and two malformed `References__c` values are corrected.
+**Architecture:** A new invocable `Agent_Skill_HeaderProvider` returns lean `Name: WhenToUse__c` headers for a candidate skill list (no body, no reference expansion, no fallback). The router (`start_agent`) presents those headers, the LLM writes a no-spaces CSV of chosen skills to `@variables.skills_to_load`, then `after_reasoning` transitions to one `generic_handler` topic that loads those skills (cascading to workflows via existing `References__c`) and re-exposes all ten support-demo action tools under `reasoning.actions`. `Agent_Skill_PromptComposer` gains one additive post-composition pass that rewrites `[[tool:Name]]` indicators in instruction bodies into validated plain-text cues. Seed instruction bodies are revised to carry those indicators, and two malformed `References__c` values are corrected.
 
 **Tech Stack:** Salesforce Apex (API 65.0, `@InvocableMethod`), Agent Script (`.agent` authoring bundle), CSV seed data, `sf` CLI.
 
@@ -15,7 +15,7 @@
 - `References__c` is a **no-spaces CSV of real record names only** — never prose, never a space after a comma.
 - `instructionNames` CSV in Agent Script has **no spaces after commas**.
 - Map action outputs with `set @variables.x=@outputs.y` **inside the same `run` block**.
-- Keep `system.instructions` static; dynamic instruction text goes only in topic/subagent reasoning.
+- Keep `system.instructions` static; dynamic instruction text goes only in topic reasoning.
 - **No fallback** for headers: a record with blank `WhenToUse__c` is treated as missing, never substituted with `Description__c`.
 - The generic subagent reasoning block stays **topic-agnostic** — no per-tool enumeration; tool purpose lives in each action `description:`.
 - Do **not** modify `Agent_Skill_Loader`, `Agent_Skill_LoadAndCompose`, or the existing `customer_support_skill_demo` bundle.
@@ -529,22 +529,23 @@ Add these two private methods before the final closing brace of the class:
         if (String.isBlank(text) || !text.contains('[[tool:')) {
             return text;
         }
+        // Apex has no StringBuilder; assemble segments in a List and join at the end.
         Matcher m = TOOL_INDICATOR.matcher(text);
-        StringBuilder rebuilt = new StringBuilder();
+        List<String> segments = new List<String>();
         Integer lastEnd = 0;
         while (m.find()) {
-            rebuilt.append(text.substring(lastEnd, m.start()));
+            segments.add(text.substring(lastEnd, m.start()));
             String toolName = m.group(1);
             if (KNOWN_TOOL_NAMES.contains(toolName)) {
-                rebuilt.append('the "' + toolName + '" tool');
+                segments.add('the "' + toolName + '" tool');
             } else {
-                rebuilt.append('[[unknown tool: ' + toolName + ']]');
+                segments.add('[[unknown tool: ' + toolName + ']]');
                 unknownToolNames.add(toolName);
             }
             lastEnd = m.end();
         }
-        rebuilt.append(text.substring(lastEnd));
-        return rebuilt.toString();
+        segments.add(text.substring(lastEnd));
+        return String.join(segments, '');
     }
 ```
 
@@ -633,17 +634,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
    - Current (space after comma): `core-skill-user-otp-authentication, workflow-escalate-to-human`
    - Target (no spaces): `core-skill-user-otp-authentication,workflow-escalate-to-human`
 
-**Tool-indicator edits (per §7.3 of the spec — insert `[[tool:Name]]` inline at the point of action):**
-
-- `role-customer-support-agent` — in the DEPENDENCIES paragraph, bind: OTP → `[[tool:SendVerificationEmail]]`; case lifecycle → `[[tool:CreateCase]]`; escalation → `[[tool:Route_to_ESA]]` / `[[tool:CreateEscalationTicket]]`.
-- `core-skill-user-otp-authentication` — in "## 2. Send OTP", bind the send step → `[[tool:SendVerificationEmail]]`.
-- `core-skill-render-data-format` — align the tool reference to the declared name; where the body says "the render_data action", add `[[tool:Render_Data]]` at the "When to Call" step.
-- `skill-product-information-qa` — in "## 4. Handling Uncertainty", bind case creation → `[[tool:CreateCase]]`; in "## 2. Structured Answer Delivery", bind optional structured tables → `[[tool:Render_Data]]`; product lookups → `[[tool:GetProductInfo]]`.
-- `skill-support-case-management` — bind creation → `[[tool:CreateCase]]`; status lookup → `[[tool:FetchSupportHistory]]`; identity → `[[tool:SendVerificationEmail]]`; presentation → `[[tool:Render_Data]]`.
-- `skill-troubleshooting-support` — in "## 3. Escalation", bind → `[[tool:Route_to_ESA]]` / `[[tool:CreateEscalationTicket]]`.
-- `workflow-support-case-lifecycle` — in "## 1. Identity" bind → `[[tool:SendVerificationEmail]]`; in "## 3. Create or Update" bind → `[[tool:CreateCase]]`.
-- `workflow-escalate-to-human` — in "## Routing" bind → `[[tool:Route_to_ESA]]`; in "## Confirm" bind ticket creation → `[[tool:CreateEscalationTicket]]`.
-- `workflow-troubleshooting-*` (all 7) — in each "## Escalate" step, replace "invoke workflow-escalate-to-human" with "invoke workflow-escalate-to-human using `[[tool:Route_to_ESA]]`" (keep the record reference for cascade; add the tool indicator).
+**Tool-indicator edits (per §7.3 of the spec — insert `[[tool:Name]]` inline at the point of action):** the authoritative, verbatim find/replace pairs are in the **Edit reference table** below (after Step 3). The affected records are: `role-customer-support-agent`, `core-skill-user-otp-authentication`, `core-skill-render-data-format`, `skill-product-information-qa`, `skill-support-case-management`, `skill-troubleshooting-support`, `workflow-support-case-lifecycle`, `workflow-escalate-to-human`, and the **6** `workflow-troubleshooting-*` records (wifi-modem, 5g-modem, iphone-16, iphone-16-pro, galaxy-s25, galaxy-s25-ultra). Do not hand-summarize — apply the table exactly.
 
 - [ ] **Step 1: Write the failing integrity test**
 
@@ -779,7 +770,17 @@ Expected: PASS — the in-test fixtures are already clean, proving the assertion
 | `workflow-escalate-to-human` (routing) | `By type: technical, billing, general.` | `By type: technical, billing, general. Route the customer with [[tool:Route_to_ESA]] and open the handoff ticket with [[tool:CreateEscalationTicket]].` |
 | `workflow-support-case-lifecycle` (identity) | `Invoke core-skill-user-otp-authentication. Do not proceed until OTP succeeds.` | `Invoke core-skill-user-otp-authentication; send the code with [[tool:SendVerificationEmail]]. Do not proceed until OTP succeeds.` |
 | `workflow-support-case-lifecycle` (create) | `Create with approved summary.` | `Create the case with [[tool:CreateCase]] using the approved summary.` |
-| each of 7 `workflow-troubleshooting-*` (escalate step) | `invoke workflow-escalate-to-human` (each occurrence in the `## Escalate`/`## 4./5.` step) | `invoke workflow-escalate-to-human (route with [[tool:Route_to_ESA]])` |
+| each of the 6 `workflow-troubleshooting-*` (escalate step) | `invoke workflow-escalate-to-human` (the occurrence in each record's `## Escalate` / `## 4.` / `## 5.` step) | `invoke workflow-escalate-to-human (route with [[tool:Route_to_ESA]])` |
+
+> **Apply-order guard for the escalation edits:** `skill-troubleshooting-support`'s sentence
+> (row above it) contains the substring `invoke workflow-escalate-to-human`. Apply the
+> `skill-troubleshooting-support` row FIRST (it targets the full unique sentence and yields
+> BOTH `[[tool:Route_to_ESA]]` + `[[tool:CreateEscalationTicket]]`), then apply the 6-workflow
+> row scoped to each `workflow-troubleshooting-*` record only. Do NOT run a repo-wide blanket
+> replace of the short string — it would rewrite the skill's sentence and drop the
+> `CreateEscalationTicket` binding. In `Agent_Skill_SeedService.cls` each record is a distinct
+> `repoItem(...)` call (skill at line ~225; the 6 workflows at lines ~257/276/293/310/327/344),
+> so edit within each call's string literals.
 
 > **LTM save note:** in `core-skill-ltmManagement-service-agent`, the save action is `SaveAgentContext` — an LTM Apex action that is **NOT** in the tool allowlist. Leave it as plain text; do **not** wrap it in `[[tool:]]` (the composer would mark it unknown). Optionally clarify: change `invoke the save action with extracted values` → `invoke the save action (SaveAgentContext) with extracted values`.
 
@@ -857,7 +858,13 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: `apex://Agent_Skill_HeaderProvider` (Task 1), `apex://Agent_Skill_LoadAndCompose` (existing), the 10 flow tools (`CreateCase`, etc.), `apex://SaveAgentContext`, `apex://LoadAgentMemory`.
-- Produces: a bundle where `start_agent agent_router` sets `@variables.skills_to_load` and transitions to `subagent generic_handler`, which loads those skills and declares all business tools.
+- Produces: a bundle where `start_agent agent_router`'s LLM sets `@variables.skills_to_load` (via a `reasoning.actions` `@utils.setVariables` tool) and its `after_reasoning` transitions to `topic generic_handler`, which loads those skills (first `run` in `reasoning.instructions`) and re-exposes all business actions as tools under `reasoning.actions`.
+
+> **CRITICAL — match the on-disk repo conventions, verified against `customer_support_skill_demo.agent` and `render_data_test.agent` (do NOT use the `subagent`/`before_reasoning` shape):**
+> 1. Use `topic <name>:` blocks and `@utils.transition to @topic.<name>` / `transition to @topic.<name>` — the repo has **no** `subagent`/`@subagent.` syntax.
+> 2. There is **no `before_reasoning`** in this repo. Do skill loading as the **first `run` block inside `reasoning.instructions:`** (see `general_support` lines 122-127 of the demo).
+> 3. An action is only an **LLM-callable tool when re-exposed under `reasoning.actions:`** with slot-fill (`with x=...`) — a `topic.actions:` declaration alone is deterministic-only. `render_data_test` shows the wrapper form: `render_data: @actions.render_data\n  with data=...\n  with display_type=...`. The 10 business tools must therefore appear BOTH under `topic.actions:` (the contract with `target:`) AND under `reasoning.actions:` (the slot-filled tool wrapper).
+> 4. The router selects skills with a `reasoning.actions:` tool `select_skills: @utils.setVariables with skills_to_load=...`, and transitions in `after_reasoning` using `transition to @topic.generic_handler` (NOT `@utils.transition`, per Manual §10) so the LLM's selection is set before the transition fires.
 
 **Flow tool contracts (declare inputs + scalar outputs only; SObject/collection outputs omitted intentionally):**
 - `CreateCase`: in `subject`; out `case_number`
@@ -893,11 +900,13 @@ Create `force-app/main/default/aiAuthoringBundles/customer_support_progressive/c
 # Architecture
 # - start_agent (agent_router): loads role+core skills (flat) and OPTIONAL LTM,
 #   fetches lean headers for candidate_skills via Agent_Skill_HeaderProvider,
-#   then the LLM sets skills_to_load (no-spaces CSV) and transitions.
-# - generic_handler: ONE topic-agnostic subagent. Loads skills_to_load (each
-#   selected skill cascades to its workflows via References__c), injects the
-#   composed instructions, and declares the full support-demo tool catalog.
-#   Behavior for a turn is determined entirely by which skills were loaded.
+#   the LLM sets skills_to_load (no-spaces CSV) via select_skills, and
+#   after_reasoning transitions to the generic_handler topic.
+# - generic_handler (topic): ONE topic-agnostic handler. Loads skills_to_load
+#   (first run in reasoning; each selected skill cascades to its workflows via
+#   References__c), injects the composed instructions, and re-exposes the full
+#   support-demo tool catalog under reasoning.actions. Behavior for a turn is
+#   determined entirely by which skills were loaded.
 # -----------------------------------------------------------------------------
 
 
@@ -914,14 +923,15 @@ system:
 
 config:
     developer_name: "customer_support_progressive"
-    agent_type: "AgentforceServiceAgent"
     agent_label: "Customer Support (Progressive Disclosure)"
     default_agent_user: "ltm_agent@00dky00000gxhj51777765750.ext"
-    description: "Router-level progressive disclosure with a single generic subagent driven by loaded skills."
+    description: "Router-level progressive disclosure with a single generic handler topic driven by loaded skills."
 
 
 variables:
     ContactId: mutable string = "003KY00000KNAGqYAP"
+    EndUserId: linked string
+    RoutableId: linked string
     context_loaded: mutable boolean = False
     agent_memory: mutable string = ""
     memory_summary: mutable string = ""
@@ -1006,18 +1016,20 @@ start_agent agent_router:
             | Available skills (choose from these names only):
             | {!@variables.skill_headers}
             |
-            | Decide the minimal set of skill names that match the user's request, then call {!@actions.select_skills} with a comma-separated list of those exact names (no spaces after commas). After selecting, call {!@actions.go_to_handler}.
+            | Decide the minimal set of skill names that match the user's request, then call {!@actions.select_skills} with a comma-separated list of those exact names (no spaces after commas). Do not answer the user directly; selecting the skills is your only job this turn.
 
         actions:
             select_skills: @utils.setVariables
                 description: "Record the chosen skill names to load for this request."
                 with skills_to_load=...
-            go_to_handler: @utils.transition to @subagent.generic_handler
-                description: "Route to the generic handler with the selected skills."
+
+    after_reasoning:
+        transition to @topic.generic_handler
 
 
-subagent generic_handler:
-    description: "Single generic handler. Loads the router-selected skills and exposes the full support-demo tool catalog; behavior is driven by the loaded skills."
+topic generic_handler:
+    label: "Generic Handler"
+    description: "Single generic handler. Loads the router-selected skills and re-exposes the full support-demo tool catalog; behavior is driven by the loaded skills."
 
     actions:
         load_skills:
@@ -1155,15 +1167,14 @@ subagent generic_handler:
                     description: "Whether save succeeded."
             target: "apex://SaveAgentContext"
 
-    before_reasoning:
-        run @actions.load_skills
-            with instructionNames=@variables.skills_to_load
-            with existingInstructionBundle=@variables.instruction_bundle_json
-            set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
-            set @variables.composed_instructions=@outputs.instructionsBundle
-
     reasoning:
         instructions: ->
+            run @actions.load_skills
+                with instructionNames=@variables.skills_to_load
+                with existingInstructionBundle=@variables.instruction_bundle_json
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+                set @variables.composed_instructions=@outputs.instructionsBundle
+
             | Here is your past context. Use it for personalization if present:
             | {!@variables.agent_memory}
             |
@@ -1171,7 +1182,58 @@ subagent generic_handler:
             | {!@variables.composed_instructions}
             |
             | Use the tools available to you as directed by the instructions above.
+
+        actions:
+            create_case: @actions.create_case
+                description: "Create a new support case from a concise, user-approved subject."
+                with subject=...
+            create_escalation_ticket: @actions.create_escalation_ticket
+                description: "Create an escalation ticket for handoff to a human specialist."
+                with customer_id=...
+                with issue_description=...
+                with issue_type=...
+            route_to_esa: @actions.route_to_esa
+                description: "Route the conversation to a human (Enhanced Service Agent) queue."
+                with recordId=...
+            get_order_status: @actions.get_order_status
+                description: "Look up the current status of an order."
+                with order_id=...
+            fetch_support_history: @actions.fetch_support_history
+                description: "Fetch the support/case history for a user."
+                with user_id=...
+            track_shipment: @actions.track_shipment
+                description: "Track a shipment by carrier and tracking number."
+                with carrier=...
+                with tracking_number=...
+            fetch_account_data: @actions.fetch_account_data
+                description: "Fetch account details for a user."
+                with user_id=...
+            get_product_info: @actions.get_product_info
+                description: "Look up product specifications, price, and availability."
+                with product_name=...
+            send_verification_email: @actions.send_verification_email
+                description: "Send a one-time verification code to the customer."
+                with customer_id=...
+                with email=...
+            render_data: @actions.render_data
+                description: "Display structured data in table, card, list, or key-value format."
+                with data=...
+                with display_type=...
+            save_context: @actions.save_context
+                description: "Persist an Agent_Context__c memory checkpoint (optional LTM)."
+                with contactId=@variables.ContactId
+                with newSummary=...
+                with newGoal=...
+                with hasIssue=...
+                with newStyle=...
 ```
+
+> **Tool re-exposure note:** the block above under `reasoning.actions:` is what makes each
+> business action LLM-callable (the `topic.actions:` declarations earlier only define the
+> contract + `target:`). This mirrors `render_data_test.agent` (the `render_data` wrapper) and
+> the demo's `persist_memory: @actions.save_context_tool` wrapper. The reasoning **prose** stays
+> topic-agnostic (no per-tool enumeration); the tool *declarations* are required plumbing, not
+> topic coupling.
 
 - [ ] **Step 3: Validate the authoring bundle**
 
