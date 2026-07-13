@@ -1,0 +1,21 @@
+{
+  "required" : [ ],
+  "unevaluatedProperties" : false,
+  "properties" : {
+    "existingInstructionBundle" : {
+      "title" : "Existing Instruction Bundle",
+      "description" : "Existing bundle JSON from start_agent.",
+      "lightning:type" : "lightning__textType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    },
+    "instructionNames" : {
+      "title" : "Instruction Names",
+      "description" : "CSV of topic-specific skills (empty for this topic).",
+      "lightning:type" : "lightning__textType",
+      "lightning:isPII" : false,
+      "copilotAction:isUserInput" : false
+    }
+  },
+  "lightning:type" : "lightning__objectType"
+}

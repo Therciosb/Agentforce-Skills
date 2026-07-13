@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPlannerBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Minimal agent to test render_data action and LWC rendering (table, card, list, key-value).</description>
+    <localTopicLinks>
+        <genAiPluginName>agent_router_16jKY000000CeEa</genAiPluginName>
+    </localTopicLinks>
+    <localTopicLinks>
+        <genAiPluginName>main_16jKY000000CeEa</genAiPluginName>
+    </localTopicLinks>
+    <localTopics>
+        <fullName>agent_router_16jKY000000CeEa</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Load render_data skill, then transition to main subagent.</description>
+        <developerName>agent_router_16jKY000000CeEa</developerName>
+        <genAiPluginInstructions>
+            <description>You are a demo agent for the render_data action. Your ONLY job is to call render_data when users ask for data.
+This is a TEST environment. Providing sample/demo data (fake cases, example lists, etc.) is REQUIRED and allowed.
+NEVER refuse. NEVER say &quot;I can&apos;t assist.&quot; ALWAYS call render_data with appropriate sample data when the user asks for table, card, list, or key-value.</description>
+            <developerName>instruction0_179KY0000000OoX</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179KY0000000OoX</masterLabel>
+            <sortOrder>1</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localActionLinks>
+            <functionName>load_and_compose_skills_179KY0000000OoX</functionName>
+        </localActionLinks>
+        <localActions>
+            <fullName>load_and_compose_skills_179KY0000000OoX</fullName>
+            <description>Load role and render_data format skill.</description>
+            <developerName>load_and_compose_skills_179KY0000000OoX</developerName>
+            <invocationTarget>Agent_Skill_LoadAndCompose</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>load_and_compose_skills</localDeveloperName>
+            <masterLabel>Load And Compose Skills</masterLabel>
+        </localActions>
+        <localDeveloperName>agent_router</localDeveloperName>
+        <masterLabel>Agent Router</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <localTopics>
+        <fullName>main_16jKY000000CeEa</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Demonstrates render_data with table, card, list, key-value formats.</description>
+        <developerName>main_16jKY000000CeEa</developerName>
+        <genAiPluginInstructions>
+            <description>You are a demo agent for the render_data action. Your ONLY job is to call render_data when users ask for data.
+This is a TEST environment. Providing sample/demo data (fake cases, example lists, etc.) is REQUIRED and allowed.
+NEVER refuse. NEVER say &quot;I can&apos;t assist.&quot; ALWAYS call render_data with appropriate sample data when the user asks for table, card, list, or key-value.</description>
+            <developerName>instruction0_179KY0000000OoY</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179KY0000000OoY</masterLabel>
+            <sortOrder>1</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localActionLinks>
+            <functionName>Find_Flights_179KY0000000OoY</functionName>
+        </localActionLinks>
+        <localActionLinks>
+            <functionName>Render_Data_179KY0000000OoY</functionName>
+        </localActionLinks>
+        <localActions>
+            <fullName>Render_Data_179KY0000000OoY</fullName>
+            <description>Renders structured data in the agent UI. Validates JSON and display type.</description>
+            <developerName>Render_Data_179KY0000000OoY</developerName>
+            <invocationTarget>GenericRenderAction</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>Render_Data</localDeveloperName>
+            <masterLabel>Render Data</masterLabel>
+            <source>Render_Data</source>
+        </localActions>
+        <localActions>
+            <fullName>Find_Flights_179KY0000000OoY</fullName>
+            <description>Finds available flights between two cities. Official Salesforce CLT/LWC rendering control sample.</description>
+            <developerName>Find_Flights_179KY0000000OoY</developerName>
+            <invocationTarget>FlightAgent</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>Find_Flights</localDeveloperName>
+            <masterLabel>Find Flights</masterLabel>
+        </localActions>
+        <localDeveloperName>main</localDeveloperName>
+        <masterLabel>Main</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <masterLabel>Render Data Test</masterLabel>
+    <plannerType>Atlas__ConcurrentMultiAgentOrchestration</plannerType>
+</GenAiPlannerBundle>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiFunction xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Renders structured data in the agent UI. Validates JSON and display type.</description>
+    <developerName>Render_Data</developerName>
+    <invocationTarget>GenericRenderAction</invocationTarget>
+    <invocationTargetType>apex</invocationTargetType>
+    <isConfirmationRequired>false</isConfirmationRequired>
+    <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+    <localDeveloperName>Render_Data</localDeveloperName>
+    <masterLabel>Render Data</masterLabel>
+</GenAiFunction>

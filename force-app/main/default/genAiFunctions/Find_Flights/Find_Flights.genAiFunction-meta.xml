@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiFunction xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Finds available flights</description>
+    <developerName>Find_Flights</developerName>
+    <invocationTarget>FlightAgent</invocationTarget>
+    <invocationTargetType>apex</invocationTargetType>
+    <isConfirmationRequired>false</isConfirmationRequired>
+    <isIncludeInProgressIndicator>true</isIncludeInProgressIndicator>
+    <localDeveloperName>Find_Flights</localDeveloperName>
+    <masterLabel>Find Flights</masterLabel>
+    <progressIndicatorMessage>Loading ...</progressIndicatorMessage>
+</GenAiFunction>

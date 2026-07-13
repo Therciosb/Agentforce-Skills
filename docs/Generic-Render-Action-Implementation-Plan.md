@@ -73,7 +73,7 @@ Agent (with core-skill loaded)
 ```
 # RENDER DATA FORMAT
 
-Use the render_data action when you have structured data to display to the user. Produce the data string and display type following these rules.
+Use the render_data action when you have structured data to display to the user. The LWC requires EXACT schema formats—wrong structure will NOT render.
 
 ## When to Call
 
@@ -81,52 +81,46 @@ Use the render_data action when you have structured data to display to the user.
 - When you have multiple items to show (list, table)
 - When you have a single record or object to show (card, key-value)
 
-## Display Types
+## CRITICAL: Schema Compliance
 
-| Type | Use Case |
-|------|----------|
-| table | 2+ rows with columns (e.g. cases, accounts, products) |
-| card | Single record with labeled fields |
-| list | Simple list of items (strings or short objects) |
-| key-value | Pairs of label/value (e.g. record details) |
+Each display_type has a STRICT schema. You MUST produce JSON that matches exactly. Do NOT use array-of-objects for table—use columns + rows.
 
-## Data Format (JSON)
-
-Produce valid JSON. Escape quotes in string values.
+## Display Types and Schemas
 
 ### table
 
-Schema: { "columns": ["col1", "col2", ...], "rows": [["val1", "val2", ...], ...] }
+**Required structure:** { "columns": ["col1", "col2", ...], "rows": [["val1", "val2", ...], ["val1", "val2", ...], ...] }
 
-Example:
-{"columns":["Case Number","Subject","Status"],"rows":[["00001001","Wi-Fi not connecting","In Progress"],["00001002","Billing question","Closed"]]}
+WRONG (array of objects—will NOT render): [{"Case ID":"C-001","Title":"Alpha"},{"Case ID":"C-002","Title":"Beta"}]
+
+CORRECT: {"columns":["Case Number","Subject","Status"],"rows":[["00001001","Wi-Fi not connecting","In Progress"],["00001002","Billing question","Closed"]]}
+
+To convert records to table: extract column names from the first object, then build rows as arrays of values in the same order.
 
 ### card
 
-Schema: { "title": "string", "fields": [{"label": "string", "value": "string"}, ...] }
+**Required structure:** { "title": "string", "fields": [{"label": "string", "value": "string"}, ...] }
 
-Example:
-{"title":"Case 00001001","fields":[{"label":"Subject","value":"Wi-Fi not connecting"},{"label":"Status","value":"In Progress"},{"label":"Priority","value":"High"}]}
+Example: {"title":"Case 00001001","fields":[{"label":"Subject","value":"Wi-Fi not connecting"},{"label":"Status","value":"In Progress"},{"label":"Priority","value":"High"}]}
 
 ### list
 
-Schema: { "items": ["item1", "item2", ...] }
+**Required structure:** { "items": ["item1", "item2", ...] }
 
-Example:
-{"items":["Power cycle the modem","Wait 2 minutes","Check LED status"]}
+Example: {"items":["Power cycle the modem","Wait 2 minutes","Check LED status"]}
 
 ### key-value
 
-Schema: { "pairs": [{"key": "string", "value": "string"}, ...] }
+**Required structure:** { "pairs": [{"key": "string", "value": "string"}, ...] }
 
-Example:
-{"pairs":[{"key":"Account","value":"Acme Corp"},{"key":"Contact","value":"Jane Smith"},{"key":"Case","value":"00001001"}]}
+Example: {"pairs":[{"key":"Account","value":"Acme Corp"},{"key":"Contact","value":"Jane Smith"},{"key":"Case","value":"00001001"}]}
 
 ## Extraction Rules
 
-When invoking render_data:
-- **data:** Produce the JSON string following the schema for the chosen display_type. Ensure valid JSON (escape quotes, no trailing commas).
+- **data:** Produce the JSON string following the EXACT schema for the chosen display_type. Ensure valid JSON (escape quotes, no trailing commas).
 - **display_type:** One of: table, card, list, key-value.
+
+If you have records or array-of-objects, transform to the required schema before passing to render_data.
 
 If data from another action does not match a schema, transform it. For example, Query Records returns a list of records—map to table (columns + rows) or card (one per record).
 ```

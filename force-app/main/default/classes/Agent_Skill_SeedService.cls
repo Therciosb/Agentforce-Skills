@@ -154,41 +154,28 @@ public with sharing class Agent_Skill_SeedService {
                 'Defines JSON schema per display type for render_data action.',
                 'Use when agent has structured data to display (table, card, list, key-value).',
                 '# RENDER DATA FORMAT\n\n' +
-                'Use the render_data action when you have structured data to display to the user. Produce the data string and display type following these rules.\n\n' +
+                'Use the render_data action when you have structured data to display. Pass the data structure using these formats. Use double quotes for JSON keys and values (single quotes cause "Invalid JSON" errors).\n\n' +
                 '## When to Call\n\n' +
                 '- After gathering data from another action (e.g. Query Records, Get Record Details) and you want to present it in a structured format\n' +
                 '- When you have multiple items to show (list, table)\n' +
                 '- When you have a single record or object to show (card, key-value)\n\n' +
-                '## Display Types\n\n' +
-                '| Type | Use Case |\n' +
-                '|------|----------|\n' +
-                '| table | 2+ rows with columns (e.g. cases, accounts, products) |\n' +
-                '| card | Single record with labeled fields |\n' +
-                '| list | Simple list of items (strings or short objects) |\n' +
-                '| key-value | Pairs of label/value (e.g. record details) |\n\n' +
-                '## Data Format (JSON)\n\n' +
-                'Produce valid JSON. Escape quotes in string values.\n\n' +
+                '## Display Types (Simple Syntax)\n\n' +
                 '### table\n\n' +
-                'Schema: { "columns": ["col1", "col2", ...], "rows": [["val1", "val2", ...], ...] }\n\n' +
-                'Example:\n' +
-                '{"columns":["Case Number","Subject","Status"],"rows":[["00001001","Wi-Fi not connecting","In Progress"],["00001002","Billing question","Closed"]]}\n\n' +
+                '**Array of objects.** Each object is a row; keys are column names, values are cell values.\n\n' +
+                'Example: `[{"Case ID":"C-001","Title":"Sample Case Alpha","Status":"Open"},{"Case ID":"C-002","Title":"Sample Case Beta","Status":"In Progress"}]`\n\n' +
+                'Keep keys consistent across objects. Use human-readable column names.\n\n' +
                 '### card\n\n' +
-                'Schema: { "title": "string", "fields": [{"label": "string", "value": "string"}, ...] }\n\n' +
-                'Example:\n' +
-                '{"title":"Case 00001001","fields":[{"label":"Subject","value":"Wi-Fi not connecting"},{"label":"Status","value":"In Progress"},{"label":"Priority","value":"High"}]}\n\n' +
+                '**Object with title and flat key-value pairs.** Include "title" for the card header; all other keys become field labels with their values.\n\n' +
+                'Example: `{"title":"Case 00001001","Subject":"Wi-Fi not connecting","Status":"In Progress","Priority":"High"}`\n\n' +
                 '### list\n\n' +
-                'Schema: { "items": ["item1", "item2", ...] }\n\n' +
-                'Example:\n' +
-                '{"items":["Power cycle the modem","Wait 2 minutes","Check LED status"]}\n\n' +
+                '**Array of strings.** Each string is one list item.\n\n' +
+                'Example: `["Power cycle the modem","Wait 2 minutes","Check LED status"]`\n\n' +
                 '### key-value\n\n' +
-                'Schema: { "pairs": [{"key": "string", "value": "string"}, ...] }\n\n' +
-                'Example:\n' +
-                '{"pairs":[{"key":"Account","value":"Acme Corp"},{"key":"Contact","value":"Jane Smith"},{"key":"Case","value":"00001001"}]}\n\n' +
+                '**Flat object.** Keys become labels, values become the displayed values.\n\n' +
+                'Example: `{"Account":"Acme Corp","Contact":"Jane Smith","Case":"00001001"}`\n\n' +
                 '## Extraction Rules\n\n' +
-                'When invoking render_data:\n' +
-                '- **data:** Produce the JSON string following the schema for the chosen display_type. Ensure valid JSON (escape quotes, no trailing commas).\n' +
-                '- **display_type:** One of: table, card, list, key-value.\n\n' +
-                'If data from another action does not match a schema, transform it. For example, Query Records returns a list of records—map to table (columns + rows) or card (one per record).',
+                '- **data:** Pass the data structure using the schema above. CRITICAL: Use valid JSON—double quotes for all keys and string values. Single quotes (e.g. \'title\') are invalid and cause errors.\n' +
+                '- **display_type:** One of: table, card, list, key-value.',
                 ''
         ));
         repoItems.add(repoItem(

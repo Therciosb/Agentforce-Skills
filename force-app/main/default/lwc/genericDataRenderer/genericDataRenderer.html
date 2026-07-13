@@ -11,6 +11,7 @@
                 data={tableData}
                 columns={tableColumns}
                 hide-checkbox-column
+                aria-label="Data table"
             ></lightning-datatable>
         </template>
         <template lwc:elseif={isCard}>
@@ -26,14 +27,14 @@
             </lightning-card>
         </template>
         <template lwc:elseif={isList}>
-            <ul class="slds-list_dotted slds-m-bottom_small">
+            <ul class="slds-list_dotted slds-m-bottom_small" role="list" aria-label="List of items">
                 <template for:each={listItems} for:item="item">
                     <li key={item.key}>{item.value}</li>
                 </template>
             </ul>
         </template>
         <template lwc:elseif={isKeyValue}>
-            <dl class="slds-dl_horizontal slds-m-bottom_small">
+            <dl class="slds-dl_horizontal slds-m-bottom_small" aria-label="Key-value pairs">
                 <template for:each={keyValuePairs} for:item="pair">
                     <dt key={pair.key} class="slds-dl_horizontal__label">{pair.keyLabel}</dt>
                     <dd key={pair.key} class="slds-dl_horizontal__detail">{pair.value}</dd>

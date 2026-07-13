@@ -18,6 +18,7 @@ system:
 
 config:
     developer_name: "skill_load_test"
+    agent_type: "AgentforceServiceAgent"
     agent_label: "Skill Load Test"
     default_agent_user: "ltm_agent@00dky00000gxhj51777765750.ext"
     description: "Minimal agent to isolate Agent_Skill_Loader and Agent_Skill_PromptComposer behavior."
@@ -28,8 +29,7 @@ variables:
     composed_instructions: mutable string = ""
 
 
-start_agent topic_selector:
-    label: "Entry Point"
+start_agent agent_router:
     description: "Load role and core skills, then transition to general support."
 
     actions:
@@ -49,11 +49,10 @@ start_agent topic_selector:
                 with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-txt-response-guidelines"
                 set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
 
-            transition to @topic.general_support
+            transition to @subagent.general_support
 
 
-topic general_support:
-    label: "General Support"
+subagent general_support:
     description: "Uses Load_And_Compose with empty topic skills, reports results."
 
     actions:
