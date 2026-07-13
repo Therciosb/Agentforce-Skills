@@ -24,14 +24,17 @@ We want to invert and collapse this:
    the full catalog of business actions as tools. Its behavior for any given turn is
    determined entirely by which skills were loaded.
 
-This keeps the existing CRM-backed load/compose logic (`Agent_Skills_Repo__c` →
+This keeps the existing CRM-backed load logic (`Agent_Skills_Repo__c` →
 `Agent_Skill_Loader` → `Agent_Skill_PromptComposer` → `Agent_Skill_LoadAndCompose`)
-untouched, adding only a thin header-retrieval action alongside it.
+intact, adding a thin header-retrieval action alongside it and one narrow, additive
+tool-cue rewrite step in the composer (§7.4).
 
 ## 2. Non-Goals
 
-- No change to `Agent_Skill_Loader`, `Agent_Skill_PromptComposer`, or
-  `Agent_Skill_LoadAndCompose` logic.
+- No change to `Agent_Skill_Loader` load logic or `Agent_Skill_LoadAndCompose`
+  orchestration. The only composer change is an **additive** tool-cue rewrite/validation
+  pass over the already-composed text (§7.4); composition, ordering, and reference
+  expansion are unchanged.
 - No new fields on `Agent_Skills_Repo__c` (`WhenToUse__c` already exists).
 - The existing `customer_support_skill_demo` bundle is left untouched; the modified
   agent ships as a **new** bundle.
@@ -161,9 +164,15 @@ skills_to_load:   mutable string = ""     # set by router reasoning, consumed by
   lookups, and the `save_context` LTM action).
 - `before_reasoning`: LoadAndCompose with `instructionNames=@variables.skills_to_load`
   and `existingInstructionBundle=@variables.instruction_bundle_json`.
-- `reasoning`: inject `composed_instructions` (+ optional `agent_memory`); reference every
-  declared action so it is exposed as a tool; instruct to use only tools the loaded
-  instructions call for.
+- `reasoning`: **minimal and topic-agnostic** — inject `composed_instructions` (+ optional
+  `agent_memory`) and a single generic line, e.g. "Use the tools available to you as
+  directed by the instructions above." **Do NOT enumerate or explain individual tools in
+  the reasoning block** — each tool's purpose lives in its action `description:` (declared
+  once), and the loaded skill dictates which tool applies. Enumerating tools here would
+  recouple the generic subagent to specific topics, defeating its purpose.
+- Every business action is still *declared* in the top-level `actions:` block with a clear
+  `description:`; declaration is what exposes it as a callable tool, not a mention in the
+  reasoning text.
 - Loader's existing topic-scoped pruning (keeps `role-*`/`core-skill-*`, swaps
   `skill-*`/`workflow-*`) means re-entering the subagent for a new intent cleanly replaces
   the skill set — supporting multi-intent conversations through one subagent.
@@ -181,9 +190,11 @@ must be told — in the instruction text — the exact tool name to invoke. Bind
 concrete tool names is the primary compliance lever of this feature.
 
 **Revision rule:** every actionable step in a skill/workflow body that corresponds to an
-available tool MUST name that tool explicitly, e.g. "…get explicit customer approval, then
-call **`CreateCase`**." Instruction-record references (e.g. "see `workflow-...`") remain for
-composition/cascade, but are additive to — not a substitute for — the tool name.
+available tool MUST reference that tool with the `[[tool:Name]]` indicator (§7.4), e.g.
+"…get explicit customer approval, then create the case with `[[tool:CreateCase]]`." The
+composer rewrites the indicator to a validated plain-text cue. Instruction-record references
+(e.g. "see `workflow-...`") remain for composition/cascade, and are additive to — not a
+substitute for — the tool indicator.
 
 ### 7.2 Tool inventory (confirmed present, 10 of 55 flows)
 
@@ -194,9 +205,10 @@ composition/cascade, but are additive to — not a substitute for — the tool n
 ### 7.3 Per-record review (all 17 active seeded records)
 
 Legend: **Header OK** = `WhenToUse__c` present & routing-useful (D2). **Tool binding** = the
-tool(s) named in-step — as a **plain name** in `InstructionBody__c` (Layer 2) and as a
-literal `{!@actions.<Name>}` pointer in the generic subagent's reasoning block (Layer 1);
-see §7.4. **Data fix** = `References__c`/field corrections.
+tool(s) to reference in-step in `InstructionBody__c` via the `[[tool:<Name>]]` indicator,
+which the composer rewrites to a validated plain-text cue (§7.4). **Data fix** =
+`References__c`/field corrections. (Tool names shown below are the `<Name>` values that go
+inside `[[tool:...]]`.)
 
 #### Roles
 | Record | Header | Tool binding to add | Data fix |
@@ -231,74 +243,94 @@ see §7.4. **Data fix** = `References__c`/field corrections.
 | `workflow-troubleshooting-galaxy-s25` | OK | Escalation → **`Route_to_ESA`**. | none |
 | `workflow-troubleshooting-galaxy-s25-ultra` | OK | Escalation → **`Route_to_ESA`**. | none |
 
-### 7.4 Tool-pointer syntax — the two-layer rule (CRITICAL)
+### 7.4 Tool references — stored indicator + composer rewrite/validation
+
+#### 7.4.1 Platform constraint (why a stored pointer cannot resolve)
 
 Agent Script resolves `{!@actions.X}` pointers during **deterministic preprocessing of the
 `.agent` script text** (Manual §3 steps 3–4: "LLM receives only the resolved prompt after
 deterministic preprocessing"). Preprocessing runs **before** variable values are
-interpolated, and nested/second-pass interpolation is not supported. Therefore a pointer
-string stored in `InstructionBody__c` (CRM data, injected via
-`{!@variables.composed_instructions}`) would reach the model as **unresolved literal text**,
-not a tool binding. Pointers must live where they are processed. This yields two layers:
+interpolated, and nested/second-pass interpolation is not supported. Skill bodies reach the
+model as the *value* of `{!@variables.composed_instructions}` — interpolated **after**
+preprocessing. Therefore **no string coming from CRM data can become a resolvable
+`{!@actions.X}` binding**, regardless of how Apex formats it. Storing or rewriting to a
+literal pointer would only print unresolved braces to the model. Tool *binding* (the
+resolvable pointer) is not required for compliance here — the platform already exposes each
+declared action to the model via its `description:`; what the skill must supply is a clear,
+correct, unambiguous **textual cue** of which declared tool to use.
 
-**Layer 1 — `.agent` `reasoning.instructions` of the generic subagent → literal pointer
-syntax.** Each declared tool is named with `{!@actions.<Name>}`, in an imperative,
-optionally condition-gated line (Manual §11.5: "Reference tools directly in text… improves
-tool selection reliability"). Example pattern:
+#### 7.4.2 The mechanism: `[[tool:Name]]` indicator → validated plain cue
+
+Authors write a **stable indicator** in `InstructionBody__c` instead of hand-formatting tool
+names:
+
 ```
-reasoning:
-    instructions: ->
-        | Follow the instructions loaded for this request:
-        | {!@variables.composed_instructions}
-        | Use ONLY the tool the loaded instructions call for at each step:
-        | - To create a support case, call {!@actions.CreateCase}.
-        | - To escalate to a human, call {!@actions.Route_to_ESA}.
-        | - To create an escalation ticket, call {!@actions.CreateEscalationTicket}.
-        | - To verify identity, call {!@actions.SendVerificationEmail}.
-        | - To display structured data, call {!@actions.Render_Data}.
-        | - To look up support history, call {!@actions.FetchSupportHistory}.
-        | ... (one line per declared tool in §7.2)
+Once the customer approves the summary, create the case with [[tool:CreateCase]].
+If troubleshooting fails, escalate with [[tool:Route_to_ESA]].
 ```
 
-**Layer 2 — CRM `InstructionBody__c` → plain tool name, exact casing.** The skill body names
-the same tool in-step as plain text (e.g. "…get explicit customer approval, then call the
-`CreateCase` tool."). No `{!@...}` in CRM data. Casing MUST match the Layer-1 action name
-verbatim so the two layers reinforce (the body says which tool; the literal pointer binds
-it).
+The composer (`Agent_Skill_PromptComposer`) gains one **additive** post-composition pass:
 
-**Revision principles applied to every body in §7.3:**
+1. **Rewrite** — replace each `[[tool:<Name>]]` with a clean, consistent plain-text cue,
+   e.g. `the "CreateCase" tool`. This is what the model reads; it is ordinary text (no
+   braces), so it is unaffected by preprocessing order.
+2. **Validate** — check each `<Name>` against a known tool-name allowlist. Unknown or
+   miscased names are surfaced in the composer `warnings` output (and left visibly marked in
+   the text, e.g. `[[unknown tool: Crete_Case]]`, so authoring errors are caught, not hidden).
 
-1. **Name the tool at the point of action** — inline in the imperative step (plain name in
-   CRM per Layer 2), not in a separate "tools" list the model may skip.
+This gives three properties the raw approaches lacked: authors use one syntax instead of
+remembering exact casing; the cue phrasing is uniform across all skills; and every tool
+reference is **validated at load time**, catching typos/renames before they confuse the
+model. The allowlist source is decided in the implementation plan (options: a static list,
+a custom metadata type, or a value passed from the agent) — kept minimal.
+
+#### 7.4.3 Revision principles applied to every body in §7.3
+
+1. **Reference the tool at the point of action** using the `[[tool:Name]]` indicator, inline
+   in the imperative step — not in a separate "tools" list the model may skip.
 2. **Preserve record references for cascade** — `workflow-*`/`core-skill-*` names stay in
-   prose and in `References__c` so composition still expands them.
-3. **Exact casing, single source of truth** — every tool name in a body (Layer 2) and every
-   `{!@actions.X}` pointer (Layer 1) must match a declared action name verbatim
-   (`Render_Data`, not `render_data`).
+   prose and in `References__c` so composition still expands them. (Record refs and tool
+   indicators are different things: refs drive composition; indicators drive tool cues.)
+3. **Exact `Name`, single source of truth** — the `<Name>` inside `[[tool:...]]` must match a
+   declared action name verbatim (`CreateCase`, `Render_Data`); the validator enforces this.
 4. **No new capabilities** — binding only maps existing steps to existing tools; it does not
    add tasks the skill did not already describe.
+5. **Reasoning block stays generic** — no tool enumeration in the subagent (§6.4). The cue in
+   the composed instructions is the only per-skill tool guidance the model receives.
 
 ## 8. Deliverables
 
 1. `Agent_Skill_HeaderProvider.cls` (+ `-meta.xml`) — new invocable.
 2. `Agent_Skill_HeaderProvider_Test.cls` (+ `-meta.xml`) — coverage incl. the no-fallback
    exclusion path and missing-name reporting.
-3. New agent bundle (`.agent` + `.bundle-meta.xml`), e.g. `customer_support_progressive`,
-   declaring the §7.2 tool inventory on the single generic subagent.
-4. **Revised seed data** (`data/agent-skills/*.csv`): tool-name binding per §7.3 in every
-   `InstructionBody__c`; fix malformed `References__c` (`core-skill-ltmManagement-service-agent`,
-   `workflow-support-case-lifecycle`); confirm skill→workflow links. Document reseed.
-5. Doc updates: header contract (D2), tool-binding rule (§7.1), and the
-   router/generic-subagent pattern in `docs/Agent-Skills-Framework-for-FDE.md`.
+3. **`Agent_Skill_PromptComposer` — additive `[[tool:Name]]` rewrite/validation pass**
+   (§7.4): rewrites indicators to plain cues, validates names against the tool allowlist,
+   appends unknown-tool warnings. Composition/ordering/expansion logic unchanged. Extend
+   `Agent_Skill_PromptComposer_Test` for rewrite, unknown-name warning, and no-indicator
+   passthrough.
+4. New agent bundle (`.agent` + `.bundle-meta.xml`), e.g. `customer_support_progressive`,
+   declaring the §7.2 tool inventory on the single generic subagent, with a **minimal,
+   topic-agnostic** reasoning block (§6.4 — no tool enumeration).
+5. **Revised seed data** (`data/agent-skills/*.csv`): `[[tool:Name]]` indicators per §7.3 in
+   every `InstructionBody__c`; fix malformed `References__c`
+   (`core-skill-ltmManagement-service-agent`, `workflow-support-case-lifecycle`); confirm
+   skill→workflow links. Document reseed.
+6. Doc updates: header contract (D2), the `[[tool:Name]]` indicator + composer-rewrite
+   mechanism (§7.4), and the router/generic-subagent pattern in
+   `docs/Agent-Skills-Framework-for-FDE.md`.
 
 ## 9. Testing Strategy
 
 - **Apex:** `Agent_Skill_HeaderProvider_Test` — happy path (headers returned in order),
   missing/inactive name reporting, blank-`WhenToUse__c` exclusion (no fallback), empty
   input, locale filter. Run alongside the existing core suite.
+- **Composer:** `Agent_Skill_PromptComposer_Test` — `[[tool:Name]]` rewritten to the plain
+  cue, unknown/miscased name produces a warning + visible marker, body with no indicators is
+  unchanged.
 - **Data:** a parse assertion that every `References__c` token resolves to an existing
-  active record name (guards against reintroducing prose/spaces); and that every tool name
-  cited in a revised `InstructionBody__c` matches a declared action (guards §7.4 casing).
+  active record name (guards against reintroducing prose/spaces); and that every
+  `[[tool:Name]]` indicator in seed `InstructionBody__c` names a real declared action
+  (guards §7.4).
 - **Agent:** `sf agent validate authoring-bundle` on the new bundle; targeted
   conversation tests (`testing-agentforce`) that a product-info utterance loads only
   `skill-product-information-qa`, a troubleshooting utterance cascades the
@@ -312,5 +344,6 @@ it).
 | Large tool list on one subagent hits platform limits | Scope tools to the support-demo set (D4), not all ~50 repo flows; revisit if limits hit. |
 | Router picks wrong/too-many skills | Headers audited as disjoint (§4); router prompt constrains to the candidate list; conversation tests validate. |
 | Reintroducing malformed `References__c` | Data parse test (§9). |
-| Tool name in body drifts from declared action name (casing/rename) | §7.4 exact-casing rule + data test asserting cited tool names resolve to declared actions. |
-| Generic subagent calls a tool the loaded skill didn't sanction | Reasoning prompt constrains to tools the composed instructions name; §7.1 binds tools inline so only relevant tools are cited. |
+| `[[tool:Name]]` names a non-existent/miscased action | Composer validates against the tool allowlist, warns, and leaves a visible marker (§7.4.2); data test asserts every indicator resolves. |
+| Author/reader expects `[[tool:X]]` to become a resolvable `{!@actions.X}` binding | §7.4.1 documents the platform constraint explicitly; the cue is plain text by design and compliance comes from action `description:` + the validated cue, not pointer resolution. |
+| Generic subagent calls a tool the loaded skill didn't sanction | Skill body cites only the relevant tool via `[[tool:Name]]`; reasoning block stays generic (§6.4); action `description:` scopes each tool's purpose. |
