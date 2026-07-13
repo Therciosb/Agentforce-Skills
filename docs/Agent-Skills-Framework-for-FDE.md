@@ -311,6 +311,104 @@ topic finalization:
 
 ---
 
+## 5. Progressive Disclosure & Generic Handler Topic
+
+The patterns in Section 4 partition an agent into several specialized topics, each hardcoding its own `instructionNames`. An alternative pattern inverts and collapses this: the router performs **progressive disclosure** (loading only lightweight skill *headers*, then deciding which skills the turn needs) and hands off to a **single generic handler topic** that loads the selected skills and exposes the full tool catalog. The reference implementation is the `customer_support_progressive` bundle. See `docs/superpowers/specs/2026-07-13-progressive-disclosure-generic-subagent-design.md` for the full design rationale.
+
+### 5.1 Header Contract (No Fallback)
+
+`Agent_Skill_HeaderProvider` (invocable label **"Get Skill Headers"**) returns lean routing headers for a candidate skill list — `Name` plus `WhenToUse__c` only, with no instruction body and no reference expansion. Each returned line is formatted as `- <Name>: <WhenToUse__c>`.
+
+The contract has **no fallback**:
+
+- A candidate skill whose `WhenToUse__c` is blank is **excluded** from `skillHeaders` — it is never silently substituted with `Description__c`.
+- The excluded name (along with inactive or not-found names) is reported in the `missingNames` CSV and surfaced in `warnings`.
+
+Because headers are the router's only signal for a candidate skill, authoring a meaningful `WhenToUse__c` ("Use when…") is **mandatory** for any skill you intend to expose as a router candidate. Header quality is an authoring responsibility that grows with the catalog, the same governance point the framework makes for instruction bodies.
+
+### 5.2 The `[[tool:Name]]` Indicator
+
+In the generic-handler pattern every action tool is present at once, so an instruction body must name the exact tool the agent should call. Authors write a stable indicator inline in `InstructionBody__c` at the point of action:
+
+```
+Once the customer approves the summary, create the case with [[tool:CreateCase]].
+If troubleshooting fails, escalate with [[tool:Route_to_ESA]].
+```
+
+`Agent_Skill_PromptComposer` runs one **additive** post-composition pass over the already-composed text:
+
+1. **Rewrite** — each `[[tool:<Name>]]` becomes a clean, uniform plain-text cue, e.g. `the "CreateCase" tool`.
+2. **Validate** — each `<Name>` is checked against the tool allowlist (`KNOWN_TOOL_NAMES`). Unknown or miscased names are left visibly marked as `[[unknown tool: <Name>]]` and surfaced in the composer `warnings` output, so authoring errors are caught rather than hidden.
+
+**Important — the indicator is a PLAIN-TEXT CUE, not a resolvable pointer.** It is deliberately *not* a `{!@actions.X}` binding. Agent Script resolves `{!@actions.X}` pointers during deterministic preprocessing of the `.agent` script text, which runs **before** variable values are interpolated; nested/second-pass interpolation is not supported. Skill bodies reach the model as the interpolated *value* of `{!@variables.composed_instructions}` — after preprocessing — so no string coming from CRM data can ever become a resolvable `{!@actions.X}` binding. Compliance comes from the action `description:` (which the platform already exposes to the model) plus the validated textual cue, not from pointer resolution.
+
+Record references in `References__c` are a **separate mechanism**: they name other instruction records (`workflow-*`, `core-skill-*`), remain in prose and in `References__c`, and drive the composition **cascade**. Tool indicators drive tool cues; record references drive cascade. The two are additive — a tool indicator never replaces a record reference.
+
+### 5.3 Router + Generic Handler Topic Pattern
+
+> **Convention note:** this repo uses `topic` blocks and `@topic` transitions — there is no `subagent`/`@subagent.` syntax. The single generic handler is a **topic**, not a subagent. Skill loading is done as the first `run` inside `reasoning.instructions` (the repo does not use `before_reasoning`), and an action becomes an LLM-callable tool only when it is re-exposed under `reasoning.actions:` with slot-fill.
+
+**Router (`start_agent`):** loads role + core skills flat (no cascade), optionally loads LTM, fetches lean headers for the candidate skills via `Agent_Skill_HeaderProvider`, and instructs the LLM to set `skills_to_load` (a no-spaces CSV) through a `select_skills` tool. It then transitions to the one handler topic in `after_reasoning` (so the LLM's selection is set before the transition fires):
+
+```
+    reasoning:
+        instructions: ->
+            run @actions.load_skills_init
+                with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-txt-response-guidelines"
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+
+            run @actions.get_skill_headers
+                with skillNames=@variables.candidate_skills
+                set @variables.skill_headers=@outputs.skillHeaders
+
+            | You are the router. Select which skills are needed for the user's request.
+            | Available skills (choose from these names only):
+            | {!@variables.skill_headers}
+            |
+            | Decide the minimal set of skill names that match the user's request, then call {!@actions.select_skills} with a comma-separated list of those exact names (no spaces after commas). Do not answer the user directly; selecting the skills is your only job this turn.
+
+        actions:
+            select_skills: @utils.setVariables
+                description: "Record the chosen skill names to load for this request."
+                with skills_to_load=...
+
+    after_reasoning:
+        transition to @topic.generic_handler
+```
+
+**Generic handler (`topic generic_handler`):** loads the router-selected skills as the **first `run`** in `reasoning.instructions` (each selected `skill-*` cascades to its `workflow-*` via `References__c`), injects the composed instructions, and re-exposes the full support-demo tool catalog under `reasoning.actions`. The reasoning prose stays **topic-agnostic** — it does not enumerate individual tools; each tool's purpose lives in its action `description:`, and the loaded skills decide which tools apply:
+
+```
+    reasoning:
+        instructions: ->
+            run @actions.load_skills
+                with instructionNames=@variables.skills_to_load
+                with existingInstructionBundle=@variables.instruction_bundle_json
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+                set @variables.composed_instructions=@outputs.instructionsBundle
+
+            | Here is your past context. Use it for personalization if present:
+            | {!@variables.agent_memory}
+            |
+            | Follow these instructions. They determine what to do and which tools to use:
+            | {!@variables.composed_instructions}
+            |
+            | Use the tools available to you as directed by the instructions above.
+
+        actions:
+            create_case: @actions.create_case
+                description: "Create a new support case from a concise, user-approved subject."
+                with subject=...
+            route_to_esa: @actions.route_to_esa
+                description: "Route the conversation to a human (Enhanced Service Agent) queue."
+                with recordId=...
+            # ... remaining business tools re-exposed here as slot-filled wrappers
+```
+
+Re-exposing each action under `reasoning.actions:` is required plumbing (a bare `topic.actions:` declaration is only deterministically callable via `run @actions.X`), not topic coupling: the prose stays generic while the loaded skills' `[[tool:Name]]` cues tell the model which tool to invoke.
+
+---
+
 ## Related Documentation
 
 - `docs/Agent Script Manual v4.md` — Agent Script language and execution model
