@@ -173,12 +173,6 @@ topic generic_handler:
                 ticket_id: string
                     description: "The created escalation ticket ID."
             target: "flow://CreateEscalationTicket"
-        route_to_esa:
-            description: "Route the conversation to an Enhanced Service Agent (human) queue."
-            inputs:
-                recordId: string
-                    description: "Record/routable identifier to route."
-            target: "flow://Route_to_ESA"
         get_order_status:
             description: "Look up the current status of an order."
             inputs:
@@ -298,9 +292,8 @@ topic generic_handler:
                 with customer_id=...
                 with issue_description=...
                 with issue_type=...
-            route_to_esa: @actions.route_to_esa
-                description: "Route the conversation to a human (Enhanced Service Agent) queue."
-                with recordId=...
+            route_to_esa: @utils.escalate
+                description: "Route the conversation to a human (Enhanced Service Agent) via Omni-Channel."
             get_order_status: @actions.get_order_status
                 description: "Look up the current status of an order."
                 with order_id=...
