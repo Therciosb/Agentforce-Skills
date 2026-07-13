@@ -222,8 +222,9 @@ topic generic_handler:
             outputs:
                 in_stock: boolean
                     description: "Whether the product is in stock."
-                price: string
+                price: object
                     description: "Product price."
+                    complex_data_type_name: "lightning__currencyType"
                 product_details: string
                     description: "Product specification details."
             target: "flow://GetProductInfo"
