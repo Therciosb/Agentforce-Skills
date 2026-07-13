@@ -43,7 +43,7 @@ public with sharing class Agent_Skill_SeedService {
                 '# AUTHORITY & SCOPE\n' +
                 'You are authorized to: troubleshoot product and connectivity issues (Wi-Fi, 5G, iPhone, Galaxy devices); create and update support cases; escalate to a human specialist when needed.\n\n' +
                 '# DEPENDENCIES (see References)\n' +
-                'Always invoke core-skill-user-otp-authentication before account-sensitive operations. Use workflow-support-case-lifecycle for case creation and updates. Use workflow-escalate-to-human when troubleshooting fails or the customer requests a human.',
+                'Always invoke core-skill-user-otp-authentication (send the code with [[tool:SendVerificationEmail]]) before account-sensitive operations. Use workflow-support-case-lifecycle for case creation and updates (create cases with [[tool:CreateCase]]). Use workflow-escalate-to-human when troubleshooting fails or the customer requests a human (route with [[tool:Route_to_ESA]] and open a ticket with [[tool:CreateEscalationTicket]]).',
             ''
         ));
 
@@ -74,7 +74,7 @@ public with sharing class Agent_Skill_SeedService {
                 '- **new_goal:** Extract when the user has stated or implied an unfinished goal. Value: The goal in the user\'s words, or empty string if none.\n\n' +
                 '- **has_issue:** Extract when assessing whether the user\'s issue is resolved at the point of persistence. Value: True only if the user still has unresolved issues.\n\n' +
                 '- **new_style:** Extract when inferring communication preference from the conversation. Value: concise, detailed, or formal.',
-                'Agent_Context__c,Get_Agent_ContextObject,Save_Agent_ContextObject. Depends on agent_memory (formatted string from Get_Agent_ContextObject). Save: Save_Agent_ContextObject (new_summary, new_goal, has_issue, new_style).'
+                ''
         ));
         repoItems.add(repoItem(
                 'core-skill-user-otp-authentication',
@@ -87,7 +87,7 @@ public with sharing class Agent_Skill_SeedService {
                 '## 1. Confirm Channel\n' +
                 'Ask: "Which contact method is registered—SMS or email?" Verify they can receive OTP. If unsure, offer primary on file.\n\n' +
                 '## 2. Send OTP\n' +
-                'Initiate 6-digit code (5–10 min validity). "I\'ve sent a code to your [SMS/email]. It will arrive within a minute."\n\n' +
+                'Send the 6-digit code with [[tool:SendVerificationEmail]] (5–10 min validity). "I\'ve sent a code to your [SMS/email]. It will arrive within a minute."\n\n' +
                 '## 3. Validate\n' +
                 '- Valid: Proceed with operation.\n' +
                 '- Invalid: One retry. "That code doesn\'t match. Try again or I can resend."\n' +
@@ -154,7 +154,7 @@ public with sharing class Agent_Skill_SeedService {
                 'Defines JSON schema per display type for render_data action.',
                 'Use when agent has structured data to display (table, card, list, key-value).',
                 '# RENDER DATA FORMAT\n\n' +
-                'Use the render_data action when you have structured data to display to the user. Produce the data string and display type following these rules.\n\n' +
+                'Call [[tool:Render_Data]] when you have structured data to display to the user. Produce the data string and display type following these rules.\n\n' +
                 '## When to Call\n\n' +
                 '- After gathering data from another action (e.g. Query Records, Get Record Details) and you want to present it in a structured format\n' +
                 '- When you have multiple items to show (list, table)\n' +
@@ -208,14 +208,14 @@ public with sharing class Agent_Skill_SeedService {
                 '## 2. Structured Answer Delivery\n' +
                 '- Lead with a direct answer to the question before expanding.\n' +
                 '- Use headers when comparing multiple options (e.g., Display, Camera, Battery, Price).\n' +
-                '- Include relevant specs: screen size, resolution, refresh rate, camera MP, RAM, storage, price.\n' +
+                '- Include relevant specs: screen size, resolution, refresh rate, camera MP, RAM, storage, price. Look up specs with [[tool:GetProductInfo]] and present comparison tables with [[tool:Render_Data]].\n' +
                 '- Explain complex features in plain language (e.g., ProMotion, Dynamic AMOLED, AI capabilities).\n' +
                 '- Help customers understand trade-offs (e.g., battery vs performance, price vs features).\n\n' +
                 '## 3. Product Comparisons\n' +
                 '**iPhone 16 vs Galaxy S25 (Base):** Display 6.1 vs 6.2 in; RAM 8 vs 12GB; both $799 (128GB). AI: Apple Intelligence vs Galaxy AI with Gemini.\n' +
                 '**iPhone 16 Pro vs Galaxy S25 Ultra:** ProMotion (120Hz) vs Dynamic AMOLED; advanced camera systems; Galaxy has telephoto and Expert Raw. Pro ~$999; Ultra ~$1,299.\n\n' +
                 '## 4. Handling Uncertainty\n' +
-                '- If you lack specific information: "I don\'t have specific information on that. I can create a case for our product team to follow up."\n' +
+                '- If you lack specific information: "I don\'t have specific information on that. I can create a case with [[tool:CreateCase]] for our product team to follow up."\n' +
                 '- Never invent product facts, specs, or release dates.\n' +
                 '- Offer case creation for follow-up when the question is outside your knowledge base.',
                 ''
@@ -247,7 +247,7 @@ public with sharing class Agent_Skill_SeedService {
                 '- Each workflow is product-specific; follow its steps in order. Never invent product-specific steps.\n' +
                 '- Provide clear, step-by-step guidance. Confirm each step with the customer before moving to the next.\n\n' +
                 '## 3. Escalation\n' +
-                '- If the product workflow does not resolve the issue, or the customer requests human support, invoke workflow-escalate-to-human.\n' +
+                '- If the product workflow does not resolve the issue, or the customer requests human support, invoke workflow-escalate-to-human (route with [[tool:Route_to_ESA]], open a ticket with [[tool:CreateEscalationTicket]]).\n' +
                 '- Document attempted solutions and outcomes for handoff context.',
                 'workflow-escalate-to-human,workflow-troubleshooting-wifi-modem,workflow-troubleshooting-5g-modem,workflow-troubleshooting-iphone-16,workflow-troubleshooting-iphone-16-pro,workflow-troubleshooting-galaxy-s25,workflow-troubleshooting-galaxy-s25-ultra'
         ));
@@ -269,7 +269,7 @@ public with sharing class Agent_Skill_SeedService {
                 '## 4. Outage\n' +
                 'Neighbors affected? Check ISP outage map.\n\n' +
                 '## 5. Escalate\n' +
-                'If persists after power cycle/cables or red LED remains: invoke workflow-escalate-to-human.',
+                'If persists after power cycle/cables or red LED remains: invoke workflow-escalate-to-human (route with [[tool:Route_to_ESA]]).',
                 'workflow-escalate-to-human'
         ));
         repoItems.add(repoItem(
@@ -286,7 +286,7 @@ public with sharing class Agent_Skill_SeedService {
                 '## 3. Refresh\n' +
                 'Power cycle (60 sec). Firmware update. Check SIM/eSIM seating.\n\n' +
                 '## 4. Escalate\n' +
-                'RSRP < -100 dBm, SINR < 10 dB, or low throughput after steps: invoke workflow-escalate-to-human.',
+                'RSRP < -100 dBm, SINR < 10 dB, or low throughput after steps: invoke workflow-escalate-to-human (route with [[tool:Route_to_ESA]]).',
                 'workflow-escalate-to-human'
         ));
         repoItems.add(repoItem(
@@ -303,7 +303,7 @@ public with sharing class Agent_Skill_SeedService {
                 '## 3. Reset Network\n' +
                 'If persists: Settings > General > Transfer or Reset > Reset Network Settings. Passcode, confirm. Reconnect Wi-Fi, re-pair Bluetooth. (Removes saved networks; no photos/apps affected.)\n\n' +
                 '## 4. Escalate\n' +
-                'If persists: invoke workflow-escalate-to-human.',
+                'If persists: invoke workflow-escalate-to-human (route with [[tool:Route_to_ESA]]).',
                 'workflow-escalate-to-human'
         ));
         repoItems.add(repoItem(
@@ -320,7 +320,7 @@ public with sharing class Agent_Skill_SeedService {
                 '## 3. Camera\n' +
                 'Force restart. Close apps; free storage. Torch on but no light: force restart. If persists: restore via computer (backup first).\n\n' +
                 '## 4. General\n' +
-                'Update iOS. Reset Network if connectivity. Hardware defects after software steps: invoke workflow-escalate-to-human.',
+                'Update iOS. Reset Network if connectivity. Hardware defects after software steps: invoke workflow-escalate-to-human (route with [[tool:Route_to_ESA]]).',
                 'workflow-escalate-to-human'
         ));
         repoItems.add(repoItem(
@@ -337,7 +337,7 @@ public with sharing class Agent_Skill_SeedService {
                 '## 3. Battery\n' +
                 'Motion Smoothness: Adaptive→Standard (60Hz). Restrict background apps. Adaptive Battery on. Overheating: lower brightness, disable Always-On, avoid heavy use while charging.\n\n' +
                 '## 4. Escalate\n' +
-                'If unresolved: invoke workflow-escalate-to-human. Suggest Samsung Members for error report.',
+                'If unresolved: invoke workflow-escalate-to-human (route with [[tool:Route_to_ESA]]). Suggest Samsung Members for error report.',
                 'workflow-escalate-to-human'
         ));
         repoItems.add(repoItem(
@@ -356,7 +356,7 @@ public with sharing class Agent_Skill_SeedService {
                 '## 4. Overheating\n' +
                 'Adaptive Battery on. Lower brightness. Avoid heavy camera while charging.\n\n' +
                 '## 5. Escalate\n' +
-                'Unresolved camera/display: invoke workflow-escalate-to-human. Samsung Members for expert support.',
+                'Unresolved camera/display: invoke workflow-escalate-to-human (route with [[tool:Route_to_ESA]]). Samsung Members for expert support.',
                 'workflow-escalate-to-human'
         ));
         repoItems.add(repoItem(
@@ -374,13 +374,13 @@ public with sharing class Agent_Skill_SeedService {
                 '- Classify severity: Critical (outage, safety), High (major impact), Medium (moderate), Low (minor).\n' +
                 '- Document business impact (e.g., "Customer cannot work," "No connectivity").\n' +
                 '- Select case type: Technical, Billing, Replacement, Refund, General.\n' +
-                '- Ensure identity verification (OTP) before creating or updating cases. Never proceed without successful validation.\n\n' +
+                '- Ensure identity verification (OTP) with [[tool:SendVerificationEmail]] before creating or updating cases. Never proceed without successful validation.\n\n' +
                 '## 2. Case Creation\n' +
                 '- Confirm case reason: technical issue, billing, refund, replacement, etc.\n' +
                 '- Summarize the issue; get explicit customer approval before submitting.\n' +
-                '- Assign appropriate case type and priority. Create with concise summary and user-approved notes.\n\n' +
+                '- Assign appropriate case type and priority. Create the case with [[tool:CreateCase]] using a concise summary and user-approved notes.\n\n' +
                 '## 3. Case Updates & Status\n' +
-                '- For status requests: look up case by number or contact; report current status (Open, In Progress, Completed).\n' +
+                '- For status requests: look up case history with [[tool:FetchSupportHistory]] by contact; report current status (Open, In Progress, Completed). Present results with [[tool:Render_Data]].\n' +
                 '- For updates: add progress notes with customer approval. Document all activities and communications.\n' +
                 '- Ensure all interactions are logged to the case timeline for continuity.\n\n' +
                 '## 4. Communication & Expectations\n' +
@@ -400,16 +400,16 @@ public with sharing class Agent_Skill_SeedService {
                 'Use when opening, updating, or closing customer support cases.',
                 '# SUPPORT CASE LIFECYCLE\n' +
                 '## 1. Identity\n' +
-                'Invoke core-skill-user-otp-authentication. Do not proceed until OTP succeeds.\n\n' +
+                'Invoke core-skill-user-otp-authentication; send the code with [[tool:SendVerificationEmail]]. Do not proceed until OTP succeeds.\n\n' +
                 '## 2. Intake\n' +
                 'Capture issue in customer\'s words. Severity: Critical/High/Medium/Low. Business impact. Case type: Technical, Billing, Replacement, Refund, General.\n\n' +
                 '## 3. Create or Update\n' +
-                'Create with approved summary. Or update: progress notes, status (Open → In Progress → Completed). Log all activities.\n\n' +
+                'Create the case with [[tool:CreateCase]] using the approved summary. Or update: progress notes, status (Open → In Progress → Completed). Log all activities.\n\n' +
                 '## 4. Confirm\n' +
                 'Provide case number. ETA (e.g., "24–48 hours"). Summarize next actions.\n\n' +
                 '## 5. Close\n' +
                 'When resolved: status Completed. Confirm with customer. Ask if anything else needed.',
-                'core-skill-user-otp-authentication, workflow-escalate-to-human'
+                'core-skill-user-otp-authentication,workflow-escalate-to-human'
         ));
 
         repoItems.add(repoItem(
@@ -426,7 +426,7 @@ public with sharing class Agent_Skill_SeedService {
                 '## Context Transfer\n' +
                 'Full history, customer ID, attempted solutions, escalation reason, sentiment. 3–5 sentence summary.\n\n' +
                 '## Routing\n' +
-                'By type: technical, billing, general. By tier: VIP/Enterprise vs Standard. By complexity.\n\n' +
+                'By type: technical, billing, general. Route the customer with [[tool:Route_to_ESA]] and open the handoff ticket with [[tool:CreateEscalationTicket]]. By tier: VIP/Enterprise vs Standard. By complexity.\n\n' +
                 '## Confirm\n' +
                 'Case/handoff reference. "You\'re connected to [Agent]. They have full context."',
             ''
