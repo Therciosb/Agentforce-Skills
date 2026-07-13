@@ -28,8 +28,11 @@ system:
 config:
     developer_name: "customer_support_progressive"
     agent_label: "Customer Support (Progressive Disclosure)"
-    default_agent_user: "ltm_agent@00dky00000gxhj51777765750.ext"
     description: "Router-level progressive disclosure with a single generic handler topic driven by loaded skills."
+
+
+access:
+    default_agent_user: "ltm_agent@00dky00000gxhj51777765750.ext"
 
 
 variables:
