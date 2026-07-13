@@ -168,34 +168,111 @@ skills_to_load:   mutable string = ""     # set by router reasoning, consumed by
   `skill-*`/`workflow-*`) means re-entering the subagent for a new intent cleanly replaces
   the skill set — supporting multi-intent conversations through one subagent.
 
-## 7. Deliverables
+## 7. Full Review of Seeded Skills + Tool-Name Binding
+
+### 7.1 Why this matters for the generic subagent
+
+Today's instruction bodies reference **other instruction records** ("invoke
+`workflow-escalate-to-human`", "Send OTP") but never name the **action tool** the agent
+must actually call (`Route_to_ESA`, `SendVerificationEmail`, `CreateCase`). In the current
+multi-subagent design that was tolerable because each subagent declared only its own small
+tool set. In the **generic subagent**, every action tool is present at once, so the model
+must be told — in the instruction text — the exact tool name to invoke. Binding tasks to
+concrete tool names is the primary compliance lever of this feature.
+
+**Revision rule:** every actionable step in a skill/workflow body that corresponds to an
+available tool MUST name that tool explicitly, e.g. "…get explicit customer approval, then
+call **`CreateCase`**." Instruction-record references (e.g. "see `workflow-...`") remain for
+composition/cascade, but are additive to — not a substitute for — the tool name.
+
+### 7.2 Tool inventory (confirmed present, 10 of 55 flows)
+
+`CreateCase`, `CreateEscalationTicket`, `Route_to_ESA`, `GetOrderStatus`,
+`FetchSupportHistory`, `TrackShipment`, `FetchAccountData`, `GetProductInfo`,
+`SendVerificationEmail`, `Render_Data`. These are the tools the generic subagent declares.
+
+### 7.3 Per-record review (all 17 active seeded records)
+
+Legend: **Header OK** = `WhenToUse__c` present & routing-useful (D2). **Tool binding** =
+what must be added to `InstructionBody__c`. **Data fix** = `References__c`/field corrections.
+
+#### Roles
+| Record | Header | Tool binding to add | Data fix |
+|--------|--------|---------------------|----------|
+| `role-customer-support-agent` | OK | In "DEPENDENCIES", name tools alongside records: OTP → `SendVerificationEmail`; case lifecycle → `CreateCase`; escalation → `Route_to_ESA` / `CreateEscalationTicket`. | none |
+
+#### Core skills
+| Record | Header | Tool binding to add | Data fix |
+|--------|--------|---------------------|----------|
+| `core-skill-ltmManagement-service-agent` | OK | Replace generic "invoke the save action" with the concrete save action tool name used by the bundle (`save_context`/`SaveAgentContext`). | **`References__c` malformed** — strip the prose sentence; keep only real record names (or empty). Move prose to `Description__c`. |
+| `core-skill-user-otp-authentication` | OK | Bind "Send OTP" → **`SendVerificationEmail`**; state validation is agent-side. | none |
+| `core-skill-txt-response-guidelines` | OK | none (formatting only, no tool) | none |
+| `core-skill-HTML-formatting-guidelines` | OK | none (formatting only) | none |
+| `core-skill-render-data-format` | OK | Already references `render_data`; align to the declared tool name **`Render_Data`** exactly (casing). | none |
+
+#### Domain skills
+| Record | Header | Tool binding to add | Data fix |
+|--------|--------|---------------------|----------|
+| `skill-product-information-qa` | OK | Bind "create a case for follow-up" → **`CreateCase`**; optional structured output → **`Render_Data`** for spec comparison tables; product lookups → **`GetProductInfo`**. | none |
+| `skill-support-case-management` | OK | Bind intake/creation → **`CreateCase`**; status lookup → **`FetchSupportHistory`** / `GetOrderStatus`; identity → **`SendVerificationEmail`**; present results via **`Render_Data`**. | none |
+| `skill-troubleshooting-support` | OK | Bind escalation path → **`Route_to_ESA`** / `CreateEscalationTicket`; keep product-workflow record refs for cascade. | none |
+
+#### Workflows
+| Record | Header | Tool binding to add | Data fix |
+|--------|--------|---------------------|----------|
+| `workflow-support-case-lifecycle` | OK | "Create/Update" → **`CreateCase`**; identity step → **`SendVerificationEmail`**. | **`References__c` has space after comma** — normalize to no-spaces CSV. |
+| `workflow-escalate-to-human` | OK | Bind routing → **`Route_to_ESA`**; ticket creation → **`CreateEscalationTicket`**. | none |
+| `workflow-troubleshooting-wifi-modem` | OK | Escalation → **`Route_to_ESA`**. | none |
+| `workflow-troubleshooting-5g-modem` | OK | Escalation → **`Route_to_ESA`**. | none |
+| `workflow-troubleshooting-iphone-16` | OK | Escalation → **`Route_to_ESA`**. | none |
+| `workflow-troubleshooting-iphone-16-pro` | OK | Escalation → **`Route_to_ESA`**. | none |
+| `workflow-troubleshooting-galaxy-s25` | OK | Escalation → **`Route_to_ESA`**. | none |
+| `workflow-troubleshooting-galaxy-s25-ultra` | OK | Escalation → **`Route_to_ESA`**. | none |
+
+### 7.4 Revision principles (applied to every body above)
+
+1. **Name the tool at the point of action** — inline, in the imperative step, not in a
+   separate "tools" list the model may skip.
+2. **Preserve record references for cascade** — `workflow-*`/`core-skill-*` names stay in
+   prose and in `References__c` so composition still expands them.
+3. **Exact casing** — tool names must match the action names declared in the generic
+   subagent verbatim (`Render_Data`, not `render_data`), or the model may not resolve them.
+4. **No new capabilities** — binding only maps existing steps to existing tools; it does
+   not add tasks the skill did not already describe.
+
+## 8. Deliverables
 
 1. `Agent_Skill_HeaderProvider.cls` (+ `-meta.xml`) — new invocable.
 2. `Agent_Skill_HeaderProvider_Test.cls` (+ `-meta.xml`) — coverage incl. the no-fallback
    exclusion path and missing-name reporting.
-3. New agent bundle (`.agent` + `.bundle-meta.xml`), e.g. `customer_support_progressive`.
-4. Seed-data corrections: fix malformed `References__c` in `data/agent-skills/*.csv`;
-   confirm skill→workflow links; document reseed.
-5. Doc updates: note the header contract (D2) and the router/generic-subagent pattern in
-   `docs/Agent-Skills-Framework-for-FDE.md` (or a focused new doc).
+3. New agent bundle (`.agent` + `.bundle-meta.xml`), e.g. `customer_support_progressive`,
+   declaring the §7.2 tool inventory on the single generic subagent.
+4. **Revised seed data** (`data/agent-skills/*.csv`): tool-name binding per §7.3 in every
+   `InstructionBody__c`; fix malformed `References__c` (`core-skill-ltmManagement-service-agent`,
+   `workflow-support-case-lifecycle`); confirm skill→workflow links. Document reseed.
+5. Doc updates: header contract (D2), tool-binding rule (§7.1), and the
+   router/generic-subagent pattern in `docs/Agent-Skills-Framework-for-FDE.md`.
 
-## 8. Testing Strategy
+## 9. Testing Strategy
 
 - **Apex:** `Agent_Skill_HeaderProvider_Test` — happy path (headers returned in order),
   missing/inactive name reporting, blank-`WhenToUse__c` exclusion (no fallback), empty
   input, locale filter. Run alongside the existing core suite.
 - **Data:** a parse assertion that every `References__c` token resolves to an existing
-  active record name (guards against reintroducing prose/spaces).
+  active record name (guards against reintroducing prose/spaces); and that every tool name
+  cited in a revised `InstructionBody__c` matches a declared action (guards §7.4 casing).
 - **Agent:** `sf agent validate authoring-bundle` on the new bundle; targeted
   conversation tests (`testing-agentforce`) that a product-info utterance loads only
-  `skill-product-information-qa`, and a troubleshooting utterance cascades the
-  troubleshooting workflows.
+  `skill-product-information-qa`, a troubleshooting utterance cascades the
+  troubleshooting workflows, and that a case-creation turn actually invokes `CreateCase`.
 
-## 9. Risks & Mitigations
+## 10. Risks & Mitigations
 
 | Risk | Mitigation |
 |------|------------|
 | Org `WhenToUse__c` drifts from seed CSVs → weak router headers | D2 contract excludes+warns; reseed step in scope; authoring-governance note in docs. |
 | Large tool list on one subagent hits platform limits | Scope tools to the support-demo set (D4), not all ~50 repo flows; revisit if limits hit. |
 | Router picks wrong/too-many skills | Headers audited as disjoint (§4); router prompt constrains to the candidate list; conversation tests validate. |
-| Reintroducing malformed `References__c` | Data parse test (§8). |
+| Reintroducing malformed `References__c` | Data parse test (§9). |
+| Tool name in body drifts from declared action name (casing/rename) | §7.4 exact-casing rule + data test asserting cited tool names resolve to declared actions. |
+| Generic subagent calls a tool the loaded skill didn't sanction | Reasoning prompt constrains to tools the composed instructions name; §7.1 binds tools inline so only relevant tools are cited. |
