@@ -313,7 +313,7 @@ topic finalization:
 
 ## 5. Progressive Disclosure & Generic Handler Topic
 
-The patterns in Section 4 partition an agent into several specialized topics, each hardcoding its own `instructionNames`. An alternative pattern inverts and collapses this: the router performs **progressive disclosure** (loading only lightweight skill *headers*, then deciding which skills the turn needs) and hands off to a **single generic handler topic** that loads the selected skills and exposes the full tool catalog. The reference implementation is the `customer_support_progressive` bundle. See `docs/superpowers/specs/2026-07-13-progressive-disclosure-generic-subagent-design.md` for the full design rationale.
+The patterns in Section 4 partition an agent into several specialized topics, each hardcoding its own `instructionNames`. An alternative pattern inverts and collapses this: the router performs **progressive disclosure** (loading only lightweight skill *headers*, then deciding which skills the turn needs) and hands off to a **single generic handler topic** that loads the selected skills and exposes the full tool catalog. The reference implementation is the `customer_support_progressive_pd` bundle. See `docs/superpowers/specs/2026-07-13-progressive-disclosure-generic-subagent-design.md` for the full design rationale.
 
 ### 5.1 Header Contract (No Fallback)
 

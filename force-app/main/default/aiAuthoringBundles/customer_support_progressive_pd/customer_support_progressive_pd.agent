@@ -26,7 +26,7 @@ system:
 
 
 config:
-    developer_name: "customer_support_progressive"
+    developer_name: "customer_support_progressive_pd"
     agent_label: "Customer Support (Progressive Disclosure)"
     description: "Router-level progressive disclosure with a single generic handler topic driven by loaded skills."
 
