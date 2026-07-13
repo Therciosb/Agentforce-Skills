@@ -193,8 +193,10 @@ composition/cascade, but are additive to — not a substitute for — the tool n
 
 ### 7.3 Per-record review (all 17 active seeded records)
 
-Legend: **Header OK** = `WhenToUse__c` present & routing-useful (D2). **Tool binding** =
-what must be added to `InstructionBody__c`. **Data fix** = `References__c`/field corrections.
+Legend: **Header OK** = `WhenToUse__c` present & routing-useful (D2). **Tool binding** = the
+tool(s) named in-step — as a **plain name** in `InstructionBody__c` (Layer 2) and as a
+literal `{!@actions.<Name>}` pointer in the generic subagent's reasoning block (Layer 1);
+see §7.4. **Data fix** = `References__c`/field corrections.
 
 #### Roles
 | Record | Header | Tool binding to add | Data fix |
@@ -229,16 +231,52 @@ what must be added to `InstructionBody__c`. **Data fix** = `References__c`/field
 | `workflow-troubleshooting-galaxy-s25` | OK | Escalation → **`Route_to_ESA`**. | none |
 | `workflow-troubleshooting-galaxy-s25-ultra` | OK | Escalation → **`Route_to_ESA`**. | none |
 
-### 7.4 Revision principles (applied to every body above)
+### 7.4 Tool-pointer syntax — the two-layer rule (CRITICAL)
 
-1. **Name the tool at the point of action** — inline, in the imperative step, not in a
-   separate "tools" list the model may skip.
+Agent Script resolves `{!@actions.X}` pointers during **deterministic preprocessing of the
+`.agent` script text** (Manual §3 steps 3–4: "LLM receives only the resolved prompt after
+deterministic preprocessing"). Preprocessing runs **before** variable values are
+interpolated, and nested/second-pass interpolation is not supported. Therefore a pointer
+string stored in `InstructionBody__c` (CRM data, injected via
+`{!@variables.composed_instructions}`) would reach the model as **unresolved literal text**,
+not a tool binding. Pointers must live where they are processed. This yields two layers:
+
+**Layer 1 — `.agent` `reasoning.instructions` of the generic subagent → literal pointer
+syntax.** Each declared tool is named with `{!@actions.<Name>}`, in an imperative,
+optionally condition-gated line (Manual §11.5: "Reference tools directly in text… improves
+tool selection reliability"). Example pattern:
+```
+reasoning:
+    instructions: ->
+        | Follow the instructions loaded for this request:
+        | {!@variables.composed_instructions}
+        | Use ONLY the tool the loaded instructions call for at each step:
+        | - To create a support case, call {!@actions.CreateCase}.
+        | - To escalate to a human, call {!@actions.Route_to_ESA}.
+        | - To create an escalation ticket, call {!@actions.CreateEscalationTicket}.
+        | - To verify identity, call {!@actions.SendVerificationEmail}.
+        | - To display structured data, call {!@actions.Render_Data}.
+        | - To look up support history, call {!@actions.FetchSupportHistory}.
+        | ... (one line per declared tool in §7.2)
+```
+
+**Layer 2 — CRM `InstructionBody__c` → plain tool name, exact casing.** The skill body names
+the same tool in-step as plain text (e.g. "…get explicit customer approval, then call the
+`CreateCase` tool."). No `{!@...}` in CRM data. Casing MUST match the Layer-1 action name
+verbatim so the two layers reinforce (the body says which tool; the literal pointer binds
+it).
+
+**Revision principles applied to every body in §7.3:**
+
+1. **Name the tool at the point of action** — inline in the imperative step (plain name in
+   CRM per Layer 2), not in a separate "tools" list the model may skip.
 2. **Preserve record references for cascade** — `workflow-*`/`core-skill-*` names stay in
    prose and in `References__c` so composition still expands them.
-3. **Exact casing** — tool names must match the action names declared in the generic
-   subagent verbatim (`Render_Data`, not `render_data`), or the model may not resolve them.
-4. **No new capabilities** — binding only maps existing steps to existing tools; it does
-   not add tasks the skill did not already describe.
+3. **Exact casing, single source of truth** — every tool name in a body (Layer 2) and every
+   `{!@actions.X}` pointer (Layer 1) must match a declared action name verbatim
+   (`Render_Data`, not `render_data`).
+4. **No new capabilities** — binding only maps existing steps to existing tools; it does not
+   add tasks the skill did not already describe.
 
 ## 8. Deliverables
 
