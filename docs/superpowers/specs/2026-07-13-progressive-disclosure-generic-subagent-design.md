@@ -347,3 +347,14 @@ a custom metadata type, or a value passed from the agent) — kept minimal.
 | `[[tool:Name]]` names a non-existent/miscased action | Composer validates against the tool allowlist, warns, and leaves a visible marker (§7.4.2); data test asserts every indicator resolves. |
 | Author/reader expects `[[tool:X]]` to become a resolvable `{!@actions.X}` binding | §7.4.1 documents the platform constraint explicitly; the cue is plain text by design and compliance comes from action `description:` + the validated cue, not pointer resolution. |
 | Generic subagent calls a tool the loaded skill didn't sanction | Skill body cites only the relevant tool via `[[tool:Name]]`; reasoning block stays generic (§6.4); action `description:` scopes each tool's purpose. |
+
+## 11. Deployment Target
+
+Implementation is branch-only; **nothing auto-deploys**. When the feature is deployed and
+validated, the target org is **`myDevOrg`** (`00DKY00000gXHJ52AO`,
+`therciosb-dx@example.com`) — the org this repo was built against (matching the bundle
+`default_agent_user` and the `00DKY` LTM ContactId prefix).
+
+The project's stored default `target-org` (`dev-test-org`) is unset/stale, so every
+deploy, `sf agent validate`, `sf agent publish`, reseed, and Apex-test command in the
+implementation plan MUST pass **`--target-org myDevOrg` explicitly**.
