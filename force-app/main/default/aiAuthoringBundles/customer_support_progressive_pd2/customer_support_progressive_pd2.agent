@@ -137,7 +137,8 @@ start_agent agent_router:
             | Available skills (choose from these names only):
             | {!@variables.skill_headers}
             |
-            | Decide the minimal set of skill names that match the user's request, then call {!@actions.select_skills} with a comma-separated list of those exact names (no spaces after commas). Do not answer the user directly; selecting the skills is your only job this turn.
+            | You MUST call {!@actions.select_skills} exactly once this turn with a comma-separated list of the matching skill names (exact names, no spaces after commas). This is your only job — do not answer the user directly.
+            | If one or more skills clearly match, select them. If the request is a greeting, small talk, thanks, or otherwise unclear, still call {!@actions.select_skills} with the single best-guess skill for a support conversation ("skill-product-information-qa"). Never respond without calling select_skills, and never call it with an empty value.
 
         actions:
             select_skills: @utils.setVariables

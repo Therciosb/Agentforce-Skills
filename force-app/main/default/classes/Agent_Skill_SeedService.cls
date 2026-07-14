@@ -196,7 +196,7 @@ public with sharing class Agent_Skill_SeedService {
                 version,
                 locale,
                 'Product Information Specialist: answers product capability, compatibility, and comparison questions.',
-                'Use when user asks about product features, plans, model differences, compatibility, or upgrade paths.',
+                'Use when the user asks about product features, specifications, pricing/plans, availability/stock, model differences, compatibility, or upgrade/purchase decisions. Covers questions like "compare iPhone 16 vs Galaxy S25", "what are the specs", "how much does it cost", "is it in stock", "which model should I buy", "does it support X". Includes follow-up answers where the user names a product or picks between options. Do NOT use for fixing a malfunctioning device (use troubleshooting) or for opening/checking a support case (use case management).',
                 '# PRODUCT INFORMATION Q&A SKILL\n\n' +
                 '# DOMAIN & PURPOSE\n' +
                 'This skill covers the Product Information Specialist specialization. You provide accurate, factual answers to product questions; help customers compare models and make informed decisions; conduct product education by explaining features and usage in accessible terms. You draw from product knowledge to reduce support volume and enable informed purchasing.\n\n' +
@@ -226,7 +226,7 @@ public with sharing class Agent_Skill_SeedService {
                 version,
                 locale,
                 'Technical Troubleshooting Specialist: first-line support for product and connectivity issues.',
-                'Use when user has any product troubleshooting need (modem, phone, device).',
+                'Use when the user reports a problem, malfunction, or wants to fix/diagnose a device or connection: Wi-Fi/5G modem, iPhone, or Galaxy issues, dropped connections, slow speeds, LED/light indicators (green/amber/red, blinking or solid), power-cycle/reboot results, cable checks, error states, or "it is not working". Covers ALL follow-up replies within a troubleshooting flow — e.g. "the red LED is blinking", "amber light after a reboot", "I rebooted and it still drops", "yes I tried that", describing symptoms or step outcomes. Also use when the user asks to escalate an unresolved technical issue to a human. Keep using this skill for the whole diagnostic conversation. Do NOT use for pre-sale product questions (use product information) unless a device is actually malfunctioning.',
                 '# TROUBLESHOOTING SUPPORT SKILL\n\n' +
                 '# DOMAIN & PURPOSE\n' +
                 'This skill covers the Technical Troubleshooting Specialist specialization (Tier 1 support). You serve as the first point of contact for technical issues: gathering information about user problems, performing systematic troubleshooting, providing step-by-step guidance, and escalating when standard steps do not resolve the issue. Effective troubleshooting can rule out many common causes quickly.\n\n' +
@@ -364,7 +364,7 @@ public with sharing class Agent_Skill_SeedService {
                 version,
                 locale,
                 'Support Case Management Specialist: intake, triage, lifecycle management, and case communication.',
-                'Use when user needs a new case, case status check, case update, or case closure.',
+                'Use when the user wants to open/create a support case or ticket, check or update the status of an existing case, add notes, escalate to a human agent or specialist, or close a case. Covers "create a case", "open a ticket", "what is the status of my case", "escalate this", "I want to speak to a human/agent", "connect me to someone", case numbers, and the identity-verification (OTP) steps that precede case actions — including bare answers to an OTP prompt such as "sms", "email", or a verification code. Use this skill when the user confirms they want to escalate/hand off after troubleshooting. Do NOT use for the technical diagnosis itself (use troubleshooting) or for product/spec questions (use product information).',
                 '# SUPPORT CASE MANAGEMENT SKILL\n\n' +
                 '# DOMAIN & PURPOSE\n' +
                 'This skill covers the Support Case Management Specialist specialization. You create, update, and communicate support case status throughout the lifecycle. You ensure accurate documentation, clear ownership, and proper expectations. Cases must progress efficiently through intake, triage, creation, updates, and closure—with correct routing and SLA awareness.\n\n' +
