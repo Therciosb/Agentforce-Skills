@@ -101,6 +101,11 @@ start_agent agent_router:
 
     reasoning:
         instructions: ->
+            # Loop-exit guard: once skills are selected, transition immediately so the
+            # router's reasoning loop terminates instead of re-invoking select_skills.
+            if @variables.skills_to_load != "":
+                transition to @subagent.generic_handler
+
             if @variables.context_loaded == False and @variables.ContactId and @variables.ContactId != "":
                 run @actions.load_user_memory
                     with contactId=@variables.ContactId
