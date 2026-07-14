@@ -42,6 +42,7 @@ variables:
     RoutableId: linked string
         source: @MessagingSession.Id
     context_loaded: mutable boolean = False
+    router_initialized: mutable boolean = False
     agent_memory: mutable string = ""
     memory_summary: mutable string = ""
     memory_goal: mutable string = ""
@@ -100,9 +101,6 @@ start_agent agent_router:
 
     reasoning:
         instructions: ->
-            if @variables.skills_to_load != "":
-                transition to @subagent.generic_handler
-
             if @variables.context_loaded == False and @variables.ContactId and @variables.ContactId != "":
                 run @actions.load_user_memory
                     with contactId=@variables.ContactId
@@ -116,13 +114,19 @@ start_agent agent_router:
             if @variables.context_loaded == False:
                 set @variables.context_loaded=True
 
-            run @actions.load_skills_init
-                with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-txt-response-guidelines"
-                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+            # One-time init: load role/core skills + candidate headers only on the
+            # first router pass. Guarded by router_initialized so subsequent reasoning
+            # iterations do NOT re-run these actions (prevents the re-loading loop).
+            if @variables.router_initialized == False:
+                run @actions.load_skills_init
+                    with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-txt-response-guidelines"
+                    set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
 
-            run @actions.get_skill_headers
-                with skillNames=@variables.candidate_skills
-                set @variables.skill_headers=@outputs.skillHeaders
+                run @actions.get_skill_headers
+                    with skillNames=@variables.candidate_skills
+                    set @variables.skill_headers=@outputs.skillHeaders
+
+                set @variables.router_initialized=True
 
             | You are the router. Select which skills are needed for the user's request.
             | Available skills (choose from these names only):
@@ -289,6 +293,8 @@ subagent generic_handler:
             | {!@variables.composed_instructions}
             |
             | Use the tools available to you as directed by the instructions above.
+            |
+            | ESCALATION GUARDRAIL (overrides the instructions above): Do NOT escalate to a human or route to a specialist unless EITHER the user explicitly asks for a human/agent/escalation, OR you have actually walked the user through the troubleshooting steps this session and they confirm the issue is still unresolved AND they agree to escalate. If the user says they want to continue troubleshooting, keep troubleshooting — never escalate. Before using the escalation tools, ask the user to confirm they want a human handoff. Only call the "CreateEscalationTicket" tool once you have a concrete customer_id, a one-sentence issue_description, and an issue_type (technical, billing, or general); never call it with empty or guessed values.
 
         actions:
             create_case: @actions.create_case
