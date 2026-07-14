@@ -32,6 +32,7 @@ For implementation details, Agent Script structure, and key rules, see [Agent-Sk
 - **Core framework** — The Loader, Composer, LoadAndCompose Apex actions, `Agent_Skills_Repo__c`, and optional `Load_And_Compose_Agent_Skills` flow work independently. Agents use `apex://Agent_Skill_LoadAndCompose` directly. Deploy this project to any Salesforce org with Agentforce and you can build agents that load and compose skills.
 - **skill_load_test agent** — A minimal agent that demonstrates the framework without persistent memory. Use it to validate the skill loading pipeline.
 - **customer_support_skill_demo agent** — A full demo that includes optional Long-Term Memory (LTM) integration. LTM requires an `Agent_Context__c` object and read/save flows. Implement per the [LTM Integration Mapping](docs/LTM%20Integration%20Mapping.md) spec: Get flow returns `agent_memory` (formatted string); Save flow accepts scalar inputs only (`new_summary`, `new_goal`, `has_issue`, `new_style`).
+- **customer_support_progressive_pd2 agent** — Demonstrates **progressive disclosure**: a router loads only lightweight skill *headers*, selects the skills a turn needs, and hands off to a **single generic handler topic** that loads the selected skills and exposes the full tool catalog. See [Agent-Skills-Framework-for-FDE §5](docs/Agent-Skills-Framework-for-FDE.md). This pattern requires bounded router loop guards and extra agent-user object/field permissions (`Case` CRUD, `ASR_Product__c` read/FLS) on the runtime permission set — see §5.4/§5.5.
 
 ## Prerequisites
 
@@ -52,6 +53,8 @@ sf project deploy start --source-dir force-app/main/default --target-org <your-o
 ### 2. Assign Permission Set
 
 Assign **Agent Skills Agent Runtime** to your agent bot user (Setup → Users → select bot user → Permission Set Assignments → Add → Agent Skills Agent Runtime).
+
+> **Tool permissions:** agent tools run flows/Apex **as the bot user**, which enforces that user's object/field permissions. `Agent_Skills_Agent_Runtime` grants the Apex classes plus the objects the demo tools touch (`Case` CRUD; `ASR_Product__c` read + field-level read). If you add tools that read/write other objects, grant those object/field permissions on this permission set too — otherwise the tool fails at runtime with `NO_USER_ACCESS` or a generic `UNKNOWN_EXCEPTION` flow error. See [Agent-Skills-Framework-for-FDE §5.5](docs/Agent-Skills-Framework-for-FDE.md).
 
 ### 3. Seed Demo Skills
 
@@ -75,7 +78,8 @@ Agent-Skills/
 ├── force-app/main/default/
 │   ├── aiAuthoringBundles/          # Agent bundles
 │   │   ├── skill_load_test/         # Minimal agent (no LTM)
-│   │   └── customer_support_skill_demo/  # Full demo (optional LTM)
+│   │   ├── customer_support_skill_demo/       # Full demo (optional LTM)
+│   │   └── customer_support_progressive_pd2/  # Progressive disclosure + generic handler
 │   ├── classes/                     # Apex: Loader, Composer, LoadAndCompose, SeedService
 │   ├── flows/                       # Load_And_Compose_Agent_Skills (optional); LTM uses LoadAgentMemory, SaveAgentContext Apex
 │   ├── objects/                     # Agent_Skills_Repo__c

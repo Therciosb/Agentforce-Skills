@@ -371,3 +371,49 @@ validated, the target org is **`myDevOrg`** (`00DKY00000gXHJ52AO`,
 The project's stored default `target-org` (`dev-test-org`) is unset/stale, so every
 deploy, `sf agent validate`, `sf agent publish`, reseed, and Apex-test command in the
 implementation plan MUST pass **`--target-org myDevOrg` explicitly**.
+
+## 12. Implementation Outcome & Deviations (as shipped)
+
+The feature was implemented, deployed, and iteratively hardened on `myDevOrg`. Key
+differences from the original design, and the runtime lessons behind them:
+
+- **Bundle name is `customer_support_progressive_pd2`** (not `customer_support_progressive`).
+  Earlier CLI publishes left orphaned `GenAiPlanner`/`GenAiPlannerBundle` records that the
+  Metadata API cannot delete ("not available for delete" / "setup object in use"); a fresh
+  publish under the old name collided on `_v1`. Renaming (…`_pd`, then …`_pd2`) was the only
+  reliable way to get a clean publish. **CLI is the source of truth** for publishing here —
+  the Agent Builder UI shows a stale "Committed" version because CLI publishes don't register
+  in its commit history; verify live state via `BotVersion.Status`, not the Builder.
+
+- **Handler is reached by `after_reasoning: transition to @subagent.generic_handler`, NOT by
+  delegation.** Delegation (`@subagent.X` as a `reasoning.actions` tool) was tried per the
+  "subscribe, don't transition" idea but hit the platform's *one-action-per-delegation* limit,
+  which made the multi-step handler loop. Transition is the working pattern.
+
+- **Router loop guards were required** (not in the original design). Three deterministic guards
+  bound the router's reasoning loop — a top-of-reasoning `if skills_to_load != "": transition`
+  (loop exit), a `router_initialized` flag around the one-time init loads (stops re-loading),
+  and a prompt fallback that always selects a default skill for greetings/ambiguous input
+  (so `skills_to_load` is always set). Without these the router looped 20–50 iterations and
+  returned a generic error. See FDE doc §5.4.
+
+- **Escalation guardrail added.** The seeded troubleshooting workflow's "escalate if the issue
+  persists" cue caused the handler to escalate to a human when the user wanted to keep
+  troubleshooting. The handler reasoning now requires an explicit human request or exhausted +
+  consented troubleshooting before escalating, and requires concrete inputs before creating an
+  escalation ticket.
+
+- **`route_to_esa` uses `@utils.escalate`, not `flow://Route_to_ESA`.** `Route_to_ESA` is a
+  `RoutingFlow`, which cannot be a `flow://` agent action (deploy rejects it; validate does not).
+
+- **`get_product_info.price` is declared as `object` + `complex_data_type_name:
+  "lightning__currencyType"`** — a Currency flow output cannot be typed as `string` (the
+  Builder/commit validator rejects it).
+
+- **Agent-user permissions are a hard runtime dependency** (beyond the original scope). The
+  runtime permission set `Agent_Skills_Agent_Runtime` had to grant, in addition to the Apex
+  classes: `Agent_Skill_HeaderProvider` (else `get_skill_headers` is withheld with
+  `NO_USER_ACCESS`), **`Case` Create/Read/Edit** (else `CreateCase`/`CreateEscalationTicket`
+  fail with `UNKNOWN_EXCEPTION`), and **`ASR_Product__c` Read + field-level Read** on
+  `Description__c`/`Price__c`/`In_Stock__c` (else `GetProductInfo` fails the same way). Any
+  further data tools need the same grants. See FDE doc §5.5.

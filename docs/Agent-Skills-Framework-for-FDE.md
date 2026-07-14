@@ -313,7 +313,9 @@ topic finalization:
 
 ## 5. Progressive Disclosure & Generic Handler Topic
 
-The patterns in Section 4 partition an agent into several specialized topics, each hardcoding its own `instructionNames`. An alternative pattern inverts and collapses this: the router performs **progressive disclosure** (loading only lightweight skill *headers*, then deciding which skills the turn needs) and hands off to a **single generic handler topic** that loads the selected skills and exposes the full tool catalog. The reference implementation is the `customer_support_progressive_pd` bundle. See `docs/superpowers/specs/2026-07-13-progressive-disclosure-generic-subagent-design.md` for the full design rationale.
+The patterns in Section 4 partition an agent into several specialized topics, each hardcoding its own `instructionNames`. An alternative pattern inverts and collapses this: the router performs **progressive disclosure** (loading only lightweight skill *headers*, then deciding which skills the turn needs) and hands off to a **single generic handler topic** that loads the selected skills and exposes the full tool catalog. The reference implementation is the **`customer_support_progressive_pd2`** bundle. See `docs/superpowers/specs/2026-07-13-progressive-disclosure-generic-subagent-design.md` for the design rationale and `docs/superpowers/plans/2026-07-13-progressive-disclosure-generic-subagent.md` for the implementation plan.
+
+> **Runtime requirements (learned in testing — see §5.4 and §5.5):** this pattern only works if (a) the router's reasoning loop is bounded by deterministic guards so it does not re-load init data or spin on `select_skills`, and (b) the **agent runtime user has object + field permissions for every object the exposed tools touch** (Case CRUD, `ASR_Product__c` read/FLS, etc.). Missing either produces silent loops or generic `UNKNOWN_EXCEPTION` flow errors, not obvious failures.
 
 ### 5.1 Header Contract (No Fallback)
 
@@ -348,24 +350,46 @@ Record references in `References__c` are a **separate mechanism**: they name oth
 
 > **Convention note:** this repo uses `topic` blocks and `@topic` transitions — there is no `subagent`/`@subagent.` syntax. The single generic handler is a **topic**, not a subagent. Skill loading is done as the first `run` inside `reasoning.instructions` (the repo does not use `before_reasoning`), and an action becomes an LLM-callable tool only when it is re-exposed under `reasoning.actions:` with slot-fill.
 
-**Router (`start_agent`):** loads role + core skills flat (no cascade), optionally loads LTM, fetches lean headers for the candidate skills via `Agent_Skill_HeaderProvider`, and instructs the LLM to set `skills_to_load` (a no-spaces CSV) through a `select_skills` tool. It then transitions to the one handler topic in `after_reasoning` (so the LLM's selection is set before the transition fires):
+**Router (`start_agent`):** loads role + core skills flat (no cascade) **once**, optionally loads LTM, fetches lean headers for the candidate skills via `Agent_Skill_HeaderProvider`, and instructs the LLM to set `skills_to_load` (a no-spaces CSV) through a `select_skills` tool. It transitions to the one handler topic in `after_reasoning`. Three deterministic guards keep the router's reasoning loop bounded (all three were required to stop real looping failures — see §5.4):
 
 ```
+    variables:
+        # ...
+        context_loaded: mutable boolean = False
+        router_initialized: mutable boolean = False   # guards one-time init
+        skills_to_load: mutable string = ""
+
     reasoning:
         instructions: ->
-            run @actions.load_skills_init
-                with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-txt-response-guidelines"
-                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+            # GUARD 1 — loop exit: once skills are chosen, transition immediately so the
+            # reasoning loop terminates instead of re-invoking select_skills forever.
+            if @variables.skills_to_load != "":
+                transition to @subagent.generic_handler
 
-            run @actions.get_skill_headers
-                with skillNames=@variables.candidate_skills
-                set @variables.skill_headers=@outputs.skillHeaders
+            if @variables.context_loaded == False and @variables.ContactId and @variables.ContactId != "":
+                run @actions.load_user_memory
+                    with contactId=@variables.ContactId
+                    set @variables.agent_memory=@outputs.agentMemory
+                    # ... other memory outputs ...
+                    set @variables.context_loaded=True
+
+            # GUARD 2 — one-time init: load role/core + headers only on the first pass,
+            # so later reasoning iterations do NOT re-run these deterministic actions.
+            if @variables.router_initialized == False:
+                run @actions.load_skills_init
+                    with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-txt-response-guidelines"
+                    set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+                run @actions.get_skill_headers
+                    with skillNames=@variables.candidate_skills
+                    set @variables.skill_headers=@outputs.skillHeaders
+                set @variables.router_initialized=True
 
             | You are the router. Select which skills are needed for the user's request.
             | Available skills (choose from these names only):
             | {!@variables.skill_headers}
             |
-            | Decide the minimal set of skill names that match the user's request, then call {!@actions.select_skills} with a comma-separated list of those exact names (no spaces after commas). Do not answer the user directly; selecting the skills is your only job this turn.
+            | You MUST call {!@actions.select_skills} exactly once this turn with a comma-separated list of the matching skill names (exact names, no spaces after commas). This is your only job — do not answer the user directly.
+            | GUARD 3 — no-match fallback: If one or more skills clearly match, select them. If the request is a greeting, small talk, thanks, or unclear, still call select_skills with the single best-guess skill ("skill-product-information-qa"). Never respond without calling select_skills, and never call it with an empty value.
 
         actions:
             select_skills: @utils.setVariables
@@ -373,7 +397,7 @@ Record references in `References__c` are a **separate mechanism**: they name oth
                 with skills_to_load=...
 
     after_reasoning:
-        transition to @topic.generic_handler
+        transition to @subagent.generic_handler
 ```
 
 **Generic handler (`topic generic_handler`):** loads the router-selected skills as the **first `run`** in `reasoning.instructions` (each selected `skill-*` cascades to its `workflow-*` via `References__c`), injects the composed instructions, and re-exposes the full support-demo tool catalog under `reasoning.actions`. The reasoning prose stays **topic-agnostic** — it does not enumerate individual tools; each tool's purpose lives in its action `description:`, and the loaded skills decide which tools apply:
@@ -394,18 +418,47 @@ Record references in `References__c` are a **separate mechanism**: they name oth
             | {!@variables.composed_instructions}
             |
             | Use the tools available to you as directed by the instructions above.
+            |
+            | ESCALATION GUARDRAIL (overrides the instructions above): Do NOT escalate to a human or route to a specialist unless EITHER the user explicitly asks for a human/agent/escalation, OR troubleshooting has genuinely been exhausted this session AND the user agrees to escalate. If the user says they want to continue troubleshooting, keep troubleshooting — never escalate. Only call the "CreateEscalationTicket" tool with a concrete customer_id, a one-sentence issue_description, and an issue_type (technical, billing, or general); never with empty or guessed values.
 
         actions:
             create_case: @actions.create_case
                 description: "Create a new support case from a concise, user-approved subject."
                 with subject=...
-            route_to_esa: @actions.route_to_esa
-                description: "Route the conversation to a human (Enhanced Service Agent) queue."
-                with recordId=...
-            # ... remaining business tools re-exposed here as slot-filled wrappers
+            route_to_esa: @utils.escalate
+                description: "Route the conversation to a human (Enhanced Service Agent) via Omni-Channel."
+            # ... remaining business tools (create_escalation_ticket, get_product_info,
+            #     fetch_support_history, render_data, save_context, ...) re-exposed here
+            #     as slot-filled wrappers
 ```
 
 Re-exposing each action under `reasoning.actions:` is required plumbing (a bare `topic.actions:` declaration is only deterministically callable via `run @actions.X`), not topic coupling: the prose stays generic while the loaded skills' `[[tool:Name]]` cues tell the model which tool to invoke.
+
+> **`route_to_esa` uses `@utils.escalate`, not a flow.** `Route_to_ESA` is a `RoutingFlow`, which cannot be invoked as a `flow://` agent action (deploy rejects it even though `sf agent validate` accepts it). The platform-native human handoff is the `@utils.escalate` utility. The `[[tool:Route_to_ESA]]` cue in skill bodies maps to this `route_to_esa` tool.
+
+### 5.4 Bounding the Router Reasoning Loop (required)
+
+The router runs its `reasoning.instructions` on **every** reasoning iteration, and `after_reasoning` fires only when the loop **exits**. Without deterministic guards this produces two distinct, hard-to-spot failures observed in live testing — both surface as a generic *"request may be complex"* message after 20–50 wasted LLM iterations:
+
+| Failure | Cause | Guard |
+|---------|-------|-------|
+| Init actions re-run every iteration (`load_skills_init`/`get_skill_headers` called dozens of times) | Deterministic `run`s sit unguarded in `reasoning.instructions` | **Guard 2** — `if router_initialized == False { … set router_initialized=True }` |
+| Router never leaves `topic_selector`; `select_skills` invoked repeatedly | Nothing exits the loop after the variable is set, so `after_reasoning` never runs | **Guard 1** — `if skills_to_load != "": transition …` at the **top** of instructions |
+| Loop on greeting/ambiguous input; `skills_to_load` never set | No skill matches, so the LLM never calls `select_skills` and Guard 1 never triggers | **Guard 3** — prompt instructs a default skill when nothing matches, so `skills_to_load` is always set |
+
+Verify with a preview trace: a healthy turn shows `topic: generic_handler`, a small LLM-iteration count, and `load_skills_init`/`get_skill_headers` counts of at most 1.
+
+### 5.5 Agent-User Permissions (required)
+
+The exposed tools run flows/Apex **as the agent runtime user** (the `default_agent_user`, on the Einstein Agent User profile), which enforces that user's object and field permissions. A brand-new invocable class or an object a tool's flow touches is **not** accessible until granted on the runtime permission set (`Agent_Skills_Agent_Runtime`). Missing access surfaces as either `NO_USER_ACCESS` (the tool is withheld from the planner) or `UNKNOWN_EXCEPTION: An error occurred when executing a flow interview` (a 500 when the flow runs) — never an obvious "permission denied".
+
+Grant on `Agent_Skills_Agent_Runtime` (and assign it to the agent user):
+
+- **Apex classes** the agent invokes — including `Agent_Skill_HeaderProvider` (added for this pattern).
+- **Object CRUD** for every object a tool writes — e.g. **`Case` Create/Read/Edit** for `CreateCase` and `CreateEscalationTicket`.
+- **Object Read + field-level Read (FLS)** for every custom object a tool reads — e.g. **`ASR_Product__c` Read** plus FLS on `Description__c`, `Price__c`, `In_Stock__c` for `GetProductInfo`. Custom fields need explicit `fieldPermissions`; object CRUD alone is not enough.
+
+> Any additional data tools you expose (`FetchSupportHistory`, `FetchAccountData`, `GetOrderStatus`, `TrackShipment`) will need the same object/field grants for their target objects before they will run.
 
 ---
 
