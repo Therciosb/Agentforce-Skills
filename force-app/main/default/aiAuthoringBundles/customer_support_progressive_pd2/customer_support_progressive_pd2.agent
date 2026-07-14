@@ -1,0 +1,334 @@
+# -----------------------------------------------------------------------------
+# Customer Support Progressive Disclosure Agent
+# -----------------------------------------------------------------------------
+# Architecture
+# - start_agent (agent_router): loads role+core skills (flat) and OPTIONAL LTM,
+#   fetches lean headers for candidate_skills via Agent_Skill_HeaderProvider,
+#   the LLM sets skills_to_load (no-spaces CSV) via select_skills, and
+#   after_reasoning transitions to the generic_handler topic.
+# - generic_handler (topic): ONE topic-agnostic handler. Loads skills_to_load
+#   (first run in reasoning; each selected skill cascades to its workflows via
+#   References__c), injects the composed instructions, and re-exposes the full
+#   support-demo tool catalog under reasoning.actions. Behavior for a turn is
+#   determined entirely by which skills were loaded.
+# -----------------------------------------------------------------------------
+
+
+system:
+    instructions: |
+        You are a customer support AI agent.
+        Follow policy and safety constraints at all times.
+        Do not invent product facts, case updates, or troubleshooting outcomes.
+        Be concise. Respond in 2-4 sentences unless the user asks for detail.
+    messages:
+        welcome: "I'm Ready to Help!"
+        error: "I am sorry, something went wrong. Please try again or ask for escalation to a human specialist."
+
+
+config:
+    developer_name: "customer_support_progressive_pd2"
+    agent_label: "Customer Support (Progressive Disclosure)"
+    description: "Router-level progressive disclosure with a single generic handler topic driven by loaded skills."
+
+
+access:
+    default_agent_user: "ltm_agent@00dky00000gxhj51777765750.ext"
+
+
+variables:
+    ContactId: mutable string = "003KY00000KNAGqYAP"
+    EndUserId: linked string
+        source: @MessagingSession.MessagingEndUserId
+    RoutableId: linked string
+        source: @MessagingSession.Id
+    context_loaded: mutable boolean = False
+    agent_memory: mutable string = ""
+    memory_summary: mutable string = ""
+    memory_goal: mutable string = ""
+    memory_has_issue: mutable boolean = False
+    memory_style: mutable string = ""
+    instruction_bundle_json: mutable object
+    composed_instructions: mutable string = ""
+    candidate_skills: mutable string = "skill-product-information-qa,skill-troubleshooting-support,skill-support-case-management"
+    skill_headers: mutable string = ""
+    skills_to_load: mutable string = ""
+
+
+start_agent agent_router:
+    description: "Progressive disclosure: load role/core + optional memory, fetch candidate headers, select skills, route."
+
+    actions:
+        load_user_memory:
+            description: "Load persistent memory for this contact (optional LTM)."
+            inputs:
+                contactId: string
+                    description: "Contact identifier."
+            outputs:
+                agentMemory: string
+                    description: "Formatted merge of memory fields for personalization."
+                memorySummary: string
+                    description: "Last conversation summary."
+                memoryGoal: string
+                    description: "Pending goal."
+                hasIssue: boolean
+                    description: "Unresolved issue flag."
+                memoryStyle: string
+                    description: "Communication style."
+            target: "apex://LoadAgentMemory"
+        load_skills_init:
+            description: "Load role and core skills into the instruction bundle (flat, no cascade)."
+            inputs:
+                instructionNames: string
+                    description: "CSV list of role and core skill names."
+            outputs:
+                loadedInstructionBundle: string
+                    description: "Aggregated instruction bundle JSON for merge."
+                instructionsBundle: string
+                    description: "Formatted prompt (not consumed in start_agent)."
+            target: "apex://Agent_Skill_LoadAndCompose"
+        get_skill_headers:
+            description: "Fetch lean Name + WhenToUse headers for candidate skills (no body, no expansion)."
+            inputs:
+                skillNames: string
+                    description: "CSV of candidate skill names."
+            outputs:
+                skillHeaders: string
+                    description: "One line per skill: '- <Name>: <WhenToUse__c>'."
+                missingNames: string
+                    description: "CSV of names inactive, not found, or missing WhenToUse."
+            target: "apex://Agent_Skill_HeaderProvider"
+
+    reasoning:
+        instructions: ->
+            if @variables.skills_to_load != "":
+                transition to @subagent.generic_handler
+
+            if @variables.context_loaded == False and @variables.ContactId and @variables.ContactId != "":
+                run @actions.load_user_memory
+                    with contactId=@variables.ContactId
+                    set @variables.agent_memory=@outputs.agentMemory
+                    set @variables.memory_summary=@outputs.memorySummary
+                    set @variables.memory_goal=@outputs.memoryGoal
+                    set @variables.memory_has_issue=@outputs.hasIssue
+                    set @variables.memory_style=@outputs.memoryStyle
+                    set @variables.context_loaded=True
+
+            if @variables.context_loaded == False:
+                set @variables.context_loaded=True
+
+            run @actions.load_skills_init
+                with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-txt-response-guidelines"
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+
+            run @actions.get_skill_headers
+                with skillNames=@variables.candidate_skills
+                set @variables.skill_headers=@outputs.skillHeaders
+
+            | You are the router. Select which skills are needed for the user's request.
+            | Available skills (choose from these names only):
+            | {!@variables.skill_headers}
+            |
+            | Decide the minimal set of skill names that match the user's request, then call {!@actions.select_skills} with a comma-separated list of those exact names (no spaces after commas). Do not answer the user directly; selecting the skills is your only job this turn.
+
+        actions:
+            select_skills: @utils.setVariables
+                description: "Record the chosen skill names to load for this request."
+                with skills_to_load=...
+
+    after_reasoning:
+        transition to @subagent.generic_handler
+
+
+subagent generic_handler:
+    label: "Generic Handler"
+    description: "Single generic handler. Loads the router-selected skills and re-exposes the full support-demo tool catalog; behavior is driven by the loaded skills."
+
+    actions:
+        load_skills:
+            description: "Load the selected skills (cascading to workflows via References), merge with role/core, and compose instructions."
+            inputs:
+                instructionNames: string
+                    description: "CSV of router-selected skill names."
+                existingInstructionBundle: string
+                    description: "Existing bundle JSON (role + core from start_agent)."
+            outputs:
+                instructionsBundle: string
+                    description: "Formatted prompt-ready instruction text."
+                loadedInstructionBundle: string
+                    description: "Raw instruction bundle JSON for merge."
+            target: "apex://Agent_Skill_LoadAndCompose"
+        create_case:
+            description: "Create a new support case from a concise subject line."
+            inputs:
+                subject: string
+                    description: "Concise, user-approved case subject."
+            outputs:
+                case_number: string
+                    description: "The created case number."
+            target: "flow://CreateCase"
+        create_escalation_ticket:
+            description: "Create an escalation ticket for handoff to a human specialist."
+            inputs:
+                customer_id: string
+                    description: "Contact/customer identifier."
+                issue_description: string
+                    description: "Summary of the unresolved issue."
+                issue_type: string
+                    description: "Escalation type (technical, billing, general)."
+            outputs:
+                ticket_id: string
+                    description: "The created escalation ticket ID."
+            target: "flow://CreateEscalationTicket"
+        get_order_status:
+            description: "Look up the current status of an order."
+            inputs:
+                order_id: string
+                    description: "Order identifier."
+            outputs:
+                status: string
+                    description: "Order status."
+                tracking_number: string
+                    description: "Shipment tracking number, if any."
+            target: "flow://GetOrderStatus"
+        fetch_support_history:
+            description: "Fetch the support/case history for a user."
+            inputs:
+                user_id: string
+                    description: "User/contact identifier."
+            target: "flow://FetchSupportHistory"
+        track_shipment:
+            description: "Track a shipment by carrier and tracking number."
+            inputs:
+                carrier: string
+                    description: "Shipping carrier."
+                tracking_number: string
+                    description: "Tracking number."
+            outputs:
+                estimated_delivery: string
+                    description: "Estimated delivery date."
+                status: string
+                    description: "Shipment status."
+                success: boolean
+                    description: "Whether tracking succeeded."
+            target: "flow://TrackShipment"
+        fetch_account_data:
+            description: "Fetch account details for a user."
+            inputs:
+                user_id: string
+                    description: "User/contact identifier."
+            target: "flow://FetchAccountData"
+        get_product_info:
+            description: "Look up product specifications, price, and availability."
+            inputs:
+                product_name: string
+                    description: "Product name to look up."
+            outputs:
+                in_stock: boolean
+                    description: "Whether the product is in stock."
+                price: object
+                    description: "Product price."
+                    complex_data_type_name: "lightning__currencyType"
+                product_details: string
+                    description: "Product specification details."
+            target: "flow://GetProductInfo"
+        send_verification_email:
+            description: "Send a one-time verification code to the customer."
+            inputs:
+                customer_id: string
+                    description: "Contact/customer identifier."
+                email: string
+                    description: "Destination email address."
+            outputs:
+                sent: boolean
+                    description: "Whether the code was sent."
+                token: string
+                    description: "Verification token reference."
+            target: "flow://SendVerificationEmail"
+        render_data:
+            description: "Display structured data in table, card, list, or key-value format."
+            inputs:
+                data: string
+                    description: "JSON string following the schema for the display type."
+                display_type: string
+                    description: "One of: table, card, list, key-value."
+            outputs:
+                result: object
+                    description: "Render output for LWC display (GenericRenderOutput)."
+                    complex_data_type_name: "c__genericRenderOutput"
+            target: "apex://GenericRenderAction"
+        save_context:
+            description: "Persist an Agent_Context__c memory checkpoint (optional LTM)."
+            inputs:
+                contactId: string
+                    description: "Contact ID."
+                newSummary: string
+                    description: "Conversation summary."
+                newGoal: string
+                    description: "Pending goal or empty string."
+                hasIssue: boolean
+                    description: "Unresolved issue flag."
+                newStyle: string
+                    description: "Communication style."
+            outputs:
+                success: boolean
+                    description: "Whether save succeeded."
+            target: "apex://SaveAgentContext"
+
+    reasoning:
+        instructions: ->
+            run @actions.load_skills
+                with instructionNames=@variables.skills_to_load
+                with existingInstructionBundle=@variables.instruction_bundle_json
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+                set @variables.composed_instructions=@outputs.instructionsBundle
+
+            | Here is your past context. Use it for personalization if present:
+            | {!@variables.agent_memory}
+            |
+            | Follow these instructions. They determine what to do and which tools to use:
+            | {!@variables.composed_instructions}
+            |
+            | Use the tools available to you as directed by the instructions above.
+
+        actions:
+            create_case: @actions.create_case
+                description: "Create a new support case from a concise, user-approved subject."
+                with subject=...
+            create_escalation_ticket: @actions.create_escalation_ticket
+                description: "Create an escalation ticket for handoff to a human specialist."
+                with customer_id=...
+                with issue_description=...
+                with issue_type=...
+            route_to_esa: @utils.escalate
+                description: "Route the conversation to a human (Enhanced Service Agent) via Omni-Channel."
+            get_order_status: @actions.get_order_status
+                description: "Look up the current status of an order."
+                with order_id=...
+            fetch_support_history: @actions.fetch_support_history
+                description: "Fetch the support/case history for a user."
+                with user_id=...
+            track_shipment: @actions.track_shipment
+                description: "Track a shipment by carrier and tracking number."
+                with carrier=...
+                with tracking_number=...
+            fetch_account_data: @actions.fetch_account_data
+                description: "Fetch account details for a user."
+                with user_id=...
+            get_product_info: @actions.get_product_info
+                description: "Look up product specifications, price, and availability."
+                with product_name=...
+            send_verification_email: @actions.send_verification_email
+                description: "Send a one-time verification code to the customer."
+                with customer_id=...
+                with email=...
+            render_data: @actions.render_data
+                description: "Display structured data in table, card, list, or key-value format."
+                with data=...
+                with display_type=...
+            save_context: @actions.save_context
+                description: "Persist an Agent_Context__c memory checkpoint (optional LTM)."
+                with contactId=@variables.ContactId
+                with newSummary=...
+                with newGoal=...
+                with hasIssue=...
+                with newStyle=...
