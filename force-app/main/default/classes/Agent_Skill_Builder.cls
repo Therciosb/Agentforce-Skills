@@ -68,10 +68,13 @@ public with sharing class Agent_Skill_Builder {
     private static String invokeTemplate(String intent, String skillType, String referenceText) {
         ConnectApi.EinsteinPromptTemplateGenerationsInput input =
             new ConnectApi.EinsteinPromptTemplateGenerationsInput();
+        // Keys MUST use the template's input reference-name prefix ("Input:<apiName>").
+        // Bare apiName keys ("skillType") fail with INVALID_INPUT: "Required input is
+        // missing for parameter Input:skillType." (verified against myDevOrg).
         Map<String, ConnectApi.WrappedValue> params = new Map<String, ConnectApi.WrappedValue>();
-        params.put('intent', wrap(intent));
-        params.put('skillType', wrap(skillType));
-        params.put('referenceText', wrap(String.isBlank(referenceText) ? '' : referenceText));
+        params.put('Input:intent', wrap(intent));
+        params.put('Input:skillType', wrap(skillType));
+        params.put('Input:referenceText', wrap(String.isBlank(referenceText) ? '' : referenceText));
         input.inputParams = params;
         input.isPreview = false;
 
