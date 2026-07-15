@@ -77,6 +77,15 @@ The Agent Skills framework addresses these problems by:
 | **Agent_Skills_Admin** | Custom app with tabs and permission sets for Authors, Reviewers, Consumers. |
 | **Agent_Context__c** (LTM) | Persistent memory object. Read via `apex://LoadAgentMemory` (returns `agentMemory` formatted string), saved via `apex://SaveAgentContext` (contactId, newSummary, newGoal, hasIssue, newStyle). Required for LTM-enabled agents. |
 
+#### Admin App Authoring Aids
+
+The `Agent_Skills_Admin` app ships two Lightning Web Components that help authors create and understand skills:
+
+- **`skillBuilder`** (app Home page) — A guided form (skill type radio + intent textarea + optional reference-document upload). On submit it calls `Agent_Skill_Builder.generateSkill`, which invokes the `Generate_Agent_Skill` prompt template to draft the instruction body and metadata. The builder **always inserts the record as Draft** (`Status__c='Draft'`) so an author reviews it before activation; it never activates. On success it navigates to the new record.
+- **`skillDependencyTree`** (record page) — A `lightning-tree` that renders the downstream skills/workflows a record composes by expanding `References__c` (via the `Agent_Skill_DependencyProvider.getTree` cacheable wire). It flags missing/inactive references and marks repeat nodes as already-shown to keep cycles safe.
+
+The `Generate_Agent_Skill` `GenAiPromptTemplate` is the generation seam behind the builder; it returns strict JSON that the Apex layer parses, guardrails, and persists as a Draft `Agent_Skills_Repo__c` record.
+
 ### 3.2 Instruction Taxonomy
 
 | Type | Naming Convention | Purpose |

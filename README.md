@@ -122,6 +122,11 @@ Agent-Skills/
 - Set `Status__c` to `active` for production; use `deprecated` to retire instructions.
 - Use `References__c` (CSV of names) to declare dependencies; the composer expands them automatically.
 
+The admin app includes two authoring aids:
+
+- **Skill Builder** (app Home page) — a guided form (skill type + intent, plus an optional reference document upload) that calls the `Generate_Agent_Skill` prompt template to draft a new skill. It always creates the record as **Draft** (`Status__c='Draft'`) for review before activation, then navigates to the new record.
+- **Dependency Tree** (record page) — a `lightning-tree` on each `Agent_Skills_Repo__c` record that renders the downstream skills/workflows it composes (via `References__c`), flagging missing/inactive references and cycles.
+
 ### Testing
 
 ```bash
