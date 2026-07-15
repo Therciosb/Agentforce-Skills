@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <activeVersionIdentifier>T9e56cBHmP+FCMaIiN5MLmpgjlBkUlwEYoWOB1Un9U4=_1</activeVersionIdentifier>
+    <developerName>Generate_Agent_Skill</developerName>
+    <masterLabel>Generate Agent Skill</masterLabel>
+    <overridable>false</overridable>
+    <templateVersions>
+        <content>You are a Salesforce Agent Skills authoring assistant. Generate ONE Agent Skill definition as STRICT JSON and nothing else — no prose, no markdown fences.
+
+Skill type requested: {!$Input:skillType}
+Author intent: {!$Input:intent}
+Reference material (optional, may be empty): {!$Input:referenceText}
+
+Output a single JSON object with EXACTLY these keys:
+{
+  &quot;name&quot;: &quot;kebab-case name WITHOUT a type prefix (the system adds it)&quot;,
+  &quot;type&quot;: &quot;one of Role, Core_Skill, Skill, Workflow — matching the requested skill type&quot;,
+  &quot;description&quot;: &quot;one-sentence summary&quot;,
+  &quot;whenToUse&quot;: &quot;a detailed routing header starting with 'Use when ...', 2-4 sentences, including example user utterances and clear scope boundaries (what it is NOT for)&quot;,
+  &quot;instructionBody&quot;: &quot;a markdown instruction body with clear sections and step-by-step guidance grounded in the intent and reference material&quot;,
+  &quot;references&quot;: [&quot;names of other skills/workflows this depends on, or empty array&quot;],
+  &quot;priority&quot;: 5
+}
+
+Rules:
+- Emit ONLY the JSON object. Do not wrap it in code fences or add commentary.
+- Ground whenToUse, instructionBody, and references in the reference material when it is provided.
+- Do not invent tool names or reference records you are unsure exist; prefer an empty references array over guessing.
+- whenToUse must be rich enough for a router to disambiguate this skill from others.</content>
+        <inputs>
+            <apiName>intent</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>intent</masterLabel>
+            <referenceName>Input:intent</referenceName>
+            <required>true</required>
+        </inputs>
+        <inputs>
+            <apiName>skillType</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>skillType</masterLabel>
+            <referenceName>Input:skillType</referenceName>
+            <required>true</required>
+        </inputs>
+        <inputs>
+            <apiName>referenceText</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>referenceText</masterLabel>
+            <referenceName>Input:referenceText</referenceName>
+            <required>false</required>
+        </inputs>
+        <isCitationEnabled>false</isCitationEnabled>
+        <primaryModel>sfdc_ai__DefaultOpenAIGPT4OmniMini</primaryModel>
+        <status>Published</status>
+        <versionIdentifier>T9e56cBHmP+FCMaIiN5MLmpgjlBkUlwEYoWOB1Un9U4=_1</versionIdentifier>
+    </templateVersions>
+    <type>einstein_gpt__flex</type>
+    <visibility>Global</visibility>
+</GenAiPromptTemplate>
