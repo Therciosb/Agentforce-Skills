@@ -15,6 +15,7 @@
     <label>Agent Skills Admin</label>
     <navType>Standard</navType>
     <tabs>standard-home</tabs>
+    <tabs>Agent_Skills_Home</tabs>
     <tabs>Agent_Skills_Repo__c</tabs>
     <uiType>Lightning</uiType>
 </CustomApplication>
