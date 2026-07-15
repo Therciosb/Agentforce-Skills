@@ -1,0 +1,48 @@
+<template>
+    <lightning-card title="Skill Builder" icon-name="standard:bot">
+        <div class="slds-p-around_medium slds-grid slds-grid_vertical slds-gap_small">
+            <lightning-radio-group
+                name="skillType"
+                label="Skill type"
+                options={typeOptions}
+                value={skillType}
+                type="button"
+                onchange={handleType}></lightning-radio-group>
+
+            <lightning-textarea
+                name="intent"
+                label="What should this skill do?"
+                placeholder="Describe the skill's purpose in 1-3 sentences..."
+                value={intent}
+                onchange={handleIntent}></lightning-textarea>
+
+            <div>
+                <lightning-file-upload
+                    label="Reference document (optional)"
+                    name="skillDoc"
+                    accept={acceptedFormats}
+                    record-id=""
+                    onuploadfinished={handleUpload}></lightning-file-upload>
+                <template lwc:if={uploadedName}>
+                    <p class="slds-text-body_small slds-text-color_success slds-p-top_x-small">
+                        Attached: {uploadedName}
+                    </p>
+                </template>
+                <p class="slds-text-body_small slds-text-color_weak">
+                    Text, markdown, and HTML documents work best.
+                </p>
+            </div>
+
+            <div>
+                <lightning-button
+                    variant="brand"
+                    label="Generate Draft Skill"
+                    disabled={generateDisabled}
+                    onclick={handleGenerate}></lightning-button>
+                <template lwc:if={loading}>
+                    <lightning-spinner alternative-text="Generating" size="small"></lightning-spinner>
+                </template>
+            </div>
+        </div>
+    </lightning-card>
+</template>
