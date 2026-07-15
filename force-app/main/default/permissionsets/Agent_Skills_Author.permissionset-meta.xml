@@ -16,6 +16,10 @@
         <enabled>true</enabled>
     </classAccesses>
     <tabSettings>
+        <tab>Agent_Skills_Home</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+    <tabSettings>
         <tab>Agent_Skills_Repo__c</tab>
         <visibility>Visible</visibility>
     </tabSettings>
