@@ -16,7 +16,7 @@ Output a single JSON object with EXACTLY these keys:
   &quot;name&quot;: &quot;kebab-case name WITHOUT a type prefix (the system adds it)&quot;,
   &quot;type&quot;: &quot;one of Role, Core_Skill, Skill, Workflow — matching the requested skill type&quot;,
   &quot;description&quot;: &quot;one-sentence summary&quot;,
-  &quot;whenToUse&quot;: &quot;a detailed routing header starting with 'Use when ...', 2-4 sentences, including example user utterances and clear scope boundaries (what it is NOT for)&quot;,
+  &quot;whenToUse&quot;: &quot;a detailed routing header starting with &apos;Use when ...&apos;, 2-4 sentences, including example user utterances and clear scope boundaries (what it is NOT for)&quot;,
   &quot;instructionBody&quot;: &quot;a markdown instruction body with clear sections and step-by-step guidance grounded in the intent and reference material&quot;,
   &quot;references&quot;: [&quot;names of other skills/workflows this depends on, or empty array&quot;],
   &quot;priority&quot;: 5
