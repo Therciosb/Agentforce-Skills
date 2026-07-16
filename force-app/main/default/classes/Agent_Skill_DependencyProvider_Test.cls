@@ -67,4 +67,42 @@ private class Agent_Skill_DependencyProvider_Test {
         System.assertEquals('workflow-escalate', root.name);
         System.assertEquals(0, root.children.size());
     }
+
+    @IsTest
+    static void referenceOptionsExcludeSelfAndInactive() {
+        Id id = [SELECT Id FROM Agent_Skills_Repo__c WHERE Name='skill-troubleshooting-support' LIMIT 1].Id;
+        Test.startTest();
+        List<Agent_Skill_DependencyProvider.RefOption> opts =
+            Agent_Skill_DependencyProvider.getReferenceOptions(id);
+        Test.stopTest();
+        Set<String> names = new Set<String>();
+        for (Agent_Skill_DependencyProvider.RefOption o : opts) { names.add(o.name); }
+        System.assert(!names.contains('skill-troubleshooting-support'), 'excludes self');
+        System.assert(!names.contains('workflow-inactive'), 'excludes inactive');
+        System.assert(names.contains('workflow-escalate'), 'includes active peers');
+    }
+
+    @IsTest
+    static void saveReferencesValidatesAndDedupes() {
+        Id id = [SELECT Id FROM Agent_Skills_Repo__c WHERE Name='workflow-wifi' LIMIT 1].Id;
+        Test.startTest();
+        // valid + duplicate + self + unknown -> only the valid one survives
+        String csv = Agent_Skill_DependencyProvider.saveReferences(
+            id, new List<String>{ 'workflow-escalate', 'workflow-escalate', 'workflow-wifi', 'nope-does-not-exist' });
+        Test.stopTest();
+        System.assertEquals('workflow-escalate', csv, 'only valid, de-duped, self-excluded');
+        Agent_Skills_Repo__c rec = [SELECT References__c FROM Agent_Skills_Repo__c WHERE Id = :id];
+        System.assertEquals('workflow-escalate', rec.References__c);
+    }
+
+    @IsTest
+    static void saveReferencesEmptyClears() {
+        Id id = [SELECT Id FROM Agent_Skills_Repo__c WHERE Name='skill-troubleshooting-support' LIMIT 1].Id;
+        Test.startTest();
+        String csv = Agent_Skill_DependencyProvider.saveReferences(id, new List<String>());
+        Test.stopTest();
+        System.assertEquals(null, csv);
+        Agent_Skills_Repo__c rec = [SELECT References__c FROM Agent_Skills_Repo__c WHERE Id = :id];
+        System.assertEquals(null, rec.References__c);
+    }
 }

@@ -71,4 +71,65 @@ public with sharing class Agent_Skill_DependencyProvider {
         }
         return byName;
     }
+
+    public class RefOption {
+        @AuraEnabled public String name;
+        @AuraEnabled public String type;
+    }
+
+    // Catalog of active records (excluding the record itself) that can be selected as references.
+    @AuraEnabled(cacheable=true)
+    public static List<RefOption> getReferenceOptions(Id recordId) {
+        String selfName;
+        for (Agent_Skills_Repo__c r : [
+            SELECT Name FROM Agent_Skills_Repo__c WHERE Id = :recordId WITH USER_MODE LIMIT 1
+        ]) {
+            selfName = r.Name;
+        }
+        List<RefOption> options = new List<RefOption>();
+        for (Agent_Skills_Repo__c r : [
+            SELECT Name, Type__c FROM Agent_Skills_Repo__c
+            WHERE Status__c = 'active' AND Name != null
+            WITH USER_MODE
+            ORDER BY Type__c, Name
+            LIMIT 2000
+        ]) {
+            if (r.Name == selfName) {
+                continue;
+            }
+            RefOption o = new RefOption();
+            o.name = r.Name;
+            o.type = r.Type__c;
+            options.add(o);
+        }
+        return options;
+    }
+
+    // Persist a validated, de-duplicated, no-spaces CSV of references onto the record.
+    // Only names that resolve to a real active record are kept.
+    @AuraEnabled
+    public static String saveReferences(Id recordId, List<String> names) {
+        Map<String, Agent_Skills_Repo__c> active = loadActive();
+        Agent_Skills_Repo__c self = [
+            SELECT Name FROM Agent_Skills_Repo__c WHERE Id = :recordId WITH USER_MODE LIMIT 1
+        ];
+        List<String> clean = new List<String>();
+        Set<String> seen = new Set<String>();
+        if (names != null) {
+            for (String n : names) {
+                String v = n == null ? null : n.trim();
+                if (String.isBlank(v) || seen.contains(v) || v == self.Name) {
+                    continue;
+                }
+                if (active.containsKey(v)) {
+                    seen.add(v);
+                    clean.add(v);
+                }
+            }
+        }
+        String csv = clean.isEmpty() ? null : String.join(clean, ',');
+        Agent_Skills_Repo__c toUpdate = new Agent_Skills_Repo__c(Id = recordId, References__c = csv);
+        update as user toUpdate;
+        return csv;
+    }
 }
