@@ -1,0 +1,101 @@
+<template>
+    <div class="browser">
+        <header class="bar">
+            <div class="bar__title">
+                <h1>Skills repository</h1>
+                <template lwc:if={rows.length}>
+                    <span class="bar__count">{resultCount}</span>
+                </template>
+            </div>
+            <div class="bar__actions">
+                <lightning-button-icon
+                    icon-name="utility:refresh"
+                    variant="border-filled"
+                    alternative-text="Refresh"
+                    title="Refresh"
+                    onclick={handleRefresh}></lightning-button-icon>
+                <lightning-button
+                    variant="brand"
+                    label="New skill"
+                    icon-name="utility:add"
+                    onclick={handleNew}></lightning-button>
+            </div>
+        </header>
+
+        <div class="controls">
+            <div class="search">
+                <lightning-icon icon-name="utility:search" size="x-small" class="search__icon"></lightning-icon>
+                <input
+                    type="search"
+                    class="search__input"
+                    placeholder="Search by name"
+                    oninput={handleSearch} />
+            </div>
+            <div class="segments" role="tablist" aria-label="Filter by type">
+                <template for:each={filterButtons} for:item="f">
+                    <button
+                        key={f.value}
+                        type="button"
+                        role="tab"
+                        aria-selected={f.isActive}
+                        class={f.cssClass}
+                        data-value={f.value}
+                        onclick={handleFilter}>
+                        {f.label}
+                    </button>
+                </template>
+            </div>
+        </div>
+
+        <template lwc:if={error}>
+            <div class="notice notice--error" role="alert">
+                <lightning-icon icon-name="utility:error" size="x-small" variant="error"></lightning-icon>
+                <span>{error}</span>
+            </div>
+        </template>
+
+        <template lwc:if={loading}>
+            <div class="rows" aria-hidden="true">
+                <div class="row row--skeleton"></div>
+                <div class="row row--skeleton"></div>
+                <div class="row row--skeleton"></div>
+            </div>
+        </template>
+
+        <template lwc:if={items.length}>
+            <ul class="rows">
+                <template for:each={items} for:item="s">
+                    <li key={s.recordId}>
+                        <button type="button" class="row" data-id={s.recordId} onclick={handleOpen}>
+                            <lightning-icon icon-name={s.icon} size="small" class="row__icon"></lightning-icon>
+                            <span class="row__main">
+                                <span class="row__name">{s.name}</span>
+                                <template lwc:if={s.whenToUse}>
+                                    <span class="row__desc">{s.whenToUse}</span>
+                                </template>
+                            </span>
+                            <span class="row__tags">
+                                <span class="row__badge">{s.badge}</span>
+                                <span class="row__status">
+                                    <span class={s.dotClass}></span>{s.statusLabel}
+                                </span>
+                            </span>
+                            <lightning-icon
+                                icon-name="utility:chevronright"
+                                size="xx-small"
+                                class="row__chevron"></lightning-icon>
+                        </button>
+                    </li>
+                </template>
+            </ul>
+        </template>
+
+        <template lwc:if={isEmpty}>
+            <div class="empty">
+                <lightning-icon icon-name="utility:search" size="small"></lightning-icon>
+                <p class="empty__title">No matching skills</p>
+                <p class="empty__text">Try a different search term or filter, or create a new skill.</p>
+            </div>
+        </template>
+    </div>
+</template>

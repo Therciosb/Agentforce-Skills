@@ -47,6 +47,26 @@ private class Agent_Skills_Home_Controller_Test {
     }
 
     @IsTest
+    static void listsAndFiltersSkills() {
+        Test.startTest();
+        List<Agent_Skills_Home_Controller.SkillRow> all =
+            Agent_Skills_Home_Controller.listSkills(null, 'All');
+        List<Agent_Skills_Home_Controller.SkillRow> onlySkills =
+            Agent_Skills_Home_Controller.listSkills(null, 'Skill');
+        List<Agent_Skills_Home_Controller.SkillRow> searched =
+            Agent_Skills_Home_Controller.listSkills('alpha', 'All');
+        Test.stopTest();
+
+        System.assertEquals(4, all.size(), 'all records returned');
+        System.assertEquals(2, onlySkills.size(), 'type filter applies');
+        for (Agent_Skills_Home_Controller.SkillRow r : onlySkills) {
+            System.assertEquals('Skill', r.type);
+        }
+        System.assertEquals(1, searched.size(), 'search narrows to alpha');
+        System.assertEquals('skill-alpha', searched[0].name);
+    }
+
+    @IsTest
     static void handlesEmptyRepo() {
         delete [SELECT Id FROM Agent_Skills_Repo__c];
         Test.startTest();

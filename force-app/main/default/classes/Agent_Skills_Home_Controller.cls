@@ -23,6 +23,16 @@ public with sharing class Agent_Skills_Home_Controller {
         @AuraEnabled public List<RecentSkill> recent;
     }
 
+    public class SkillRow {
+        @AuraEnabled public Id recordId;
+        @AuraEnabled public String name;
+        @AuraEnabled public String type;
+        @AuraEnabled public String status;
+        @AuraEnabled public String whenToUse;
+        @AuraEnabled public Decimal priority;
+        @AuraEnabled public Datetime lastModified;
+    }
+
     private static final Map<String, String> TYPE_LABELS = new Map<String, String>{
         'Role' => 'Roles',
         'Core_Skill' => 'Core skills',
@@ -98,5 +108,42 @@ public with sharing class Agent_Skills_Home_Controller {
         }
 
         return summary;
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static List<SkillRow> listSkills(String searchTerm, String typeFilter) {
+        String filters = 'WHERE Name != null';
+        Map<String, Object> binds = new Map<String, Object>();
+
+        if (String.isNotBlank(typeFilter) && typeFilter != 'All') {
+            filters += ' AND Type__c = :typeFilter';
+            binds.put('typeFilter', typeFilter);
+        }
+        if (String.isNotBlank(searchTerm)) {
+            // WhenToUse__c / Description__c are LongTextArea and cannot be filtered
+            // in SOQL; search the (filterable) Name field only.
+            binds.put('term', '%' + searchTerm.trim() + '%');
+            filters += ' AND Name LIKE :term';
+        }
+
+        String soql =
+            'SELECT Id, Name, Type__c, Status__c, WhenToUse__c, Priority__c, LastModifiedDate ' +
+            'FROM Agent_Skills_Repo__c ' + filters + ' ' +
+            'ORDER BY Type__c, Name LIMIT 200';
+
+        List<SkillRow> rows = new List<SkillRow>();
+        List<Agent_Skills_Repo__c> records = Database.queryWithBinds(soql, binds, AccessLevel.USER_MODE);
+        for (Agent_Skills_Repo__c rec : records) {
+            SkillRow row = new SkillRow();
+            row.recordId = rec.Id;
+            row.name = rec.Name;
+            row.type = rec.Type__c;
+            row.status = rec.Status__c;
+            row.whenToUse = rec.WhenToUse__c;
+            row.priority = rec.Priority__c;
+            row.lastModified = rec.LastModifiedDate;
+            rows.add(row);
+        }
+        return rows;
     }
 }
