@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionOverrides>
+        <actionName>View</actionName>
+        <content>Agent_Skills_Repo_Record</content>
+        <formFactor>Large</formFactor>
+        <skipRecordTypeSelect>false</skipRecordTypeSelect>
+        <type>Flexipage</type>
+        <pageOrSobjectType>Agent_Skills_Repo__c</pageOrSobjectType>
+    </actionOverrides>
     <brand>
         <headerColor>#0176D3</headerColor>
         <logo>Agent_Skills_Admin_Logo</logo>
@@ -14,13 +22,6 @@
     <isOmniPinnedViewEnabled>false</isOmniPinnedViewEnabled>
     <label>Agent Skills Admin</label>
     <navType>Standard</navType>
-    <actionOverrides>
-        <actionName>View</actionName>
-        <content>Agent_Skills_Repo_Record</content>
-        <formFactor>Large</formFactor>
-        <pageOrSobjectType>Agent_Skills_Repo__c</pageOrSobjectType>
-        <type>Flexipage</type>
-    </actionOverrides>
     <profileActionOverrides>
         <actionName>View</actionName>
         <content>Agent_Skills_Repo_Record</content>
@@ -29,7 +30,6 @@
         <type>Flexipage</type>
         <profile>Admin</profile>
     </profileActionOverrides>
-    <tabs>standard-home</tabs>
     <tabs>Agent_Skills_Home</tabs>
     <tabs>Agent_Skills_Repo__c</tabs>
     <uiType>Lightning</uiType>
