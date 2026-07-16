@@ -1,0 +1,141 @@
+<template>
+    <div class="home">
+        <!-- Welcome band -->
+        <header class="hero">
+            <div class="hero__text">
+                <p class="hero__eyebrow">Agent Skills</p>
+                <h1 class="hero__title">Design the skills your agents run on</h1>
+                <p class="hero__subtitle">
+                    Author roles, skills and workflows once, in one repository. Compose them into any
+                    Agentforce agent at runtime &mdash; no redeploys.
+                </p>
+                <div class="hero__actions">
+                    <lightning-button
+                        variant="brand"
+                        label="Build a skill"
+                        icon-name="utility:add"
+                        onclick={handleFocusBuilder}></lightning-button>
+                    <lightning-button
+                        variant="neutral"
+                        label="Browse all skills"
+                        onclick={handleViewAll}></lightning-button>
+                </div>
+            </div>
+        </header>
+
+        <template lwc:if={loading}>
+            <div class="stat-row" aria-hidden="true">
+                <div class="stat stat--skeleton"></div>
+                <div class="stat stat--skeleton"></div>
+                <div class="stat stat--skeleton"></div>
+                <div class="stat stat--skeleton"></div>
+            </div>
+        </template>
+
+        <template lwc:if={error}>
+            <div class="notice notice--error" role="alert">
+                <lightning-icon icon-name="utility:error" size="x-small" variant="error"></lightning-icon>
+                <span>{error}</span>
+            </div>
+        </template>
+
+        <template lwc:if={hasData}>
+            <!-- Repository overview: real counts, each links to the object -->
+            <section class="stat-row" aria-label="Repository overview">
+                <button
+                    type="button"
+                    class="stat"
+                    onclick={handleViewAll}
+                    aria-label="View all skills">
+                    <span class="stat__value">{summary.total}</span>
+                    <span class="stat__label">Total records</span>
+                </button>
+                <div class="stat stat--split">
+                    <span class="stat__value">{summary.activeTotal}</span>
+                    <span class="stat__label">
+                        <span class="status-dot status-dot_active"></span>Active
+                    </span>
+                </div>
+                <div class="stat stat--split">
+                    <span class="stat__value">{summary.draftTotal}</span>
+                    <span class="stat__label">
+                        <span class="status-dot status-dot_draft"></span>Draft
+                    </span>
+                </div>
+                <template for:each={typeCards} for:item="t">
+                    <div key={t.key} class="stat stat--type" data-muted={t.muted}>
+                        <span class="stat__type-head">
+                            <lightning-icon icon-name={t.icon} size="x-small"></lightning-icon>
+                            <span class="stat__label">{t.label}</span>
+                        </span>
+                        <span class="stat__value stat__value--sm">{t.total}</span>
+                    </div>
+                </template>
+            </section>
+
+            <!-- Work area: builder (primary) + recent rail -->
+            <div class="work">
+                <main class="work__main">
+                    <c-skill-builder></c-skill-builder>
+                </main>
+
+                <aside class="work__aside" aria-label="Recently updated skills">
+                    <div class="panel">
+                        <div class="panel__head">
+                            <h2 class="panel__title">Recently updated</h2>
+                            <template lwc:if={draftBadge}>
+                                <span class="panel__badge" title="Drafts awaiting review">
+                                    {draftBadge} draft
+                                </span>
+                            </template>
+                        </div>
+
+                        <template lwc:if={recentSkills.length}>
+                            <ul class="recent">
+                                <template for:each={recentSkills} for:item="s">
+                                    <li key={s.recordId}>
+                                        <button
+                                            type="button"
+                                            class="recent__item"
+                                            data-id={s.recordId}
+                                            onclick={handleOpen}>
+                                            <lightning-icon
+                                                icon-name={s.icon}
+                                                size="small"
+                                                class="recent__icon"></lightning-icon>
+                                            <span class="recent__body">
+                                                <span class="recent__name">{s.name}</span>
+                                                <span class="recent__meta">
+                                                    <span class={s.statusClass}></span>
+                                                    {s.statusLabel} &middot; {s.badge}
+                                                </span>
+                                            </span>
+                                            <lightning-icon
+                                                icon-name="utility:chevronright"
+                                                size="xx-small"
+                                                class="recent__chevron"></lightning-icon>
+                                        </button>
+                                    </li>
+                                </template>
+                            </ul>
+                            <button type="button" class="panel__link" onclick={handleViewAll}>
+                                View all skills
+                            </button>
+                        </template>
+
+                        <template lwc:if={isEmpty}>
+                            <div class="empty">
+                                <lightning-icon icon-name="utility:knowledge_base" size="small"></lightning-icon>
+                                <p class="empty__title">No skills yet</p>
+                                <p class="empty__text">
+                                    Use the builder to generate your first skill. It lands as a draft
+                                    for you to review.
+                                </p>
+                            </div>
+                        </template>
+                    </div>
+                </aside>
+            </div>
+        </template>
+    </div>
+</template>

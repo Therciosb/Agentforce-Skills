@@ -3,8 +3,8 @@
     <flexiPageRegions>
         <itemInstances>
             <componentInstance>
-                <componentName>skillBuilder</componentName>
-                <identifier>c_skillBuilder</identifier>
+                <componentName>skillsHome</componentName>
+                <identifier>c_skillsHome</identifier>
             </componentInstance>
         </itemInstances>
         <name>main</name>
