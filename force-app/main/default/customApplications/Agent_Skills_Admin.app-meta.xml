@@ -14,6 +14,13 @@
     <isOmniPinnedViewEnabled>false</isOmniPinnedViewEnabled>
     <label>Agent Skills Admin</label>
     <navType>Standard</navType>
+    <actionOverrides>
+        <actionName>View</actionName>
+        <content>Agent_Skills_Repo_Record</content>
+        <formFactor>Large</formFactor>
+        <pageOrSobjectType>Agent_Skills_Repo__c</pageOrSobjectType>
+        <type>Flexipage</type>
+    </actionOverrides>
     <profileActionOverrides>
         <actionName>View</actionName>
         <content>Agent_Skills_Repo_Record</content>
