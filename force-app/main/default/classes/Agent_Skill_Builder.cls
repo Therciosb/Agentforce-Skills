@@ -77,6 +77,12 @@ public with sharing class Agent_Skill_Builder {
         params.put('Input:referenceText', wrap(String.isBlank(referenceText) ? '' : referenceText));
         input.inputParams = params;
         input.isPreview = false;
+        // Required: the backend uses applicationName to resolve the generation context.
+        // Without it, generateMessagesForPromptTemplate fails with the opaque
+        // "Failed to generate Einstein LLM generations response" for ALL templates
+        // (verified against myDevOrg; matches the working Agentforce-SelfImproving pattern).
+        input.additionalConfig = new ConnectApi.EinsteinLlmAdditionalConfigInput();
+        input.additionalConfig.applicationName = 'PromptTemplateGenerationsInvocable';
 
         ConnectApi.EinsteinPromptTemplateGenerationsRepresentation resp =
             ConnectApi.EinsteinLLM.generateMessagesForPromptTemplate(TEMPLATE_API_NAME, input);
