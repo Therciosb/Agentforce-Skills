@@ -1,5 +1,18 @@
 @IsTest
 private class Agent_Skill_Builder_Test {
+    @TestSetup
+    static void seedCatalog() {
+        // Referenceable active records so generated references resolve against the catalog.
+        insert new List<Agent_Skills_Repo__c>{
+            new Agent_Skills_Repo__c(Name='workflow-escalate', Type__c='Workflow',
+                ExternalId__c='workflow-escalate:v1:en-US', WhenToUse__c='Use to escalate.',
+                InstructionBody__c='b', Status__c='active', Version__c='v1', Locale__c='en-US'),
+            new Agent_Skills_Repo__c(Name='core-skill-otp', Type__c='Core_Skill',
+                ExternalId__c='core-skill-otp:v1:en-US', WhenToUse__c='Use for OTP.',
+                InstructionBody__c='b', Status__c='active', Version__c='v1', Locale__c='en-US')
+        };
+    }
+
     @IsTest
     static void createsDraftFromValidJson() {
         Agent_Skill_Builder.rawOverride =
@@ -49,6 +62,23 @@ private class Agent_Skill_Builder_Test {
     }
 
     @IsTest
+    static void dropsUnknownReferencesWithWarning() {
+        Agent_Skill_Builder.rawOverride =
+            '{"name":"x","type":"Skill","description":"d","whenToUse":"w","instructionBody":"b",' +
+            '"references":["workflow-escalate","workflow-does-not-exist"],"priority":5}';
+        Test.startTest();
+        Agent_Skill_Builder.BuilderResult res =
+            Agent_Skill_Builder.generateSkill('x', 'Skill', null);
+        Test.stopTest();
+
+        System.assert(res.success);
+        Agent_Skills_Repo__c rec = [SELECT References__c FROM Agent_Skills_Repo__c WHERE Id = :res.recordId];
+        System.assertEquals('workflow-escalate', rec.References__c, 'unknown ref dropped, valid kept');
+        System.assert(res.warnings != null && res.warnings.contains('workflow-does-not-exist'),
+            'dropped ref surfaced in warnings: ' + res.warnings);
+    }
+
+    @IsTest
     static void malformedJsonReturnsErrorNotException() {
         Agent_Skill_Builder.rawOverride = 'sorry, here is your skill: {not valid json';
         Test.startTest();
@@ -57,7 +87,8 @@ private class Agent_Skill_Builder_Test {
         Test.stopTest();
         System.assertEquals(false, res.success);
         System.assert(String.isNotBlank(res.warnings));
-        System.assertEquals(0, [SELECT COUNT() FROM Agent_Skills_Repo__c]);
+        // No skill was inserted (only the two seeded active catalog records exist; no Draft).
+        System.assertEquals(0, [SELECT COUNT() FROM Agent_Skills_Repo__c WHERE Status__c = 'Draft']);
     }
 
     @IsTest

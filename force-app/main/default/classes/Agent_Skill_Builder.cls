@@ -26,9 +26,18 @@ public with sharing class Agent_Skill_Builder {
             referenceText = extractText((Id) contentVersionId, warnings);
         }
 
+        // Catalog of existing active skill/workflow records the new skill may depend on.
+        // The model can only pick valid references if it knows what exists AND what each
+        // one is for, so pass name + purpose; keep a plain name set for validation.
+        List<Agent_Skills_Repo__c> catalogRecords = loadReferenceCatalog();
+        Set<String> catalog = new Set<String>();
+        for (Agent_Skills_Repo__c c : catalogRecords) {
+            catalog.add(c.Name);
+        }
+
         String raw = rawOverride != null
             ? rawOverride
-            : invokeTemplate(intent, skillType, referenceText);
+            : invokeTemplate(intent, skillType, referenceText, catalogRecords);
         result.rawJson = raw;
 
         Map<String, Object> parsed = parseJson(raw);
@@ -39,7 +48,7 @@ public with sharing class Agent_Skill_Builder {
             return result;
         }
 
-        Agent_Skills_Repo__c rec = toRecord(parsed, skillType);
+        Agent_Skills_Repo__c rec = toRecord(parsed, skillType, catalog, warnings);
         insert rec;
         result.recordId = rec.Id;
         result.name = rec.Name;
@@ -65,7 +74,9 @@ public with sharing class Agent_Skill_Builder {
         return text;
     }
 
-    private static String invokeTemplate(String intent, String skillType, String referenceText) {
+    private static String invokeTemplate(
+        String intent, String skillType, String referenceText, List<Agent_Skills_Repo__c> catalog
+    ) {
         ConnectApi.EinsteinPromptTemplateGenerationsInput input =
             new ConnectApi.EinsteinPromptTemplateGenerationsInput();
         // Keys MUST use the template's input reference-name prefix ("Input:<apiName>").
@@ -75,6 +86,20 @@ public with sharing class Agent_Skill_Builder {
         params.put('Input:intent', wrap(intent));
         params.put('Input:skillType', wrap(skillType));
         params.put('Input:referenceText', wrap(String.isBlank(referenceText) ? '' : referenceText));
+        // Feed the model the real catalog (name + purpose) so it can judge which
+        // dependencies are relevant and copy the exact names.
+        List<String> catalogLines = new List<String>();
+        for (Agent_Skills_Repo__c c : catalog) {
+            String purpose = String.isBlank(c.WhenToUse__c)
+                ? (String.isBlank(c.Description__c) ? '' : c.Description__c)
+                : c.WhenToUse__c;
+            catalogLines.add('- ' + c.Name + (String.isBlank(purpose) ? '' : ': ' + purpose));
+        }
+        catalogLines.sort();
+        params.put(
+            'Input:availableReferences',
+            wrap(catalogLines.isEmpty() ? '(none)' : String.join(catalogLines, '\n'))
+        );
         input.inputParams = params;
         input.isPreview = false;
         // Required: the backend uses applicationName to resolve the generation context.
@@ -117,10 +142,12 @@ public with sharing class Agent_Skill_Builder {
         }
     }
 
-    private static Agent_Skills_Repo__c toRecord(Map<String, Object> j, String skillType) {
+    private static Agent_Skills_Repo__c toRecord(
+        Map<String, Object> j, String skillType, Set<String> catalog, List<String> warnings
+    ) {
         String type = normalizeType(skillType);
         String name = enforcePrefix(strVal(j, 'name'), type);
-        String references = normalizeReferences(j.get('references'));
+        String references = normalizeReferences(j.get('references'), catalog, warnings);
 
         Agent_Skills_Repo__c rec = new Agent_Skills_Repo__c();
         rec.Name = name;
@@ -165,14 +192,39 @@ public with sharing class Agent_Skill_Builder {
         return prefix + slug;
     }
 
-    private static String normalizeReferences(Object refs) {
+    private static String normalizeReferences(Object refs, Set<String> catalog, List<String> warnings) {
         if (!(refs instanceof List<Object>)) { return null; }
         List<String> clean = new List<String>();
+        List<String> dropped = new List<String>();
+        Set<String> seen = new Set<String>();
         for (Object o : (List<Object>) refs) {
             String s = o == null ? null : String.valueOf(o).trim();
-            if (String.isNotBlank(s)) { clean.add(s); }
+            if (String.isBlank(s) || seen.contains(s)) { continue; }
+            seen.add(s);
+            // Only keep references that resolve to a real active record, so the
+            // dependency tree never points at a name that does not exist.
+            if (catalog.contains(s)) {
+                clean.add(s);
+            } else {
+                dropped.add(s);
+            }
+        }
+        if (!dropped.isEmpty() && warnings != null) {
+            warnings.add('Dropped ' + dropped.size() +
+                ' reference(s) that do not match an existing active skill/workflow: ' +
+                String.join(dropped, ', ') + '.');
         }
         return clean.isEmpty() ? null : String.join(clean, ',');
+    }
+
+    private static List<Agent_Skills_Repo__c> loadReferenceCatalog() {
+        return [
+            SELECT Name, WhenToUse__c, Description__c FROM Agent_Skills_Repo__c
+            WHERE Status__c = 'active' AND Name != null
+            WITH USER_MODE
+            ORDER BY Type__c, Name
+            LIMIT 2000
+        ];
     }
 
     private static String strVal(Map<String, Object> j, String key) {
