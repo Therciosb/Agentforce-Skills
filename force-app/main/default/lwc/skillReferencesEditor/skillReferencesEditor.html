@@ -1,0 +1,34 @@
+<template>
+    <lightning-card title="Edit dependencies" icon-name="utility:merge">
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <template lwc:if={hasOptions}>
+                <lightning-dual-listbox
+                    name="references"
+                    label="References"
+                    source-label="Available skills & workflows"
+                    selected-label="This skill depends on"
+                    options={options}
+                    value={selected}
+                    field-level-help="Pick the skills or workflows this record loads at runtime. Saved dependencies appear in the tree."
+                    onchange={handleChange}></lightning-dual-listbox>
+
+                <div class="actions">
+                    <lightning-button
+                        variant="brand"
+                        label="Save dependencies"
+                        onclick={handleSave}
+                        disabled={saving}></lightning-button>
+                    <template lwc:if={saving}>
+                        <lightning-spinner alternative-text="Saving" size="small"></lightning-spinner>
+                    </template>
+                </div>
+            </template>
+
+            <template lwc:if={noOptions}>
+                <p class="slds-text-body_small slds-text-color_weak">
+                    No other active skills or workflows are available to reference yet.
+                </p>
+            </template>
+        </div>
+    </lightning-card>
+</template>

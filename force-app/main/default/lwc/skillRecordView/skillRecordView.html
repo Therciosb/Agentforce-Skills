@@ -1,0 +1,71 @@
+<template>
+    <template lwc:if={error}>
+        <div class="notice notice--error" role="alert">
+            <lightning-icon icon-name="utility:error" size="x-small" variant="error"></lightning-icon>
+            <span>{error}</span>
+        </div>
+    </template>
+
+    <template lwc:if={loaded}>
+        <article class="view">
+            <!-- Identity header -->
+            <header class="head">
+                <div class="head__title">
+                    <lightning-icon icon-name={typeMeta.icon} size="small" class="head__icon"></lightning-icon>
+                    <h1 class="head__name">{name}</h1>
+                </div>
+                <div class="head__tags">
+                    <span class="tag">{typeMeta.label}</span>
+                    <span class={statusClass}>
+                        <span class="pill__dot"></span>{statusLabel}
+                    </span>
+                </div>
+                <template lwc:if={description}>
+                    <p class="head__desc">{description}</p>
+                </template>
+                <dl class="meta">
+                    <template for:each={metaItems} for:item="m">
+                        <div key={m.key} class="meta__item">
+                            <dt>{m.label}</dt>
+                            <dd>{m.value}</dd>
+                        </div>
+                    </template>
+                </dl>
+            </header>
+
+            <!-- When to use -->
+            <template lwc:if={whenToUse}>
+                <section class="callout" aria-label="When to use">
+                    <div class="callout__head">
+                        <lightning-icon icon-name="utility:routing_offline" size="x-small"></lightning-icon>
+                        <h2>When to use</h2>
+                    </div>
+                    <p class="callout__body">{whenToUse}</p>
+                </section>
+            </template>
+
+            <!-- Instruction body -->
+            <template lwc:if={instructionBody}>
+                <section class="block" aria-label="Instruction body">
+                    <h2 class="block__title">Instruction body</h2>
+                    <pre class="block__pre">{instructionBody}</pre>
+                </section>
+            </template>
+
+            <!-- References -->
+            <template lwc:if={hasReferences}>
+                <section class="block" aria-label="References">
+                    <h2 class="block__title">References</h2>
+                    <ul class="chips">
+                        <template for:each={references} for:item="ref">
+                            <li key={ref.name} class="chip">
+                                <lightning-icon icon-name="utility:link" size="xx-small"></lightning-icon>
+                                <span>{ref.name}</span>
+                            </li>
+                        </template>
+                    </ul>
+                </section>
+            </template>
+        </article>
+    </template>
+</template>

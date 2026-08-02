@@ -7,6 +7,22 @@
         <application>Agent_Skills_Admin</application>
         <visible>true</visible>
     </applicationVisibilities>
+    <classAccesses>
+        <apexClass>Agent_Skill_Builder</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>Agent_Skill_DependencyProvider</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <tabSettings>
+        <tab>Agent_Skills_Browse</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+    <tabSettings>
+        <tab>Agent_Skills_Home</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
     <tabSettings>
         <tab>Agent_Skills_Repo__c</tab>
         <visibility>Visible</visibility>
@@ -14,6 +30,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>Agent_Skills_Repo__c.Description__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Agent_Skills_Repo__c.Priority__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
