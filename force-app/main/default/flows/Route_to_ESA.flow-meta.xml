@@ -83,13 +83,13 @@
         <inputParameters>
             <name>copilotId</name>
             <value>
-                <stringValue>0XxKY000000eAZs0AM</stringValue>
+                <stringValue>0XxKY0000001h3s0AA</stringValue>
             </value>
         </inputParameters>
         <inputParameters>
             <name>copilotLabel</name>
             <value>
-                <stringValue>Render Data Test</stringValue>
+                <stringValue>IT Helpdesk Agent</stringValue>
             </value>
         </inputParameters>
         <inputParameters>

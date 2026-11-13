@@ -36,5 +36,7 @@
     <tabs>standard-DataObjSecondaryIndex</tabs>
     <tabs>standard-SemanticContext</tabs>
     <tabs>Agent_Context__c</tabs>
+    <tabs>standard-DataCleanRoom</tabs>
+    <tabs>standard-DataQuickAttribute</tabs>
     <uiType>Lightning</uiType>
 </CustomApplication>

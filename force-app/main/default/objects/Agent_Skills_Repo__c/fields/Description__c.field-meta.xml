@@ -3,6 +3,7 @@
     <fullName>Description__c</fullName>
     <label>Description</label>
     <length>5000</length>
+    <trackTrending>false</trackTrending>
     <type>LongTextArea</type>
     <visibleLines>4</visibleLines>
 </CustomField>

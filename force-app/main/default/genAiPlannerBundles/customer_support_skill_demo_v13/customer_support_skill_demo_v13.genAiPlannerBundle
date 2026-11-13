@@ -17,69 +17,50 @@
         <genAiPluginName>troubleshooting_support_16jKY0000008UxW</genAiPluginName>
     </localTopicLinks>
     <localTopics>
-        <fullName>general_support_16jKY0000008UxW</fullName>
+        <fullName>topic_selector_16jKY0000008UxW</fullName>
         <canEscalate>false</canEscalate>
-        <description>Primary customer support intake for product Q&amp;A and deterministic routing.</description>
-        <developerName>general_support_16jKY0000008UxW</developerName>
+        <description>Initial deterministic bootstrap for memory and base instruction bundle.</description>
+        <developerName>topic_selector_16jKY0000008UxW</developerName>
         <genAiPluginInstructions>
             <description>You are a customer support AI agent.
 Follow policy and safety constraints at all times.
 Do not invent product facts, case updates, or troubleshooting outcomes.</description>
-            <developerName>instruction0_179KY000000LuB4</developerName>
+            <developerName>instruction0_179KY000000LuB1</developerName>
             <language>en_US</language>
-            <masterLabel>instruction0_179KY000000LuB4</masterLabel>
-            <sortOrder>1</sortOrder>
+            <masterLabel>instruction0_179KY000000LuB1</masterLabel>
+            <sortOrder>0</sortOrder>
         </genAiPluginInstructions>
         <language>en_US</language>
         <localActionLinks>
-            <functionName>compose_context_general_179KY000000LuB4</functionName>
+            <functionName>load_user_memory_179KY000000LuB1</functionName>
         </localActionLinks>
-        <localActions>
-            <fullName>compose_context_general_179KY000000LuB4</fullName>
-            <description>Compose active prompt instructions from loaded bundle and seed names.</description>
-            <developerName>compose_context_general_179KY000000LuB4</developerName>
-            <invocationTarget>Agent_Skill_PromptComposer</invocationTarget>
-            <invocationTargetType>apex</invocationTargetType>
-            <isConfirmationRequired>false</isConfirmationRequired>
-            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
-            <localDeveloperName>compose_context_general</localDeveloperName>
-            <masterLabel>Compose Context General</masterLabel>
-        </localActions>
-        <localDeveloperName>general_support</localDeveloperName>
-        <masterLabel>General Support Intake</masterLabel>
-        <pluginType>Topic</pluginType>
-    </localTopics>
-    <localTopics>
-        <fullName>troubleshooting_support_16jKY0000008UxW</fullName>
-        <canEscalate>false</canEscalate>
-        <description>Troubleshooting support for Wi-Fi modem, 5G modem, iPhone 16/16 Pro, and Galaxy S25/S25 Ultra.</description>
-        <developerName>troubleshooting_support_16jKY0000008UxW</developerName>
-        <genAiPluginInstructions>
-            <description>You are a customer support AI agent.
-Follow policy and safety constraints at all times.
-Do not invent product facts, case updates, or troubleshooting outcomes.</description>
-            <developerName>instruction0_179KY000000LuB2</developerName>
-            <language>en_US</language>
-            <masterLabel>instruction0_179KY000000LuB2</masterLabel>
-            <sortOrder>1</sortOrder>
-        </genAiPluginInstructions>
-        <language>en_US</language>
         <localActionLinks>
-            <functionName>compose_context_troubleshooting_179KY000000LuB2</functionName>
+            <functionName>agent_skill_loader_179KY000000LuB1</functionName>
         </localActionLinks>
         <localActions>
-            <fullName>compose_context_troubleshooting_179KY000000LuB2</fullName>
-            <description>Compose troubleshooting instruction context.</description>
-            <developerName>compose_context_troubleshooting_179KY000000LuB2</developerName>
-            <invocationTarget>Agent_Skill_PromptComposer</invocationTarget>
+            <fullName>load_user_memory_179KY000000LuB1</fullName>
+            <description>Load persistent memory context record for this contact.</description>
+            <developerName>load_user_memory_179KY000000LuB1</developerName>
+            <invocationTarget>Get_Agent_ContextObject</invocationTarget>
+            <invocationTargetType>flow</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>load_user_memory</localDeveloperName>
+            <masterLabel>Load User Memory</masterLabel>
+        </localActions>
+        <localActions>
+            <fullName>agent_skill_loader_179KY000000LuB1</fullName>
+            <description>Load active role/core skill instructions into bundle.</description>
+            <developerName>agent_skill_loader_179KY000000LuB1</developerName>
+            <invocationTarget>Agent_Skill_Loader</invocationTarget>
             <invocationTargetType>apex</invocationTargetType>
             <isConfirmationRequired>false</isConfirmationRequired>
             <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
-            <localDeveloperName>compose_context_troubleshooting</localDeveloperName>
-            <masterLabel>Compose Context Troubleshooting</masterLabel>
+            <localDeveloperName>agent_skill_loader</localDeveloperName>
+            <masterLabel>Agent Skill Loader</masterLabel>
         </localActions>
-        <localDeveloperName>troubleshooting_support</localDeveloperName>
-        <masterLabel>Troubleshooting Support</masterLabel>
+        <localDeveloperName>topic_selector</localDeveloperName>
+        <masterLabel>Entry Point</masterLabel>
         <pluginType>Topic</pluginType>
     </localTopics>
     <localTopics>
@@ -94,7 +75,7 @@ Do not invent product facts, case updates, or troubleshooting outcomes.</descrip
             <developerName>instruction0_179KY000000LuB3</developerName>
             <language>en_US</language>
             <masterLabel>instruction0_179KY000000LuB3</masterLabel>
-            <sortOrder>1</sortOrder>
+            <sortOrder>0</sortOrder>
         </genAiPluginInstructions>
         <language>en_US</language>
         <localActionLinks>
@@ -103,17 +84,6 @@ Do not invent product facts, case updates, or troubleshooting outcomes.</descrip
         <localActionLinks>
             <functionName>save_context_tool_179KY000000LuB3</functionName>
         </localActionLinks>
-        <localActions>
-            <fullName>save_context_tool_179KY000000LuB3</fullName>
-            <description>Persist long-term memory. Call this before saying goodbye to save extracted conversation data.</description>
-            <developerName>save_context_tool_179KY000000LuB3</developerName>
-            <invocationTarget>Save_Agent_ContextObject</invocationTarget>
-            <invocationTargetType>flow</invocationTargetType>
-            <isConfirmationRequired>false</isConfirmationRequired>
-            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
-            <localDeveloperName>save_context_tool</localDeveloperName>
-            <masterLabel>Save Context Tool</masterLabel>
-        </localActions>
         <localActions>
             <fullName>compose_context_finalization_179KY000000LuB3</fullName>
             <description>Compose escalation instruction context.</description>
@@ -124,6 +94,17 @@ Do not invent product facts, case updates, or troubleshooting outcomes.</descrip
             <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
             <localDeveloperName>compose_context_finalization</localDeveloperName>
             <masterLabel>Compose Context Finalization</masterLabel>
+        </localActions>
+        <localActions>
+            <fullName>save_context_tool_179KY000000LuB3</fullName>
+            <description>Persist long-term memory. Call this before saying goodbye to save extracted conversation data.</description>
+            <developerName>save_context_tool_179KY000000LuB3</developerName>
+            <invocationTarget>Save_Agent_ContextObject</invocationTarget>
+            <invocationTargetType>flow</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>save_context_tool</localDeveloperName>
+            <masterLabel>Save Context Tool</masterLabel>
         </localActions>
         <localDeveloperName>finalization</localDeveloperName>
         <masterLabel>Finalization and Escalation</masterLabel>
@@ -141,7 +122,7 @@ Do not invent product facts, case updates, or troubleshooting outcomes.</descrip
             <developerName>instruction0_179KY000000LuB0</developerName>
             <language>en_US</language>
             <masterLabel>instruction0_179KY000000LuB0</masterLabel>
-            <sortOrder>1</sortOrder>
+            <sortOrder>0</sortOrder>
         </genAiPluginInstructions>
         <language>en_US</language>
         <localActionLinks>
@@ -163,50 +144,69 @@ Do not invent product facts, case updates, or troubleshooting outcomes.</descrip
         <pluginType>Topic</pluginType>
     </localTopics>
     <localTopics>
-        <fullName>topic_selector_16jKY0000008UxW</fullName>
+        <fullName>troubleshooting_support_16jKY0000008UxW</fullName>
         <canEscalate>false</canEscalate>
-        <description>Initial deterministic bootstrap for memory and base instruction bundle.</description>
-        <developerName>topic_selector_16jKY0000008UxW</developerName>
+        <description>Troubleshooting support for Wi-Fi modem, 5G modem, iPhone 16/16 Pro, and Galaxy S25/S25 Ultra.</description>
+        <developerName>troubleshooting_support_16jKY0000008UxW</developerName>
         <genAiPluginInstructions>
             <description>You are a customer support AI agent.
 Follow policy and safety constraints at all times.
 Do not invent product facts, case updates, or troubleshooting outcomes.</description>
-            <developerName>instruction0_179KY000000LuB1</developerName>
+            <developerName>instruction0_179KY000000LuB2</developerName>
             <language>en_US</language>
-            <masterLabel>instruction0_179KY000000LuB1</masterLabel>
-            <sortOrder>1</sortOrder>
+            <masterLabel>instruction0_179KY000000LuB2</masterLabel>
+            <sortOrder>0</sortOrder>
         </genAiPluginInstructions>
         <language>en_US</language>
         <localActionLinks>
-            <functionName>load_user_memory_179KY000000LuB1</functionName>
-        </localActionLinks>
-        <localActionLinks>
-            <functionName>agent_skill_loader_179KY000000LuB1</functionName>
+            <functionName>compose_context_troubleshooting_179KY000000LuB2</functionName>
         </localActionLinks>
         <localActions>
-            <fullName>agent_skill_loader_179KY000000LuB1</fullName>
-            <description>Load active role/core skill instructions into bundle.</description>
-            <developerName>agent_skill_loader_179KY000000LuB1</developerName>
-            <invocationTarget>Agent_Skill_Loader</invocationTarget>
+            <fullName>compose_context_troubleshooting_179KY000000LuB2</fullName>
+            <description>Compose troubleshooting instruction context.</description>
+            <developerName>compose_context_troubleshooting_179KY000000LuB2</developerName>
+            <invocationTarget>Agent_Skill_PromptComposer</invocationTarget>
             <invocationTargetType>apex</invocationTargetType>
             <isConfirmationRequired>false</isConfirmationRequired>
             <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
-            <localDeveloperName>agent_skill_loader</localDeveloperName>
-            <masterLabel>Agent Skill Loader</masterLabel>
+            <localDeveloperName>compose_context_troubleshooting</localDeveloperName>
+            <masterLabel>Compose Context Troubleshooting</masterLabel>
         </localActions>
+        <localDeveloperName>troubleshooting_support</localDeveloperName>
+        <masterLabel>Troubleshooting Support</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <localTopics>
+        <fullName>general_support_16jKY0000008UxW</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Primary customer support intake for product Q&amp;A and deterministic routing.</description>
+        <developerName>general_support_16jKY0000008UxW</developerName>
+        <genAiPluginInstructions>
+            <description>You are a customer support AI agent.
+Follow policy and safety constraints at all times.
+Do not invent product facts, case updates, or troubleshooting outcomes.</description>
+            <developerName>instruction0_179KY000000LuB4</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179KY000000LuB4</masterLabel>
+            <sortOrder>0</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localActionLinks>
+            <functionName>compose_context_general_179KY000000LuB4</functionName>
+        </localActionLinks>
         <localActions>
-            <fullName>load_user_memory_179KY000000LuB1</fullName>
-            <description>Load persistent memory context record for this contact.</description>
-            <developerName>load_user_memory_179KY000000LuB1</developerName>
-            <invocationTarget>Get_Agent_ContextObject</invocationTarget>
-            <invocationTargetType>flow</invocationTargetType>
+            <fullName>compose_context_general_179KY000000LuB4</fullName>
+            <description>Compose active prompt instructions from loaded bundle and seed names.</description>
+            <developerName>compose_context_general_179KY000000LuB4</developerName>
+            <invocationTarget>Agent_Skill_PromptComposer</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
             <isConfirmationRequired>false</isConfirmationRequired>
             <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
-            <localDeveloperName>load_user_memory</localDeveloperName>
-            <masterLabel>Load User Memory</masterLabel>
+            <localDeveloperName>compose_context_general</localDeveloperName>
+            <masterLabel>Compose Context General</masterLabel>
         </localActions>
-        <localDeveloperName>topic_selector</localDeveloperName>
-        <masterLabel>Entry Point</masterLabel>
+        <localDeveloperName>general_support</localDeveloperName>
+        <masterLabel>General Support Intake</masterLabel>
         <pluginType>Topic</pluginType>
     </localTopics>
     <masterLabel>Customer Support Skill Demo</masterLabel>

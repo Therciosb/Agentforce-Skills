@@ -36,7 +36,7 @@ access:
 
 
 variables:
-    ContactId: mutable string = "003KY00000KNAGqYAP"
+    ContactId: mutable string = ""
     EndUserId: linked string
         source: @MessagingSession.MessagingEndUserId
     RoutableId: linked string
@@ -48,12 +48,12 @@ variables:
     memory_goal: mutable string = ""
     memory_has_issue: mutable boolean = False
     memory_style: mutable string = ""
-    instruction_bundle_json: mutable object
+    instruction_bundle_json: mutable string = ""
     composed_instructions: mutable string = ""
-    candidate_skills: mutable string = "skill-product-information-qa,skill-troubleshooting-support,skill-support-case-management"
+    candidate_skills: mutable string = "skill-product-information-qa,skill-troubleshooting-support,skill-support-case-management,skill-order-status-support"
     skill_headers: mutable string = ""
     skills_to_load: mutable string = ""
-
+    skills_loaded: mutable boolean = False
 
 start_agent agent_router:
     description: "Progressive disclosure: load role/core + optional memory, fetch candidate headers, select skills, route."
@@ -86,7 +86,7 @@ start_agent agent_router:
                     description: "Aggregated instruction bundle JSON for merge."
                 instructionsBundle: string
                     description: "Formatted prompt (not consumed in start_agent)."
-            target: "apex://Agent_Skill_LoadAndCompose"
+            target: "apex://Agent_Skill_LoadAndCompose_v2"
         get_skill_headers:
             description: "Fetch lean Name + WhenToUse headers for candidate skills (no body, no expansion)."
             inputs:
@@ -101,8 +101,6 @@ start_agent agent_router:
 
     reasoning:
         instructions: ->
-            # Loop-exit guard: once skills are selected, transition immediately so the
-            # router's reasoning loop terminates instead of re-invoking select_skills.
             if @variables.skills_to_load != "":
                 transition to @subagent.generic_handler
 
@@ -116,12 +114,6 @@ start_agent agent_router:
                     set @variables.memory_style=@outputs.memoryStyle
                     set @variables.context_loaded=True
 
-            if @variables.context_loaded == False:
-                set @variables.context_loaded=True
-
-            # One-time init: load role/core skills + candidate headers only on the
-            # first router pass. Guarded by router_initialized so subsequent reasoning
-            # iterations do NOT re-run these actions (prevents the re-loading loop).
             if @variables.router_initialized == False:
                 run @actions.load_skills_init
                     with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-txt-response-guidelines"
@@ -133,13 +125,12 @@ start_agent agent_router:
 
                 set @variables.router_initialized=True
 
-            | You are the router. Select which skills are needed for the user's request.
+            | You are the router. Your MANDATORY FIRST ACTION on every turn is to evaluate the user's message against the available skill headers and select which skills are needed.
             | Available skills (choose from these names only):
             | {!@variables.skill_headers}
             |
-            | You MUST call {!@actions.select_skills} exactly once this turn with a comma-separated list of the matching skill names (exact names, no spaces after commas). This is your only job — do not answer the user directly.
-            | If one or more skills clearly match, select them. If the request is a greeting, small talk, thanks, or otherwise unclear, still call {!@actions.select_skills} with the single best-guess skill for a support conversation ("skill-product-information-qa"). Never respond without calling select_skills, and never call it with an empty value.
-
+            | YOU MUST ALWAYS CALL {!@actions.select_skills} WITH YOUR SELECTED SKILLS BEFORE DOING ANYTHING ELSE. Do not answer the user directly.
+            | If one or more skills match, select them as a comma-separated list. If unclear or greeting, select "skill-product-information-qa". Never respond without calling select_skills.
         actions:
             select_skills: @utils.setVariables
                 description: "Record the chosen skill names to load for this request."
@@ -166,7 +157,7 @@ subagent generic_handler:
                     description: "Formatted prompt-ready instruction text."
                 loadedInstructionBundle: string
                     description: "Raw instruction bundle JSON for merge."
-            target: "apex://Agent_Skill_LoadAndCompose"
+            target: "apex://Agent_Skill_LoadAndCompose_v2"
         create_case:
             description: "Create a new support case from a concise subject line."
             inputs:
@@ -175,7 +166,7 @@ subagent generic_handler:
             outputs:
                 case_number: string
                     description: "The created case number."
-            target: "flow://CreateCase"
+            target: "apex://CreateCase"
         create_escalation_ticket:
             description: "Create an escalation ticket for handoff to a human specialist."
             inputs:
@@ -188,7 +179,7 @@ subagent generic_handler:
             outputs:
                 ticket_id: string
                     description: "The created escalation ticket ID."
-            target: "flow://CreateEscalationTicket"
+            target: "apex://CreateEscalationTicket"
         get_order_status:
             description: "Look up the current status of an order."
             inputs:
@@ -199,13 +190,15 @@ subagent generic_handler:
                     description: "Order status."
                 tracking_number: string
                     description: "Shipment tracking number, if any."
-            target: "flow://GetOrderStatus"
+                error_code: string
+                    description: "Error code if order lookup fails or encounters an issue."
+            target: "apex://GetOrderStatus"
         fetch_support_history:
             description: "Fetch the support/case history for a user."
             inputs:
                 user_id: string
                     description: "User/contact identifier."
-            target: "flow://FetchSupportHistory"
+            target: "apex://FetchSupportHistory"
         track_shipment:
             description: "Track a shipment by carrier and tracking number."
             inputs:
@@ -220,13 +213,13 @@ subagent generic_handler:
                     description: "Shipment status."
                 success: boolean
                     description: "Whether tracking succeeded."
-            target: "flow://TrackShipment"
+            target: "apex://TrackShipment"
         fetch_account_data:
             description: "Fetch account details for a user."
             inputs:
                 user_id: string
                     description: "User/contact identifier."
-            target: "flow://FetchAccountData"
+            target: "apex://FetchAccountData"
         get_product_info:
             description: "Look up product specifications, price, and availability."
             inputs:
@@ -240,7 +233,7 @@ subagent generic_handler:
                     complex_data_type_name: "lightning__currencyType"
                 product_details: string
                     description: "Product specification details."
-            target: "flow://GetProductInfo"
+            target: "apex://GetProductInfo"
         send_verification_email:
             description: "Send a one-time verification code to the customer."
             inputs:
@@ -254,18 +247,6 @@ subagent generic_handler:
                 token: string
                     description: "Verification token reference."
             target: "flow://SendVerificationEmail"
-        render_data:
-            description: "Display structured data in table, card, list, or key-value format."
-            inputs:
-                data: string
-                    description: "JSON string following the schema for the display type."
-                display_type: string
-                    description: "One of: table, card, list, key-value."
-            outputs:
-                result: object
-                    description: "Render output for LWC display (GenericRenderOutput)."
-                    complex_data_type_name: "c__genericRenderOutput"
-            target: "apex://GenericRenderAction"
         save_context:
             description: "Persist an Agent_Context__c memory checkpoint (optional LTM)."
             inputs:
@@ -286,11 +267,13 @@ subagent generic_handler:
 
     reasoning:
         instructions: ->
-            run @actions.load_skills
-                with instructionNames=@variables.skills_to_load
-                with existingInstructionBundle=@variables.instruction_bundle_json
-                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
-                set @variables.composed_instructions=@outputs.instructionsBundle
+            if @variables.skills_loaded == False:
+                run @actions.load_skills
+                    with instructionNames=@variables.skills_to_load
+                    with existingInstructionBundle=@variables.instruction_bundle_json
+                    set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+                    set @variables.composed_instructions=@outputs.instructionsBundle
+                    set @variables.skills_loaded=True
 
             | Here is your past context. Use it for personalization if present:
             | {!@variables.agent_memory}
@@ -298,11 +281,20 @@ subagent generic_handler:
             | Follow these instructions. They determine what to do and which tools to use:
             | {!@variables.composed_instructions}
             |
-            | Use the tools available to you as directed by the instructions above.
-            |
+            | MANDATORY ACTION DIRECTIVE: You MUST execute the relevant tool action (such as @actions.get_order_status, @actions.track_shipment, @actions.get_product_info, etc.) BEFORE outputting any conversational message or final answer to the user whenever an actionable user request or identifier is present. Do not reply with small talk or promises to check without calling the action tool first.
+            | If an action (such as get_product_info or get_order_status) returns null, empty, unpopulated fields, or throws an error, do NOT report a generic system failure or technical error. Instead, politely inform the user that no matching record could be found for the provided identifier, ask them to double-check the number, and offer to assist with another query or connect them with human support.
+            | INPUT GUARDRAIL: When executing tools like create_case or create_escalation_ticket, validate parameter strings for length and clean format to avoid unexpected prompt-injection behavior in underlying Flows.
+            | MEMORY GUARDRAIL: Invoke @actions.save_context at the conclusion of resolution turns when memory_has_issue or pending goals update to maintain session memory.
+
             | ESCALATION GUARDRAIL (overrides the instructions above): Do NOT escalate to a human or route to a specialist unless EITHER the user explicitly asks for a human/agent/escalation, OR you have actually walked the user through the troubleshooting steps this session and they confirm the issue is still unresolved AND they agree to escalate. If the user says they want to continue troubleshooting, keep troubleshooting — never escalate. Before using the escalation tools, ask the user to confirm they want a human handoff. Only call the "CreateEscalationTicket" tool once you have a concrete customer_id, a one-sentence issue_description, and an issue_type (technical, billing, or general); never call it with empty or guessed values.
 
         actions:
+            load_skills: @actions.load_skills
+                description: "Load selected skills into instruction bundle."
+                with instructionNames=@variables.skills_to_load
+                with existingInstructionBundle=@variables.instruction_bundle_json
+                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
+                set @variables.composed_instructions=@outputs.instructionsBundle
             create_case: @actions.create_case
                 description: "Create a new support case from a concise, user-approved subject."
                 with subject=...
@@ -333,10 +325,6 @@ subagent generic_handler:
                 description: "Send a one-time verification code to the customer."
                 with customer_id=...
                 with email=...
-            render_data: @actions.render_data
-                description: "Display structured data in table, card, list, or key-value format."
-                with data=...
-                with display_type=...
             save_context: @actions.save_context
                 description: "Persist an Agent_Context__c memory checkpoint (optional LTM)."
                 with contactId=@variables.ContactId

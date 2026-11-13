@@ -8,37 +8,6 @@
         <genAiPluginName>topic_selector_16jKY0000008Uyy</genAiPluginName>
     </localTopicLinks>
     <localTopics>
-        <fullName>general_support_16jKY0000008Uyy</fullName>
-        <canEscalate>false</canEscalate>
-        <description>Runs compose_context (Agent_Skill_PromptComposer) and reports results.</description>
-        <developerName>general_support_16jKY0000008Uyy</developerName>
-        <genAiPluginInstructions>
-            <description>You are a minimal test agent. Respond only as instructed.</description>
-            <developerName>instruction0_179KY000000LuJh</developerName>
-            <language>en_US</language>
-            <masterLabel>instruction0_179KY000000LuJh</masterLabel>
-            <sortOrder>1</sortOrder>
-        </genAiPluginInstructions>
-        <language>en_US</language>
-        <localActionLinks>
-            <functionName>compose_context_179KY000000LuJh</functionName>
-        </localActionLinks>
-        <localActions>
-            <fullName>compose_context_179KY000000LuJh</fullName>
-            <description>Compose prompt instructions from loaded bundle (Agent_Skill_PromptComposer).</description>
-            <developerName>compose_context_179KY000000LuJh</developerName>
-            <invocationTarget>Agent_Skill_PromptComposer</invocationTarget>
-            <invocationTargetType>apex</invocationTargetType>
-            <isConfirmationRequired>false</isConfirmationRequired>
-            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
-            <localDeveloperName>compose_context</localDeveloperName>
-            <masterLabel>Compose Context</masterLabel>
-        </localActions>
-        <localDeveloperName>general_support</localDeveloperName>
-        <masterLabel>General Support</masterLabel>
-        <pluginType>Topic</pluginType>
-    </localTopics>
-    <localTopics>
         <fullName>topic_selector_16jKY0000008Uyy</fullName>
         <canEscalate>false</canEscalate>
         <description>Load role and core skills, then transition to general support.</description>
@@ -48,7 +17,7 @@
             <developerName>instruction0_179KY000000LuJi</developerName>
             <language>en_US</language>
             <masterLabel>instruction0_179KY000000LuJi</masterLabel>
-            <sortOrder>1</sortOrder>
+            <sortOrder>0</sortOrder>
         </genAiPluginInstructions>
         <language>en_US</language>
         <localActionLinks>
@@ -67,6 +36,37 @@
         </localActions>
         <localDeveloperName>topic_selector</localDeveloperName>
         <masterLabel>Entry Point</masterLabel>
+        <pluginType>Topic</pluginType>
+    </localTopics>
+    <localTopics>
+        <fullName>general_support_16jKY0000008Uyy</fullName>
+        <canEscalate>false</canEscalate>
+        <description>Runs compose_context (Agent_Skill_PromptComposer) and reports results.</description>
+        <developerName>general_support_16jKY0000008Uyy</developerName>
+        <genAiPluginInstructions>
+            <description>You are a minimal test agent. Respond only as instructed.</description>
+            <developerName>instruction0_179KY000000LuJh</developerName>
+            <language>en_US</language>
+            <masterLabel>instruction0_179KY000000LuJh</masterLabel>
+            <sortOrder>0</sortOrder>
+        </genAiPluginInstructions>
+        <language>en_US</language>
+        <localActionLinks>
+            <functionName>compose_context_179KY000000LuJh</functionName>
+        </localActionLinks>
+        <localActions>
+            <fullName>compose_context_179KY000000LuJh</fullName>
+            <description>Compose prompt instructions from loaded bundle (Agent_Skill_PromptComposer).</description>
+            <developerName>compose_context_179KY000000LuJh</developerName>
+            <invocationTarget>Agent_Skill_PromptComposer</invocationTarget>
+            <invocationTargetType>apex</invocationTargetType>
+            <isConfirmationRequired>false</isConfirmationRequired>
+            <isIncludeInProgressIndicator>false</isIncludeInProgressIndicator>
+            <localDeveloperName>compose_context</localDeveloperName>
+            <masterLabel>Compose Context</masterLabel>
+        </localActions>
+        <localDeveloperName>general_support</localDeveloperName>
+        <masterLabel>General Support</masterLabel>
         <pluginType>Topic</pluginType>
     </localTopics>
     <masterLabel>Skill Load Test</masterLabel>

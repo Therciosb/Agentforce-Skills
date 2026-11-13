@@ -1,8 +1,8 @@
 {
-  "renderer": {
-    "componentOverrides": {
-      "$": {
-        "definition": "c/flightDetails"
+  "renderer" : {
+    "componentOverrides" : {
+      "$" : {
+        "definition" : "c/flightDetails"
       }
     }
   }

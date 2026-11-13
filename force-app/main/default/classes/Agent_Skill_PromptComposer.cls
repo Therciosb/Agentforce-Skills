@@ -172,7 +172,8 @@ public with sharing class Agent_Skill_PromptComposer {
             segments.add(text.substring(lastEnd, m.start()));
             String toolName = m.group(1);
             if (KNOWN_TOOL_NAMES.contains(toolName)) {
-                segments.add('the "' + toolName + '" tool');
+                String snakeName = toolName.replaceAll('([a-z])([A-Z])', '$1_$2').toLowerCase();
+                segments.add('@actions.' + snakeName);
             } else {
                 segments.add('[[unknown tool: ' + toolName + ']]');
                 unknownToolNames.add(toolName);

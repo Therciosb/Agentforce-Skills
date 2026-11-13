@@ -34,5 +34,4 @@
     <tabs>Agent_Skills_Browse</tabs>
     <tabs>Agent_Skills_Repo__c</tabs>
     <uiType>Lightning</uiType>
-    <utilityBar>Agent_Skills_Admin_UtilityBar</utilityBar>
 </CustomApplication>

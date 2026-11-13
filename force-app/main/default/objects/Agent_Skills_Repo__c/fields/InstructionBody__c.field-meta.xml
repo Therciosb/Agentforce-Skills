@@ -3,6 +3,7 @@
     <fullName>InstructionBody__c</fullName>
     <label>Instruction Body</label>
     <length>32768</length>
+    <trackTrending>false</trackTrending>
     <type>LongTextArea</type>
     <visibleLines>12</visibleLines>
 </CustomField>

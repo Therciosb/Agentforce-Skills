@@ -1,17 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionCalls>
+        <name>Invoke_LoadAgentMemory</name>
+        <label>Invoke Load Agent Memory</label>
+        <locationX>176</locationX>
+        <locationY>134</locationY>
+        <actionName>LoadAgentMemory</actionName>
+        <actionType>apex</actionType>
+        <connector>
+            <targetReference>Assign_Agent_Memory</targetReference>
+        </connector>
+        <flowTransactionModel>CurrentTransaction</flowTransactionModel>
+        <inputParameters>
+            <name>contactId</name>
+            <value>
+                <elementReference>contact_id</elementReference>
+            </value>
+        </inputParameters>
+        <nameSegment>LoadAgentMemory</nameSegment>
+        <storeOutputAutomatically>true</storeOutputAutomatically>
+    </actionCalls>
     <apiVersion>66.0</apiVersion>
     <areMetricsLoggedToDataCloud>false</areMetricsLoggedToDataCloud>
     <assignments>
-        <name>Set_Context_Record_Output</name>
-        <label>Set Context Record Output</label>
-        <locationX>0</locationX>
-        <locationY>0</locationY>
+        <name>Assign_Agent_Memory</name>
+        <label>Assign Agent Memory</label>
+        <locationX>176</locationX>
+        <locationY>242</locationY>
         <assignmentItems>
-            <assignToReference>context_record</assignToReference>
+            <assignToReference>agent_memory</assignToReference>
             <operator>Assign</operator>
             <value>
-                <elementReference>Get_Agent_Context_Record</elementReference>
+                <elementReference>Invoke_LoadAgentMemory.agentMemory</elementReference>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>memory_summary</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <elementReference>Invoke_LoadAgentMemory.memorySummary</elementReference>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>memory_goal</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <elementReference>Invoke_LoadAgentMemory.memoryGoal</elementReference>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>memory_has_issue</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <elementReference>Invoke_LoadAgentMemory.hasIssue</elementReference>
+            </value>
+        </assignmentItems>
+        <assignmentItems>
+            <assignToReference>memory_style</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <elementReference>Invoke_LoadAgentMemory.memoryStyle</elementReference>
             </value>
         </assignmentItems>
     </assignments>
@@ -19,36 +67,23 @@
     <interviewLabel>Get Agent Context Object {!$Flow.CurrentDateTime}</interviewLabel>
     <label>Get Agent Context Object</label>
     <processType>AutoLaunchedFlow</processType>
-    <recordLookups>
-        <name>Get_Agent_Context_Record</name>
-        <label>Get Agent Context Record</label>
-        <locationX>0</locationX>
-        <locationY>0</locationY>
-        <assignNullValuesIfNoRecordsFound>false</assignNullValuesIfNoRecordsFound>
-        <connector>
-            <targetReference>Set_Context_Record_Output</targetReference>
-        </connector>
-        <filterLogic>and</filterLogic>
-        <filters>
-            <field>Contact__c</field>
-            <operator>EqualTo</operator>
-            <value>
-                <elementReference>contact_id</elementReference>
-            </value>
-        </filters>
-        <getFirstRecordOnly>true</getFirstRecordOnly>
-        <object>Agent_Context__c</object>
-        <storeOutputAutomatically>true</storeOutputAutomatically>
-    </recordLookups>
     <runInMode>SystemModeWithoutSharing</runInMode>
     <start>
-        <locationX>0</locationX>
+        <locationX>50</locationX>
         <locationY>0</locationY>
         <connector>
-            <targetReference>Get_Agent_Context_Record</targetReference>
+            <targetReference>Invoke_LoadAgentMemory</targetReference>
         </connector>
     </start>
     <status>Active</status>
+    <variables>
+        <description>Formatted merge of all memory fields for agent personalization.</description>
+        <name>agent_memory</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
     <variables>
         <description>The Contact ID to look up</description>
         <name>contact_id</name>
@@ -58,12 +93,43 @@
         <isOutput>false</isOutput>
     </variables>
     <variables>
-        <description>Agent_Context__c record returned to Agent Script.</description>
-        <name>context_record</name>
-        <dataType>SObject</dataType>
+        <description>Pending goal for checkpoint agents.</description>
+        <name>memory_goal</name>
+        <dataType>String</dataType>
         <isCollection>false</isCollection>
         <isInput>false</isInput>
         <isOutput>true</isOutput>
-        <objectType>Agent_Context__c</objectType>
+    </variables>
+    <variables>
+        <description>Unresolved issue flag for checkpoint agents.</description>
+        <name>memory_has_issue</name>
+        <dataType>Boolean</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+    <variables>
+        <description>Communication style for checkpoint agents.</description>
+        <name>memory_style</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+    <variables>
+        <description>Last topic summary for checkpoint agents.</description>
+        <name>memory_summary</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+    <variables>
+        <description>Target variable name for output mapping (default: agent_memory)</description>
+        <name>variable_name</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
     </variables>
 </Flow>

@@ -23,6 +23,7 @@
                 <elementReference>display_type</elementReference>
             </value>
         </inputParameters>
+        <nameSegment>GenericRenderAction</nameSegment>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
     <apiVersion>66.0</apiVersion>
@@ -90,16 +91,24 @@
         <isOutput>false</isOutput>
     </variables>
     <variables>
-        <description>Valid JSON string for LWC to render.</description>
-        <name>jsonData</name>
+        <description>One of: table, card, list, key-value.</description>
+        <name>displayType</name>
         <dataType>String</dataType>
         <isCollection>false</isCollection>
         <isInput>false</isInput>
         <isOutput>true</isOutput>
     </variables>
     <variables>
-        <description>One of: table, card, list, key-value.</description>
-        <name>displayType</name>
+        <description>Error message when success is false.</description>
+        <name>errorMessage</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
+    </variables>
+    <variables>
+        <description>Valid JSON string for LWC to render.</description>
+        <name>jsonData</name>
         <dataType>String</dataType>
         <isCollection>false</isCollection>
         <isInput>false</isInput>
@@ -109,14 +118,6 @@
         <description>True if validation passed.</description>
         <name>success</name>
         <dataType>Boolean</dataType>
-        <isCollection>false</isCollection>
-        <isInput>false</isInput>
-        <isOutput>true</isOutput>
-    </variables>
-    <variables>
-        <description>Error message when success is false.</description>
-        <name>errorMessage</name>
-        <dataType>String</dataType>
         <isCollection>false</isCollection>
         <isInput>false</isInput>
         <isOutput>true</isOutput>

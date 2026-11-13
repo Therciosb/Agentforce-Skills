@@ -23,6 +23,7 @@
                 <elementReference>existingInstructionBundle</elementReference>
             </value>
         </inputParameters>
+        <nameSegment>Agent_Skill_Loader</nameSegment>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
     <apiVersion>66.0</apiVersion>
@@ -53,16 +54,16 @@
     </start>
     <status>Active</status>
     <variables>
-        <description>CSV list of role/skill/workflow names to load.</description>
-        <name>instructionNames</name>
+        <description>Existing bundle JSON to merge with newly loaded instructions (optional).</description>
+        <name>existingInstructionBundle</name>
         <dataType>String</dataType>
         <isCollection>false</isCollection>
         <isInput>true</isInput>
         <isOutput>false</isOutput>
     </variables>
     <variables>
-        <description>Existing bundle JSON to merge with newly loaded instructions (optional).</description>
-        <name>existingInstructionBundle</name>
+        <description>CSV list of role/skill/workflow names to load.</description>
+        <name>instructionNames</name>
         <dataType>String</dataType>
         <isCollection>false</isCollection>
         <isInput>true</isInput>

@@ -29,6 +29,7 @@
                 <elementReference>maxReferenceDepth</elementReference>
             </value>
         </inputParameters>
+        <nameSegment>Agent_Skill_PromptComposer</nameSegment>
         <storeOutputAutomatically>true</storeOutputAutomatically>
     </actionCalls>
     <apiVersion>66.0</apiVersion>
@@ -59,16 +60,16 @@
     </start>
     <status>Active</status>
     <variables>
-        <description>Loaded instruction bundle JSON from Agent_Skill_Loader.</description>
-        <name>instructionBundle</name>
+        <description>Prompt-ready concatenated instruction text.</description>
+        <name>composedInstructions</name>
         <dataType>String</dataType>
         <isCollection>false</isCollection>
-        <isInput>true</isInput>
-        <isOutput>false</isOutput>
+        <isInput>false</isInput>
+        <isOutput>true</isOutput>
     </variables>
     <variables>
-        <description>CSV of skill/workflow seed names to include in composed output.</description>
-        <name>requiredNames</name>
+        <description>Loaded instruction bundle JSON from Agent_Skill_Loader.</description>
+        <name>instructionBundle</name>
         <dataType>String</dataType>
         <isCollection>false</isCollection>
         <isInput>true</isInput>
@@ -84,11 +85,11 @@
         <scale>0</scale>
     </variables>
     <variables>
-        <description>Prompt-ready concatenated instruction text.</description>
-        <name>composedInstructions</name>
+        <description>CSV of skill/workflow seed names to include in composed output.</description>
+        <name>requiredNames</name>
         <dataType>String</dataType>
         <isCollection>false</isCollection>
-        <isInput>false</isInput>
-        <isOutput>true</isOutput>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
     </variables>
 </Flow>
