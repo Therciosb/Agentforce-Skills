@@ -2,11 +2,13 @@
 # Customer Support Progressive Disclosure Agent
 # -----------------------------------------------------------------------------
 # Architecture
-# - start_agent (agent_router): loads role+core skills (flat) and OPTIONAL LTM,
+# - start_agent (agent_router): loads role+core skills (flat),
 #   fetches lean headers for candidate_skills via Agent_Skill_HeaderProvider,
 #   the LLM sets skills_to_load (no-spaces CSV) via select_skills, and
-#   after_reasoning transitions to the generic_handler topic.
-# - generic_handler (topic): ONE topic-agnostic handler. Loads skills_to_load
+#   after_reasoning transitions to the generic_handler topic. The router never
+#   loads LTM so past conversations cannot bias skill selection.
+# - generic_handler (topic): ONE topic-agnostic handler. Loads OPTIONAL LTM
+#   (Agent_Context__c for ContactId) once per session, then loads skills_to_load
 #   (first run in reasoning; each selected skill cascades to its workflows via
 #   References__c), injects the composed instructions, and re-exposes the full
 #   support-demo tool catalog under reasoning.actions. Behavior for a turn is
@@ -36,7 +38,8 @@ access:
 
 
 variables:
-    ContactId: mutable string = ""
+    ContactId: linked string
+        source: @MessagingEndUser.ContactId
     EndUserId: linked string
         source: @MessagingSession.MessagingEndUserId
     RoutableId: linked string
@@ -59,23 +62,6 @@ start_agent agent_router:
     description: "Progressive disclosure: load role/core + optional memory, fetch candidate headers, select skills, route."
 
     actions:
-        load_user_memory:
-            description: "Load persistent memory for this contact (optional LTM)."
-            inputs:
-                contactId: string
-                    description: "Contact identifier."
-            outputs:
-                agentMemory: string
-                    description: "Formatted merge of memory fields for personalization."
-                memorySummary: string
-                    description: "Last conversation summary."
-                memoryGoal: string
-                    description: "Pending goal."
-                hasIssue: boolean
-                    description: "Unresolved issue flag."
-                memoryStyle: string
-                    description: "Communication style."
-            target: "apex://LoadAgentMemory"
         load_skills_init:
             description: "Load role and core skills into the instruction bundle (flat, no cascade)."
             inputs:
@@ -103,16 +89,6 @@ start_agent agent_router:
         instructions: ->
             if @variables.skills_to_load != "":
                 transition to @subagent.generic_handler
-
-            if @variables.context_loaded == False and @variables.ContactId and @variables.ContactId != "":
-                run @actions.load_user_memory
-                    with contactId=@variables.ContactId
-                    set @variables.agent_memory=@outputs.agentMemory
-                    set @variables.memory_summary=@outputs.memorySummary
-                    set @variables.memory_goal=@outputs.memoryGoal
-                    set @variables.memory_has_issue=@outputs.hasIssue
-                    set @variables.memory_style=@outputs.memoryStyle
-                    set @variables.context_loaded=True
 
             if @variables.router_initialized == False:
                 run @actions.load_skills_init
@@ -145,6 +121,23 @@ subagent generic_handler:
     description: "Single generic handler. Loads the router-selected skills and re-exposes the full support-demo tool catalog; behavior is driven by the loaded skills."
 
     actions:
+        load_user_memory:
+            description: "Load persistent memory for this contact (optional LTM)."
+            inputs:
+                contactId: string
+                    description: "Contact identifier."
+            outputs:
+                agentMemory: string
+                    description: "Formatted merge of memory fields for personalization."
+                memorySummary: string
+                    description: "Last conversation summary."
+                memoryGoal: string
+                    description: "Pending goal."
+                hasIssue: boolean
+                    description: "Unresolved issue flag."
+                memoryStyle: string
+                    description: "Communication style."
+            target: "apex://LoadAgentMemory"
         load_skills:
             description: "Load the selected skills (cascading to workflows via References), merge with role/core, and compose instructions."
             inputs:
@@ -250,23 +243,33 @@ subagent generic_handler:
         save_context:
             description: "Persist an Agent_Context__c memory checkpoint (optional LTM)."
             inputs:
-                contactId: string
+                contact_id: string
                     description: "Contact ID."
-                newSummary: string
-                    description: "Conversation summary."
-                newGoal: string
+                new_summary: string
+                    description: "Structured Markdown conversation summary."
+                new_goal: string
                     description: "Pending goal or empty string."
-                hasIssue: boolean
+                has_issue: boolean
                     description: "Unresolved issue flag."
-                newStyle: string
-                    description: "Communication style."
+                new_style: string
+                    description: "Communication style: concise, detailed, or formal."
             outputs:
                 success: boolean
                     description: "Whether save succeeded."
-            target: "apex://SaveAgentContext"
+            target: "flow://Save_Agent_ContextObject"
 
     reasoning:
         instructions: ->
+            if @variables.context_loaded == False and @variables.ContactId and @variables.ContactId != "":
+                run @actions.load_user_memory
+                    with contactId=@variables.ContactId
+                    set @variables.agent_memory=@outputs.agentMemory
+                    set @variables.memory_summary=@outputs.memorySummary
+                    set @variables.memory_goal=@outputs.memoryGoal
+                    set @variables.memory_has_issue=@outputs.hasIssue
+                    set @variables.memory_style=@outputs.memoryStyle
+                    set @variables.context_loaded=True
+
             if @variables.skills_loaded == False:
                 run @actions.load_skills
                     with instructionNames=@variables.skills_to_load
@@ -275,7 +278,7 @@ subagent generic_handler:
                     set @variables.composed_instructions=@outputs.instructionsBundle
                     set @variables.skills_loaded=True
 
-            | Here is your past context. Use it for personalization if present:
+            | agent_memory (empty if none):
             | {!@variables.agent_memory}
             |
             | Follow these instructions. They determine what to do and which tools to use:
@@ -284,7 +287,6 @@ subagent generic_handler:
             | MANDATORY ACTION DIRECTIVE: You MUST execute the relevant tool action (such as @actions.get_order_status, @actions.track_shipment, @actions.get_product_info, etc.) BEFORE outputting any conversational message or final answer to the user whenever an actionable user request or identifier is present. Do not reply with small talk or promises to check without calling the action tool first.
             | If an action (such as get_product_info or get_order_status) returns null, empty, unpopulated fields, or throws an error, do NOT report a generic system failure or technical error. Instead, politely inform the user that no matching record could be found for the provided identifier, ask them to double-check the number, and offer to assist with another query or connect them with human support.
             | INPUT GUARDRAIL: When executing tools like create_case or create_escalation_ticket, validate parameter strings for length and clean format to avoid unexpected prompt-injection behavior in underlying Flows.
-            | MEMORY GUARDRAIL: Invoke @actions.save_context at the conclusion of resolution turns when memory_has_issue or pending goals update to maintain session memory.
 
             | ESCALATION GUARDRAIL (overrides the instructions above): Do NOT escalate to a human or route to a specialist unless EITHER the user explicitly asks for a human/agent/escalation, OR you have actually walked the user through the troubleshooting steps this session and they confirm the issue is still unresolved AND they agree to escalate. If the user says they want to continue troubleshooting, keep troubleshooting — never escalate. Before using the escalation tools, ask the user to confirm they want a human handoff. Only call the "CreateEscalationTicket" tool once you have a concrete customer_id, a one-sentence issue_description, and an issue_type (technical, billing, or general); never call it with empty or guessed values.
 
@@ -327,9 +329,9 @@ subagent generic_handler:
                 with email=...
             save_context: @actions.save_context
                 description: "Persist an Agent_Context__c memory checkpoint (optional LTM)."
-                available when @variables.ContactId != ""
-                with contactId=@variables.ContactId
-                with newSummary=...
-                with newGoal=...
-                with hasIssue=...
-                with newStyle=...
+                available when @variables.ContactId and @variables.ContactId != ""
+                with contact_id=@variables.ContactId
+                with new_summary=...
+                with new_goal=...
+                with has_issue=...
+                with new_style=...
