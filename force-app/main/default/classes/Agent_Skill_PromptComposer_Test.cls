@@ -99,7 +99,7 @@ private class Agent_Skill_PromptComposer_Test {
     }
 
     @IsTest
-    static void shouldRewriteKnownToolIndicatorToPlainCue() {
+    static void shouldRewriteKnownToolIndicatorToActionReference() {
         insert new Agent_Skills_Repo__c(
             Name = 'skill-tool-cue',
             Type__c = 'Skill',
@@ -130,8 +130,8 @@ private class Agent_Skill_PromptComposer_Test {
             new List<Agent_Skill_PromptComposer.ComposerRequest>{ composeReq })[0];
         Test.stopTest();
 
-        System.assert(r.composedInstructions.contains('the "CreateCase" tool'),
-            'Indicator should be rewritten to a plain cue: ' + r.composedInstructions);
+        System.assert(r.composedInstructions.contains('@actions.create_case'),
+            'Indicator should be rewritten to an action reference: ' + r.composedInstructions);
         System.assert(!r.composedInstructions.contains('[[tool:CreateCase]]'),
             'Raw indicator must not survive in output');
     }
