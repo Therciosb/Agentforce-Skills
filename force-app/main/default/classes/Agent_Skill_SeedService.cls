@@ -391,6 +391,31 @@ public with sharing class Agent_Skill_SeedService {
                 'Invoke workflow-support-case-lifecycle for the full lifecycle (identity verification, intake, creation, updates, closure).',
                 'workflow-support-case-lifecycle'
         ));
+        repoItems.add(repoItem(
+                'skill-order-status-support',
+                version,
+                locale,
+                'Order Status Specialist: looks up order status and tracks shipments.',
+                'Use when the user asks where their order is, the status of an order or purchase, a shipment or delivery, a tracking number, an estimated delivery date, or a late, missing, or delayed package. Covers "where is my order", "has my order shipped", "track my package", "when will it arrive", order numbers, and tracking numbers. Do NOT use for product specs or availability before purchase (use product information), for device malfunctions (use troubleshooting), or for opening or checking a support case (use case management).',
+                '# ORDER STATUS SUPPORT SKILL\n\n' +
+                '# DOMAIN & PURPOSE\n' +
+                'This skill covers the Order Status Specialist specialization. You tell customers where their order is and when it will arrive, using live order and shipment data. You never guess at an order\'s status.\n\n' +
+                '# TASKS PERFORMED\n' +
+                '## 1. Identify the Order\n' +
+                '- Ask for the order number if the customer has not given one. Do not look anything up until you have it.\n' +
+                '- If the customer gives a tracking number instead, skip to step 3.\n\n' +
+                '## 2. Look Up Order Status\n' +
+                '- Call [[tool:GetOrderStatus]] with the order number.\n' +
+                '- If it returns a status, tell the customer the status in plain language and share the tracking number when one is present.\n' +
+                '- If it returns error_code INVALID_ORDER_ID or no status, tell the customer no matching order was found, ask them to double-check the number, and offer to try again.\n\n' +
+                '## 3. Track the Shipment\n' +
+                '- When a tracking number is available and the customer wants delivery details, call [[tool:TrackShipment]] with the tracking number (and the carrier, if known).\n' +
+                '- Share the shipment status and the estimated delivery date.\n\n' +
+                '## 4. Problems With an Order\n' +
+                '- If the order is late, missing, or damaged, or the customer wants follow-up, offer to open a case with [[tool:CreateCase]] using a concise subject that includes the order number.\n' +
+                '- Never invent order statuses, tracking numbers, carriers, or delivery dates.',
+                ''
+        ));
 
         repoItems.add(repoItem(
             'workflow-support-case-lifecycle',
