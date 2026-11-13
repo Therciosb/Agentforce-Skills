@@ -53,26 +53,74 @@ public with sharing class Agent_Skill_SeedService {
                 locale,
                 'Manage LTM for service agents.',
                 'Use when agent_memory is loaded (persistent memory available). Required for personalization and session-end persistence.',
-                '# LTM MANAGEMENT SERVICE AGENT SKILL\n\n' +
+                '# LTM MANAGEMENT SERVICE AGENT SKILL\n' +
+                '\n' +
                 '# PURPOSE\n' +
-                'Manage LTM (Long-Term Memory) for service agents. Hydrate prompts from agent_memory and persist extracted values when the session or topic requires a memory checkpoint.\n\n' +
+                'Manage LTM (Long-Term Memory) for service agents. Hydrate prompts from agent_memory and persist extracted values when the session or topic requires a memory checkpoint.\n' +
+                '\n' +
                 '# LTM HYDRATION (when agent_memory is available)\n' +
-                'Here is your past context. Use it for personalization:\n{!@variables.agent_memory}\n\n' +
-                'The context may include structured sections (User Context, Issues & Resolution Status, Pending Goals, Key Facts & Decisions, Session Highlights). Use the relevant sections for personalization and continuity.\n\n' +
-                'If unresolved issue is indicated in the context, acknowledge prior issues and ask whether they were resolved or persist. If a pending goal is set, ask if the user wants to continue it. Adapt tone to communication style (Detailed vs Concise vs Formal) and tier (VIP vs Standard).\n\n' +
+                'Here is your past context. Use it for personalization:\n' +
+                '{!@variables.agent_memory}\n' +
+                '\n' +
+                'The context may include structured sections (User Context, Issues & Resolution Status, Pending Goals, Key Facts & Decisions, Session History). Use the relevant sections for personalization and continuity.\n' +
+                '\n' +
+                'If unresolved issue is indicated in the context, acknowledge prior issues and ask whether they were resolved or persist. If a pending goal is set, ask if the user wants to continue it. Adapt tone to communication style (Detailed vs Concise vs Formal) and tier (VIP vs Standard).\n' +
+                '\n' +
                 '# PERSISTENCE\n' +
-                'When the topic requires persisting context (e.g. session end, handoff, checkpoint), invoke the save action with extracted values. Never call with empty arguments.\n\n' +
+                'When the topic requires persisting context (e.g. session end, handoff, checkpoint), invoke the save action with extracted values. Never call with empty arguments.\n' +
+                '\n' +
                 '## Extraction rules\n' +
-                'Extract and pass these fields when invoking the save action:\n\n' +
-                '- **new_summary:** Extract when transitioning to a topic that persists session context (e.g. session end, handoff, checkpoint). Value: A structured summary in Markdown format with these sections:\n\n' +
-                '  - **## User Context** — Account tier, key identifiers, communication preferences (1–3 sentences). Update when preferences change.\n\n' +
-                '  - **## Issues & Resolution Status** — Each issue: brief description, status (Open/Resolved/Escalated), resolution if any. Append new issues; update status of existing ones.\n\n' +
-                '  - **## Pending Goals** — User-stated or implied unfinished goals. Replace with current list; remove when achieved.\n\n' +
-                '  - **## Key Facts & Decisions** — Important facts (IDs, choices), decisions, commitments. Append new; remove when obsolete.\n\n' +
-                '  - **## Session Highlights** — 2–3 sentences per recent session (what was discussed, actions taken, outcomes). Prepend this session; keep last 2–3 sessions; prune older.\n\n' +
-                '  When merging with prior context from agent_memory, preserve existing sections and update only the parts that changed. Do not duplicate information across sections.\n\n' +
-                '- **new_goal:** Extract when the user has stated or implied an unfinished goal. Value: The goal in the user\'s words, or empty string if none.\n\n' +
-                '- **has_issue:** Extract when assessing whether the user\'s issue is resolved at the point of persistence. Value: True only if the user still has unresolved issues.\n\n' +
+                'Extract and pass these fields when invoking the save action:\n' +
+                '\n' +
+                '- **new_summary:** Extract when the session or topic persists context (e.g. session end, handoff, checkpoint). The value you pass REPLACES the stored summary: anything you leave out is permanently lost. Never write a summary that covers only the current conversation.\n' +
+                '\n' +
+                '  How to build it:\n' +
+                '  1. Find the previous summary. It is the text after "Last Topic Summary:" in agent_memory. If agent_memory is empty, there is no previous summary.\n' +
+                '  2. Start from the previous summary\'s content, then apply what happened in the current conversation.\n' +
+                '  3. Write exactly these Markdown sections, in this order:\n' +
+                '\n' +
+                '  - **## User Context** — Account tier, key identifiers, and communication preferences (1–3 sentences). Keep what the previous summary says unless the current conversation changed it.\n' +
+                '\n' +
+                '  - **## Issues & Resolution Status** — One bullet per issue from the previous summary and the current conversation, in the form "- <issue> — <Open | Resolved | Escalated> — <resolution or next step>". Update the status of issues that changed. Always keep Open and Escalated issues. Drop a Resolved issue only once it no longer appears in Session History.\n' +
+                '\n' +
+                '  - **## Pending Goals** — One bullet per unfinished goal: goals from the previous summary that are still unfinished, plus new ones. Anything the user says they will do, decide, or come back to later is a pending goal (e.g. "Decide between iPhone 16 and Galaxy S25"). Remove goals the user achieved or abandoned. Write "None." if there are none.\n' +
+                '\n' +
+                '  - **## Key Facts & Decisions** — One bullet per fact you may need later: order, case, and tracking numbers, products chosen, commitments made. Keep the previous facts unless they are obsolete, and add new ones.\n' +
+                '\n' +
+                '  - **## Session History** — One bullet per conversation, newest first, at most 3 bullets. Each bullet is 1–2 sentences: what the user wanted, what was done, and the outcome. Write a new bullet for the current conversation and put it first. Below it, copy the bullets from the previous summary\'s Session History word for word. If the previous summary has a Session Highlights section instead, it describes exactly one earlier conversation: turn it into a single bullet. Never write two bullets for the same conversation. If that makes more than 3 bullets, delete the oldest ones at the bottom.\n' +
+                '\n' +
+                '  Do not repeat the same information in more than one section.\n' +
+                '\n' +
+                '  4. Before saving, check the summary and fix it if any check fails:\n' +
+                '     - Session History has at most 3 bullets. If it has more, delete bullets from the bottom until 3 remain.\n' +
+                '     - No two Session History bullets describe the same conversation. If two do, keep only the first of them.\n' +
+                '     - Every Open or Escalated issue from the previous summary is still listed.\n' +
+                '     - Every goal the user left for later is under Pending Goals, not under Key Facts & Decisions.\n' +
+                '\n' +
+                '  Format example (a customer\'s second conversation):\n' +
+                '\n' +
+                '  ## User Context\n' +
+                '  Standard tier. Prefers concise answers.\n' +
+                '\n' +
+                '  ## Issues & Resolution Status\n' +
+                '  - Order 00055555 delivery status — Resolved — out for delivery, arriving 11/14.\n' +
+                '  - Order 00098765 delivery status — Resolved — delivered.\n' +
+                '\n' +
+                '  ## Pending Goals\n' +
+                '  None.\n' +
+                '\n' +
+                '  ## Key Facts & Decisions\n' +
+                '  - Order 00055555: tracking TRK992838472US, FedEx.\n' +
+                '  - Order 00098765: delivered.\n' +
+                '\n' +
+                '  ## Session History\n' +
+                '  - Asked where order 00055555 was; shared status and tracking; out for delivery, arriving 11/14.\n' +
+                '  - Asked where order 00098765 was; tracked the shipment; it was out for delivery.\n' +
+                '\n' +
+                '- **new_goal:** Extract when the user has stated or implied an unfinished goal. Value: the most important item under Pending Goals, in the user\'s words. If there are no pending goals, pass an empty string (never the word "None").\n' +
+                '\n' +
+                '- **has_issue:** Extract when assessing whether the user\'s issue is resolved at the point of persistence. Value: True only if the user still has unresolved issues.\n' +
+                '\n' +
                 '- **new_style:** Extract when inferring communication preference from the conversation. Value: concise, detailed, or formal.',
                 ''
         ));
