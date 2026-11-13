@@ -1,0 +1,15 @@
+<template>
+    <lightning-card title="Dependency Tree" icon-name="standard:hierarchy">
+        <div class="slds-p-horizontal_small slds-p-bottom_small">
+            <template lwc:if={error}>
+                <div class="slds-text-color_error">{error}</div>
+            </template>
+            <template lwc:if={hasTree}>
+                <lightning-tree items={treeItems} header="Loads at runtime" onselect={handleSelect}></lightning-tree>
+            </template>
+            <template lwc:if={showEmpty}>
+                <p class="slds-text-body_small">No dependencies to display.</p>
+            </template>
+        </div>
+    </lightning-card>
+</template>

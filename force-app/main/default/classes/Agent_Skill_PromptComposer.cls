@@ -1,6 +1,14 @@
 public with sharing class Agent_Skill_PromptComposer {
     private static final String LINE_SEPARATOR = '#############################################';
 
+    // Single source of truth for [[tool:Name]] validation — the support-demo tool inventory.
+    private static final Set<String> KNOWN_TOOL_NAMES = new Set<String>{
+        'CreateCase', 'CreateEscalationTicket', 'Route_to_ESA', 'GetOrderStatus',
+        'FetchSupportHistory', 'TrackShipment', 'FetchAccountData', 'GetProductInfo',
+        'SendVerificationEmail', 'Render_Data'
+    };
+    private static final Pattern TOOL_INDICATOR = Pattern.compile('\\[\\[tool:([A-Za-z0-9_]+)\\]\\]');
+
     public class ComposerRequest {
         @InvocableVariable(
             required=true
@@ -129,7 +137,18 @@ public with sharing class Agent_Skill_PromptComposer {
         }
 
         String separatorBlock = '\n\n\n' + LINE_SEPARATOR + '\n\n';
-        response.composedInstructions = String.join(blocks, separatorBlock);
+        String composed = String.join(blocks, separatorBlock);
+
+        // Additive tool-cue rewrite/validation pass (composition/ordering above is unchanged).
+        Set<String> unknownToolNames = new Set<String>();
+        composed = rewriteToolIndicators(composed, unknownToolNames);
+        response.composedInstructions = composed;
+
+        if (!unknownToolNames.isEmpty()) {
+            List<String> unknownList = new List<String>(unknownToolNames);
+            unknownList.sort();
+            warnings.add('Unknown tool indicator(s): ' + String.join(unknownList, ','));
+        }
 
         missing.sort();
         warnings.sort();
@@ -137,6 +156,31 @@ public with sharing class Agent_Skill_PromptComposer {
         response.missingNames = String.join(missing, ',');
         response.warnings = String.join(warnings, ' | ');
         return response;
+    }
+
+    // Additive post-composition pass: rewrite [[tool:Name]] indicators to validated plain-text cues.
+    // Known names become 'the "Name" tool'; unknown names are visibly marked and collected for warnings.
+    private static String rewriteToolIndicators(String text, Set<String> unknownToolNames) {
+        if (String.isBlank(text) || !text.contains('[[tool:')) {
+            return text;
+        }
+        // Apex has no StringBuilder; assemble segments in a List and join at the end.
+        Matcher m = TOOL_INDICATOR.matcher(text);
+        List<String> segments = new List<String>();
+        Integer lastEnd = 0;
+        while (m.find()) {
+            segments.add(text.substring(lastEnd, m.start()));
+            String toolName = m.group(1);
+            if (KNOWN_TOOL_NAMES.contains(toolName)) {
+                segments.add('the "' + toolName + '" tool');
+            } else {
+                segments.add('[[unknown tool: ' + toolName + ']]');
+                unknownToolNames.add(toolName);
+            }
+            lastEnd = m.end();
+        }
+        segments.add(text.substring(lastEnd));
+        return String.join(segments, '');
     }
 
     private static void expandDependencies(

@@ -97,4 +97,118 @@ private class Agent_Skill_PromptComposer_Test {
         System.assert(composed.contains('workflow-escalate-to-human'));
         System.assertEquals('', responses[0].missingNames, 'All required items should resolve');
     }
+
+    @IsTest
+    static void shouldRewriteKnownToolIndicatorToPlainCue() {
+        insert new Agent_Skills_Repo__c(
+            Name = 'skill-tool-cue',
+            Type__c = 'Skill',
+            ExternalId__c = 'skill-tool-cue:v1:en-US',
+            Description__c = 'Tool cue skill',
+            WhenToUse__c = 'Use to test tool cue rewriting.',
+            InstructionBody__c = 'When the customer approves, create the case with [[tool:CreateCase]].',
+            Status__c = 'active',
+            Version__c = 'v1',
+            Locale__c = 'en-US'
+        );
+
+        Agent_Skill_Loader.LoaderRequest loadReq = new Agent_Skill_Loader.LoaderRequest();
+        loadReq.instructionNames = 'skill-tool-cue';
+        loadReq.includeReferences = false;
+        loadReq.version = 'v1';
+        loadReq.locale = 'en-US';
+        String bundleJson = Agent_Skill_Loader.load(
+            new List<Agent_Skill_Loader.LoaderRequest>{ loadReq })[0].loadedInstructionBundle;
+
+        Agent_Skill_PromptComposer.ComposerRequest composeReq = new Agent_Skill_PromptComposer.ComposerRequest();
+        composeReq.instructionBundle = bundleJson;
+        composeReq.requiredNames = 'skill-tool-cue';
+        composeReq.includeReferenceExpansion = false;
+
+        Test.startTest();
+        Agent_Skill_PromptComposer.ComposerResponse r = Agent_Skill_PromptComposer.compose(
+            new List<Agent_Skill_PromptComposer.ComposerRequest>{ composeReq })[0];
+        Test.stopTest();
+
+        System.assert(r.composedInstructions.contains('the "CreateCase" tool'),
+            'Indicator should be rewritten to a plain cue: ' + r.composedInstructions);
+        System.assert(!r.composedInstructions.contains('[[tool:CreateCase]]'),
+            'Raw indicator must not survive in output');
+    }
+
+    @IsTest
+    static void shouldWarnAndMarkUnknownToolIndicator() {
+        insert new Agent_Skills_Repo__c(
+            Name = 'skill-bad-tool',
+            Type__c = 'Skill',
+            ExternalId__c = 'skill-bad-tool:v1:en-US',
+            Description__c = 'Bad tool skill',
+            WhenToUse__c = 'Use to test unknown tool warnings.',
+            InstructionBody__c = 'Escalate with [[tool:Crete_Case]].',
+            Status__c = 'active',
+            Version__c = 'v1',
+            Locale__c = 'en-US'
+        );
+
+        Agent_Skill_Loader.LoaderRequest loadReq = new Agent_Skill_Loader.LoaderRequest();
+        loadReq.instructionNames = 'skill-bad-tool';
+        loadReq.includeReferences = false;
+        loadReq.version = 'v1';
+        loadReq.locale = 'en-US';
+        String bundleJson = Agent_Skill_Loader.load(
+            new List<Agent_Skill_Loader.LoaderRequest>{ loadReq })[0].loadedInstructionBundle;
+
+        Agent_Skill_PromptComposer.ComposerRequest composeReq = new Agent_Skill_PromptComposer.ComposerRequest();
+        composeReq.instructionBundle = bundleJson;
+        composeReq.requiredNames = 'skill-bad-tool';
+        composeReq.includeReferenceExpansion = false;
+
+        Test.startTest();
+        Agent_Skill_PromptComposer.ComposerResponse r = Agent_Skill_PromptComposer.compose(
+            new List<Agent_Skill_PromptComposer.ComposerRequest>{ composeReq })[0];
+        Test.stopTest();
+
+        System.assert(r.composedInstructions.contains('[[unknown tool: Crete_Case]]'),
+            'Unknown tool should be visibly marked: ' + r.composedInstructions);
+        System.assert(r.warnings.contains('Crete_Case'),
+            'Unknown tool name should be surfaced in warnings: ' + r.warnings);
+    }
+
+    @IsTest
+    static void shouldLeaveBodyWithoutIndicatorsUnchanged() {
+        insert new Agent_Skills_Repo__c(
+            Name = 'skill-no-indicator',
+            Type__c = 'Skill',
+            ExternalId__c = 'skill-no-indicator:v1:en-US',
+            Description__c = 'No indicator skill',
+            WhenToUse__c = 'Use to test passthrough.',
+            InstructionBody__c = 'Provide a clear, concise answer with no tool reference.',
+            Status__c = 'active',
+            Version__c = 'v1',
+            Locale__c = 'en-US'
+        );
+
+        Agent_Skill_Loader.LoaderRequest loadReq = new Agent_Skill_Loader.LoaderRequest();
+        loadReq.instructionNames = 'skill-no-indicator';
+        loadReq.includeReferences = false;
+        loadReq.version = 'v1';
+        loadReq.locale = 'en-US';
+        String bundleJson = Agent_Skill_Loader.load(
+            new List<Agent_Skill_Loader.LoaderRequest>{ loadReq })[0].loadedInstructionBundle;
+
+        Agent_Skill_PromptComposer.ComposerRequest composeReq = new Agent_Skill_PromptComposer.ComposerRequest();
+        composeReq.instructionBundle = bundleJson;
+        composeReq.requiredNames = 'skill-no-indicator';
+        composeReq.includeReferenceExpansion = false;
+
+        Test.startTest();
+        Agent_Skill_PromptComposer.ComposerResponse r = Agent_Skill_PromptComposer.compose(
+            new List<Agent_Skill_PromptComposer.ComposerRequest>{ composeReq })[0];
+        Test.stopTest();
+
+        System.assert(r.composedInstructions.contains('Provide a clear, concise answer with no tool reference.'),
+            'Body without indicators must pass through verbatim');
+        System.assert(!r.composedInstructions.contains('[[unknown tool:'),
+            'No unknown-tool marker should appear');
+    }
 }
