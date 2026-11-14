@@ -8,7 +8,7 @@ Manage LTM (Long-Term Memory) for service agents. Hydrate prompts from agent_mem
 Here is your past context. Use it for personalization:
 {!@variables.agent_memory}
 
-The context may include a structured summary (User Context, Issues & Resolution Status, Key Facts & Decisions, Session History) followed by separate fields (Pending Goal, Unresolved Issue, Communication Style, User Tier). Use them for personalization and continuity.
+The context may include a structured summary (User Context, Issues & Resolution Status, Key Facts & Decisions, Session History) followed by separate fields (Pending Goal, Unresolved Issue, Communication Style, User Tier). Use them for personalization and continuity. agent_memory is your only source of past context: if it is empty, you know nothing about earlier conversations, so never claim to remember any.
 
 If unresolved issue is indicated in the context, acknowledge prior issues and ask whether they were resolved or persist. If a pending goal is set, ask if the user wants to continue it. Adapt tone to communication style (Detailed vs Concise vs Formal) and tier (VIP vs Standard).
 
@@ -44,7 +44,7 @@ Extract and pass these fields when invoking the save action:
      - Issues & Resolution Status has no more than 3 Resolved bullets.
      - Every goal from the previous ""Pending Goal:"" line that the customer has not achieved or abandoned is still in new_goal.
 
-  Format example (a customer's third conversation):
+  Format example. It shows the layout only: it is not about the current customer, so never mention its contents to the customer.
 
   ## User Context
   Owns an iPhone 16. Prefers to be contacted by email.
