@@ -172,6 +172,8 @@ subagent generic_handler:
             outputs:
                 case_number: string
                     description: "The created case number."
+                error_message: string
+                    description: "Why the case was not created, if it failed."
             target: "apex://CreateCase"
         create_escalation_ticket:
             description: "Create an escalation ticket for handoff to a human specialist."
@@ -185,6 +187,8 @@ subagent generic_handler:
             outputs:
                 ticket_id: string
                     description: "The created escalation ticket ID."
+                error_message: string
+                    description: "Why the ticket was not created, if it failed."
             target: "apex://CreateEscalationTicket"
         get_order_status:
             description: "Look up the current status of an order."
@@ -311,8 +315,9 @@ subagent generic_handler:
                 description: "Create a new support case from a concise, user-approved subject."
                 with subject=...
             create_escalation_ticket: @actions.create_escalation_ticket
-                description: "Create an escalation ticket for handoff to a human specialist."
-                with customer_id=...
+                description: "Create an escalation ticket for handoff to a human specialist. The customer ID is filled in automatically; never ask the customer for it."
+                available when @variables.ContactId and @variables.ContactId != ""
+                with customer_id=@variables.ContactId
                 with issue_description=...
                 with issue_type=...
             route_to_esa: @utils.escalate
