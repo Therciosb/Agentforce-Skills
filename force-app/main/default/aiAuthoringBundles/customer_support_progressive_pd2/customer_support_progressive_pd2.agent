@@ -13,6 +13,14 @@
 #   References__c), injects the composed instructions, and re-exposes the full
 #   support-demo tool catalog under reasoning.actions. Behavior for a turn is
 #   determined entirely by which skills were loaded.
+#
+# Test contacts (myDevOrg) with Agent_Context__c memory. ContactId is linked to
+# @MessagingEndUser.ContactId; in CLI preview pass it as a linked variable:
+#   sf agent preview start --authoring-bundle customer_support_progressive_pd2 \
+#     --use-live-actions --context-variables '$Context.ContactId=<Contact Id>'
+# - Alexander Reed   003KY00000KNAGpYAP  iPhone 16 Pro vs Galaxy S25 Ultra comparison
+# - Charles Davies   003KY00000KNAGrYAP  open case #7821, iPhone screen flicker
+# - Sofia Rodriguez  003KY00000JwOLsYAN  order lookups, pending Galaxy S25 decision
 # -----------------------------------------------------------------------------
 
 
