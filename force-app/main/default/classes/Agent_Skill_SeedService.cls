@@ -62,7 +62,7 @@ public with sharing class Agent_Skill_SeedService {
                 'Here is your past context. Use it for personalization:\n' +
                 '{!@variables.agent_memory}\n' +
                 '\n' +
-                'The context may include structured sections (User Context, Issues & Resolution Status, Pending Goals, Key Facts & Decisions, Session History). Use the relevant sections for personalization and continuity.\n' +
+                'The context may include a structured summary (User Context, Issues & Resolution Status, Key Facts & Decisions, Session History) followed by separate fields (Pending Goal, Unresolved Issue, Communication Style, User Tier). Use them for personalization and continuity.\n' +
                 '\n' +
                 'If unresolved issue is indicated in the context, acknowledge prior issues and ask whether they were resolved or persist. If a pending goal is set, ask if the user wants to continue it. Adapt tone to communication style (Detailed vs Concise vs Formal) and tier (VIP vs Standard).\n' +
                 '\n' +
@@ -74,54 +74,54 @@ public with sharing class Agent_Skill_SeedService {
                 '\n' +
                 '- **new_summary:** Extract when the session or topic persists context (e.g. session end, handoff, checkpoint). The value you pass REPLACES the stored summary: anything you leave out is permanently lost. Never write a summary that covers only the current conversation.\n' +
                 '\n' +
+                '  The summary holds only what the other saved fields cannot. Never put the customer\'s communication style (new_style), account tier (User Tier), pending goals (new_goal), or an overall unresolved-issue flag (has_issue) in the summary.\n' +
+                '\n' +
                 '  How to build it:\n' +
                 '  1. Find the previous summary. It is the text after "Last Topic Summary:" in agent_memory. If agent_memory is empty, there is no previous summary.\n' +
-                '  2. Start from the previous summary\'s content, then apply what happened in the current conversation.\n' +
-                '  3. Write exactly these Markdown sections, in this order:\n' +
+                '  2. Rebuild each section from the previous summary plus what happened in the current conversation. Keep previous content that follows the rules below; fix or remove previous content that breaks them. If the previous summary has sections not listed below (for example Pending Goals or Session Highlights), move their content where it belongs (goals into new_goal, Session Highlights into one Session History bullet) and drop those sections.\n' +
+                '  3. Write these Markdown sections, in this order. Leave out a section that would be empty.\n' +
                 '\n' +
-                '  - **## User Context** — Account tier, key identifiers, and communication preferences (1–3 sentences). Keep what the previous summary says unless the current conversation changed it.\n' +
+                '  - **## User Context** — Lasting facts about the customer that no other field holds, such as devices they own or their preferred contact channel. 1–2 sentences. Goals never go here.\n' +
                 '\n' +
-                '  - **## Issues & Resolution Status** — One bullet per issue from the previous summary and the current conversation, in the form "- <issue> — <Open | Resolved | Escalated> — <resolution or next step>". Update the status of issues that changed. Always keep Open and Escalated issues. Drop a Resolved issue only once it no longer appears in Session History.\n' +
+                '  - **## Issues & Resolution Status** — One bullet per issue, in the form "- <issue, with its order or case number> — <Open | Resolved | Escalated> — <resolution or next step, with any tracking number>". This is the only place for an issue\'s IDs, status, and details. Update the status of issues that changed. Always keep Open and Escalated issues. Keep at most the 3 most recent Resolved issues; delete older Resolved ones.\n' +
                 '\n' +
-                '  - **## Pending Goals** — One bullet per unfinished goal: goals from the previous summary that are still unfinished, plus new ones. Anything the user says they will do, decide, or come back to later is a pending goal (e.g. "Decide between iPhone 16 and Galaxy S25"). Remove goals the user achieved or abandoned. Write "None." if there are none.\n' +
+                '  - **## Key Facts & Decisions** — One bullet per fact that does not belong to an issue: decisions the customer made, commitments you made, products they bought or turned down. Keep previous facts unless they are obsolete. Something the customer has not decided yet is a goal, not a fact: it goes in new_goal.\n' +
                 '\n' +
-                '  - **## Key Facts & Decisions** — One bullet per fact you may need later: order, case, and tracking numbers, products chosen, commitments made. Keep the previous facts unless they are obsolete, and add new ones.\n' +
-                '\n' +
-                '  - **## Session History** — One bullet per conversation, newest first, at most 3 bullets. Each bullet is 1–2 sentences: what the user wanted, what was done, and the outcome. Write a new bullet for the current conversation and put it first. Below it, copy the bullets from the previous summary\'s Session History word for word. If the previous summary has a Session Highlights section instead, it describes exactly one earlier conversation: turn it into a single bullet. Never write two bullets for the same conversation. If that makes more than 3 bullets, delete the oldest ones at the bottom.\n' +
-                '\n' +
-                '  Do not repeat the same information in more than one section.\n' +
+                '  - **## Session History** — One bullet per conversation, newest first, at most 3 bullets. Each bullet is one short sentence: what the customer wanted and how it ended. Refer to an issue only by its order or case number; do not repeat its status, tracking number, or other details from Issues & Resolution Status. Write a new bullet for the current conversation and put it first. Below it, keep every bullet from the previous summary\'s Session History (shortened to this same one-sentence form if it repeats issue details), up to the 3-bullet limit. Never write two bullets for the same conversation. If that makes more than 3 bullets, delete the oldest ones at the bottom.\n' +
                 '\n' +
                 '  4. Before saving, check the summary and fix it if any check fails:\n' +
-                '     - Session History has at most 3 bullets. If it has more, delete bullets from the bottom until 3 remain.\n' +
-                '     - No two Session History bullets describe the same conversation. If two do, keep only the first of them.\n' +
+                '     - User Context does not mention communication style, answer length, or account tier.\n' +
+                '     - No Key Facts & Decisions bullet restates a goal that is in new_goal.\n' +
+                '     - No Session History bullet contains an issue status (such as shipped, in transit, or resolved) or a tracking number.\n' +
+                '     - Session History has at most 3 bullets, and no two describe the same conversation.\n' +
                 '     - Every Open or Escalated issue from the previous summary is still listed.\n' +
-                '     - Every goal the user left for later is under Pending Goals, not under Key Facts & Decisions.\n' +
+                '     - Issues & Resolution Status has no more than 3 Resolved bullets.\n' +
+                '     - Every goal from the previous "Pending Goal:" line that the customer has not achieved or abandoned is still in new_goal.\n' +
                 '\n' +
-                '  Format example (a customer\'s second conversation):\n' +
+                '  Format example (a customer\'s third conversation):\n' +
                 '\n' +
                 '  ## User Context\n' +
-                '  Standard tier. Prefers concise answers.\n' +
+                '  Owns an iPhone 16. Prefers to be contacted by email.\n' +
                 '\n' +
                 '  ## Issues & Resolution Status\n' +
-                '  - Order 00055555 delivery status — Resolved — out for delivery, arriving 11/14.\n' +
-                '  - Order 00098765 delivery status — Resolved — delivered.\n' +
-                '\n' +
-                '  ## Pending Goals\n' +
-                '  None.\n' +
+                '  - Order 00055555 delayed — Resolved — out for delivery with FedEx (tracking TRK992838472US), arriving 11/14.\n' +
+                '  - Case 00010482, cracked screen — Open — repair team to call back within 48 hours.\n' +
                 '\n' +
                 '  ## Key Facts & Decisions\n' +
-                '  - Order 00055555: tracking TRK992838472US, FedEx.\n' +
-                '  - Order 00098765: delivered.\n' +
+                '  - Declined the extended warranty offer.\n' +
                 '\n' +
                 '  ## Session History\n' +
-                '  - Asked where order 00055555 was; shared status and tracking; out for delivery, arriving 11/14.\n' +
-                '  - Asked where order 00098765 was; tracked the shipment; it was out for delivery.\n' +
+                '  - Asked about order 00055555; confirmed it is on its way.\n' +
+                '  - Reported a cracked screen; opened case 00010482.\n' +
+                '  - Compared the iPhone 16 Pro and Galaxy S25 and asked about the warranty.\n' +
                 '\n' +
-                '- **new_goal:** Extract when the user has stated or implied an unfinished goal. Value: the most important item under Pending Goals, in the user\'s words. If there are no pending goals, pass an empty string (never the word "None").\n' +
+                '  Saved with this example, outside the summary: new_goal "Decide between iPhone 16 Pro and Galaxy S25", has_issue True, new_style concise.\n' +
                 '\n' +
-                '- **has_issue:** Extract when assessing whether the user\'s issue is resolved at the point of persistence. Value: True only if the user still has unresolved issues.\n' +
+                '- **new_goal:** Every unfinished goal, in the customer\'s words, separated by "; " (at most 255 characters). Carry forward goals from the "Pending Goal:" line in agent_memory that are still unfinished, even if the current conversation did not mention them, add new ones, and drop only goals the customer achieved or explicitly abandoned. Anything the customer says they will do, decide, or come back to later is a goal. If there are none, pass an empty string (never the word "None").\n' +
                 '\n' +
-                '- **new_style:** Extract when inferring communication preference from the conversation. Value: concise, detailed, or formal.',
+                '- **has_issue:** True if Issues & Resolution Status has at least one Open or Escalated bullet; otherwise False.\n' +
+                '\n' +
+                '- **new_style:** concise, detailed, or formal, inferred from the conversation. If nothing in the conversation changes it, keep the "Communication Style:" value from agent_memory.',
                 ''
         ));
         repoItems.add(repoItem(
