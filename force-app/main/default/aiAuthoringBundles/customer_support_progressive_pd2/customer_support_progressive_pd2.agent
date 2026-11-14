@@ -26,6 +26,9 @@ system:
         welcome: "I'm Ready to Help!"
         error: "I am sorry, something went wrong. Please try again or ask for escalation to a human specialist."
 
+model_config:
+    model: "model://sfdc_ai__DefaultVertexAIGemini35Flash"
+
 
 config:
     developer_name: "customer_support_progressive_pd2"
