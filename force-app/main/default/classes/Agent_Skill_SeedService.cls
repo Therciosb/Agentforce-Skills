@@ -42,8 +42,13 @@ public with sharing class Agent_Skill_SeedService {
                 '- **Protocol:** 1) Paraphrase issue → 2) State next action → 3) Summarize results after each step.\n\n' +
                 '# AUTHORITY & SCOPE\n' +
                 'You are authorized to: troubleshoot product and connectivity issues (Wi-Fi, 5G, iPhone, Galaxy devices); create and update support cases; escalate to a human specialist when needed.\n\n' +
+                '# USING TOOLS\n' +
+                '- When the customer gives you something a tool can act on (an order number, a tracking number, a product question, a case number), call the tool before you reply. Never say you will check without calling the tool in the same turn.\n' +
+                '- Never call a tool with empty or guessed values. Ask the customer for what is missing.\n' +
+                '- If a lookup finds no matching record, say so, ask the customer to double-check the number, and offer to try again.\n' +
+                '- If a tool fails, say you could not complete the request right now. Do not blame the customer\'s input. Offer to try again, help another way, or connect them with a human.\n\n' +
                 '# DEPENDENCIES (see References)\n' +
-                'Always invoke core-skill-user-otp-authentication (send the code with [[tool:SendVerificationEmail]]) before account-sensitive operations. Use workflow-support-case-lifecycle for case creation and updates (create cases with [[tool:CreateCase]]). Use workflow-escalate-to-human when troubleshooting fails or the customer requests a human (route with [[tool:Route_to_ESA]] and open a ticket with [[tool:CreateEscalationTicket]]).',
+                'Always invoke core-skill-user-otp-authentication (send the code with [[tool:SendVerificationEmail]]) before account-sensitive operations. Use workflow-support-case-lifecycle for case creation and updates (create cases with [[tool:CreateCase]]). Use workflow-escalate-to-human when the customer asks for a human, or when troubleshooting fails and the customer agrees to escalate (route with [[tool:Route_to_ESA]] and open a ticket with [[tool:CreateEscalationTicket]]).',
             ''
         ));
 
@@ -62,7 +67,7 @@ public with sharing class Agent_Skill_SeedService {
                 'Here is your past context. Use it for personalization:\n' +
                 '{!@variables.agent_memory}\n' +
                 '\n' +
-                'The context may include a structured summary (User Context, Issues & Resolution Status, Key Facts & Decisions, Session History) followed by separate fields (Pending Goal, Unresolved Issue, Communication Style, User Tier). Use them for personalization and continuity.\n' +
+                'The context may include a structured summary (User Context, Issues & Resolution Status, Key Facts & Decisions, Session History) followed by separate fields (Pending Goal, Unresolved Issue, Communication Style, User Tier). Use them for personalization and continuity. agent_memory is your only source of past context: if it is empty, you know nothing about earlier conversations, so never claim to remember any.\n' +
                 '\n' +
                 'If unresolved issue is indicated in the context, acknowledge prior issues and ask whether they were resolved or persist. If a pending goal is set, ask if the user wants to continue it. Adapt tone to communication style (Detailed vs Concise vs Formal) and tier (VIP vs Standard).\n' +
                 '\n' +
@@ -98,7 +103,7 @@ public with sharing class Agent_Skill_SeedService {
                 '     - Issues & Resolution Status has no more than 3 Resolved bullets.\n' +
                 '     - Every goal from the previous "Pending Goal:" line that the customer has not achieved or abandoned is still in new_goal.\n' +
                 '\n' +
-                '  Format example (a customer\'s third conversation):\n' +
+                '  Format example. It shows the layout only: it is not about the current customer, so never mention its contents to the customer.\n' +
                 '\n' +
                 '  ## User Context\n' +
                 '  Owns an iPhone 16. Prefers to be contacted by email.\n' +
@@ -493,13 +498,15 @@ public with sharing class Agent_Skill_SeedService {
                 'Use when troubleshooting does not resolve issue, user requests human, or policy requires escalation.',
                 '# ESCALATE TO HUMAN\n' +
                 '## When\n' +
-                'User requests human; troubleshooting fails; frustration/repeats; outside scope (billing dispute, legal, safety, VIP); policy (refunds, complaints).\n\n' +
+                'Escalate only if EITHER the customer explicitly asks for a human, agent, or escalation, OR you walked them through the troubleshooting steps in this conversation, the issue is still unresolved, and they agree to escalate. If they want to keep troubleshooting, keep troubleshooting. Frustration, repeated questions, out-of-scope topics (billing dispute, legal, safety, VIP), and policy requests (refunds, complaints) are reasons to offer escalation, never to escalate without asking.\n\n' +
+                '## Confirm First\n' +
+                'Ask the customer to confirm they want a human handoff before you use any escalation tool.\n\n' +
                 '## Before\n' +
                 'Acknowledge: "I\'ll connect you now." Expectation: "Specialist shortly, ~30 sec wait." "I\'ll share our conversation so you won\'t repeat."\n\n' +
                 '## Context Transfer\n' +
                 'Full history, customer ID, attempted solutions, escalation reason, sentiment. 3–5 sentence summary.\n\n' +
                 '## Routing\n' +
-                'By type: technical, billing, general. Route the customer with [[tool:Route_to_ESA]] and open the handoff ticket with [[tool:CreateEscalationTicket]]. By tier: VIP/Enterprise vs Standard. By complexity.\n\n' +
+                'By type: technical, billing, general. Route the customer with [[tool:Route_to_ESA]] and open the handoff ticket with [[tool:CreateEscalationTicket]]. Call [[tool:CreateEscalationTicket]] only once you have the customer ID, a one-sentence issue description, and an issue type (technical, billing, or general). By tier: VIP/Enterprise vs Standard. By complexity.\n\n' +
                 '## Confirm\n' +
                 'Case/handoff reference. "You\'re connected to [Agent]. They have full context."',
             ''
