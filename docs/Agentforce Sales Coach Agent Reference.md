@@ -251,4 +251,4 @@ Data 360 is required for Sales Coach setup and powers Data Libraries used for RA
 - [Agentforce SDR Agent Reference](Agentforce%20SDR%20Agent%20Reference.md) – Built-in SDR agent reference
 - [SDR Agent Implementation Plan](SDR%20Agent%20Implementation%20Plan.md) – Plan for Agent Script–based SDR agent
 - [LTM Integration Mapping](LTM%20Integration%20Mapping.md) – Agent_Context__c and flow contracts
-- [Agent Script Manual v4](Agent%20Script%20Manual%20v4.md) – Agent Script reference
+- [Agent Script Manual v5](Agent%20Script%20Manual%20v5.md) – Agent Script reference

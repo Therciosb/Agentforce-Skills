@@ -263,5 +263,5 @@ Data 360 powers Data Libraries and RAG grounding for Agentforce. Organizations m
 
 - [SDR Agent Implementation Plan](SDR%20Agent%20Implementation%20Plan.md) – Plan for implementing an Agent Script–based SDR agent
 - [LTM Integration Mapping](LTM%20Integration%20Mapping.md) – Agent_Context__c and flow contracts
-- [Agent Script Manual v4](Agent%20Script%20Manual%20v4.md) – Agent Script reference
+- [Agent Script Manual v5](Agent%20Script%20Manual%20v5.md) – Agent Script reference
 

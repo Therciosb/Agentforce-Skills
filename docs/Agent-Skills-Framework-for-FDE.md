@@ -473,7 +473,7 @@ Grant on `Agent_Skills_Agent_Runtime` (and assign it to the agent user):
 
 ## Related Documentation
 
-- `docs/Agent Script Manual v4.md` — Agent Script language and execution model
+- `docs/Agent Script Manual v5.md` — Agent Script language and execution model
 - `docs/Apex Action Contracts.md` — Loader, Composer, LoadAndCompose API details
 - [LTM Integration Mapping](LTM%20Integration%20Mapping.md) — Optional persistent memory: object schema and flow contracts (no LTM-Agentforce dependency)
 - `docs/DMO Seeding Guide.md` — Seeding demo role/skill/workflow data

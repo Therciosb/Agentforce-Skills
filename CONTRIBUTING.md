@@ -19,7 +19,7 @@ Thank you for your interest in contributing. This document provides guidelines f
 ### Code Style
 
 - **Apex**: Follow [Apex Style Guide](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_style_guide.htm).
-- **Agent Script**: Follow patterns in [Agent-Skills-Framework-for-FDE](docs/Agent-Skills-Framework-for-FDE.md) and [Agent Script Manual v4](docs/Agent%20Script%20Manual%20v4.md).
+- **Agent Script**: Follow patterns in [Agent-Skills-Framework-for-FDE](docs/Agent-Skills-Framework-for-FDE.md) and [Agent Script Manual v5](docs/Agent%20Script%20Manual%20v5.md).
 - **Documentation**: Use clear, concise language. Update relevant docs when changing behavior.
 
 ### Instruction Naming

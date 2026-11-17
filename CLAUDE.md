@@ -90,5 +90,5 @@ Published agents materialize as `genAiPlannerBundles/<bundle>_v<N>/` — these a
 
 - `docs/Agent-Skills-Framework-for-FDE.md` — primary engineering reference (composition flow + Agent Script rules)
 - `docs/Apex Action Contracts.md` — Loader/Composer/LoadAndCompose I/O contracts
-- `docs/Agent Script Manual v4.md` — Agent Script language and execution model
+- `docs/Agent Script Manual v5.md` — Agent Script language and execution model
 - `docs/LTM Integration Mapping.md` — optional persistent-memory object schema and flow contracts

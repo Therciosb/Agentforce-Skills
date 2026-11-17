@@ -19,7 +19,7 @@ This folder contains documentation for the Agent Skills framework and related Ag
 
 | Document                                                  | Description                                                                                                                               |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| [Agent Script Manual v4](Agent%20Script%20Manual%20v4.md) | Language model, execution model, blocks, variables, actions vs tools, conditionals, transitions, patterns, LTM reference, troubleshooting |
+| [Agent Script Manual v5](Agent%20Script%20Manual%20v5.md) | Language model, execution model, blocks, variables, actions vs tools, conditionals, transitions, patterns, LTM reference, troubleshooting |
 
 
 ## Optional Integrations

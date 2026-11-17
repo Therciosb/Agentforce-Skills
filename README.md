@@ -95,7 +95,7 @@ Agent-Skills/
 | Document | Description |
 |----------|-------------|
 | [Agent-Skills-Framework-for-FDE](docs/Agent-Skills-Framework-for-FDE.md) | Framework overview for engineers: problem, value, implementation, Agent Script structure |
-| [Agent Script Manual v4](docs/Agent%20Script%20Manual%20v4.md) | Agent Script language, execution model, blocks, patterns |
+| [Agent Script Manual v5](docs/Agent%20Script%20Manual%20v5.md) | Agent Script language, execution model, blocks, patterns |
 | [Apex Action Contracts](docs/Apex%20Action%20Contracts.md) | Loader, Composer, LoadAndCompose API details |
 | [Implementation Plan v1](docs/Implementation%20Plan%20v1.md) | Framework scope and implementation baseline |
 | [LTM Integration Mapping](docs/LTM%20Integration%20Mapping.md) | Optional persistent memory: object schema, Apex action contracts, runtime pattern |
