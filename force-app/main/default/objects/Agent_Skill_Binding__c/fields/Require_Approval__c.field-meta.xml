@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Require_Approval__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>When checked, this agent loads only skill records whose ApprovalState__c is Approved. Rejected records never load.</description>
+    <label>Require Approval</label>
+    <type>Checkbox</type>
+</CustomField>

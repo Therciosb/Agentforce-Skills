@@ -131,6 +131,40 @@ private class Agent_Skill_Binding_Controller_Test {
 
         String snippet = Agent_Skill_Binding_Controller.getScriptSnippet('my_support_agent');
         Assert.isTrue(snippet.contains('agent_name: mutable string = "my_support_agent"'));
+        Assert.isFalse(snippet.contains('available when'));
         Assert.isNotNull(Agent_Skill_Binding_Controller.listOrgAgents());
+    }
+
+    @IsTest
+    static void runtimeRulesSaveAndDriveSnippet() {
+        Agent_Skill_Binding_Controller.BindingDetail d = payload(new List<Agent_Skill_Binding_Controller.BindingItem>{
+            item('role-test-agent', 'Always'),
+            item('skill-alpha', 'Default')
+        });
+        d.requireApproval = true;
+        d.agentTools = 'create_case, get_order_status';
+
+        Agent_Skill_Binding_Controller.BindingDetail loaded;
+        String snippet;
+        System.runAs(author()) {
+            loaded = Agent_Skill_Binding_Controller.getBinding(Agent_Skill_Binding_Controller.saveBinding(JSON.serialize(d)));
+            snippet = Agent_Skill_Binding_Controller.getScriptSnippet('test_agent');
+        }
+
+        Assert.isTrue(loaded.requireApproval);
+        Assert.areEqual('create_case,get_order_status', loaded.agentTools);
+        Assert.isTrue(snippet.contains('get_order_status: @actions.get_order_status'));
+        Assert.isTrue(snippet.contains('available when @variables.skill_state.tools.create_case == True'));
+    }
+
+    @IsTest
+    static void validationRejectsNonActionToolNames() {
+        Agent_Skill_Binding_Controller.BindingDetail d = payload(new List<Agent_Skill_Binding_Controller.BindingItem>{ item('role-test-agent', 'Always') });
+        d.agentTools = 'create_case,CreateCase';
+
+        String joined = String.join(Agent_Skill_Binding_Controller.validate(d), ' ');
+
+        Assert.isTrue(joined.contains('CreateCase'));
+        Assert.isFalse(joined.contains('create_case.'));
     }
 }

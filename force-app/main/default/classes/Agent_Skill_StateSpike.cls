@@ -15,6 +15,7 @@ public with sharing class Agent_Skill_StateSpike {
         @AuraEnabled public String active_skills;
         @AuraEnabled public String skill_instructions;
         @AuraEnabled public String skill_warnings;
+        @AuraEnabled public Map<String, Boolean> tools;
     }
 
     public class Request {
@@ -70,6 +71,7 @@ public with sharing class Agent_Skill_StateSpike {
         state.skill_menu = loadMenu(warnings);
         state.skill_instructions = loadInstructions(state.active_skills, warnings);
         state.skill_warnings = String.join(warnings, ' | ');
+        state.tools = new Map<String, Boolean>{ 'probe_tool' => active.contains('skill-troubleshooting-support') };
 
         Response res = new Response();
         res.skillState = state;

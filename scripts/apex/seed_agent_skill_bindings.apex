@@ -17,13 +17,19 @@ List<List<String>> supportItems = new List<List<String>>{
     new List<String>{ 'skill-order-status-support', 'Selectable' }
 };
 
+// Action names declared in each agent's script; skills can only reference these tools.
+Map<String, String> agentTools = new Map<String, String>{
+    'customer_support_progressive_pd2' => 'create_case,create_escalation_ticket,get_order_status,fetch_support_history,track_shipment,fetch_account_data,get_product_info,send_verification_email'
+};
+
 List<Agent_Skill_Binding__c> bindings = new List<Agent_Skill_Binding__c>();
 for (String agentName : labels.keySet()) {
     bindings.add(new Agent_Skill_Binding__c(
         Name = labels.get(agentName),
         Agent_Developer_Name__c = agentName,
         Status__c = 'Active',
-        Locale__c = 'en-US'
+        Locale__c = 'en-US',
+        Agent_Tools__c = agentTools.get(agentName)
     ));
 }
 upsert bindings Agent_Developer_Name__c;

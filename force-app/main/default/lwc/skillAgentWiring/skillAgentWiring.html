@@ -58,6 +58,12 @@
                     </div>
 
                     <div class="card">
+                        <h2>Runtime rules</h2>
+                        <lightning-input type="checkbox" label="Load only approved skill versions" checked={draft.requireApproval} onchange={handleApproval} field-level-help="When on, the agent skips any skill version whose approval state is not Approved."></lightning-input>
+                        <lightning-textarea label="Agent tools" value={draft.agentTools} data-field="agentTools" onchange={handleField} placeholder="create_case,get_order_status" field-level-help="CSV of the action names declared in the agent's script. Skills can only reference these tools, and each tool is enabled only while a skill that uses it is active."></lightning-textarea>
+                    </div>
+
+                    <div class="card">
                         <h2>Skills</h2>
                         <p class="hint">Always skills load on every turn. Selectable skills appear in the agent's skill menu. Default skills are active when the agent has not asked for anything else. Workflows load through the References of the skills that use them.</p>
                         <lightning-dual-listbox
@@ -101,7 +107,7 @@
                                 <h2>Agent Script snippet</h2>
                                 <lightning-button label="Copy" icon-name="utility:copy" onclick={handleCopy}></lightning-button>
                             </div>
-                            <p class="hint">Paste into the agent's .agent file, then add the tools your skills use under load_skill_state. No skill names go in the script.</p>
+                            <p class="hint">Paste into the agent's .agent file and declare each tool's definition under load_skill_state. The gated tool lines at the end come from Agent tools. No skill names go in the script.</p>
                             <pre class="code">{snippet}</pre>
                         </div>
                     </template>
@@ -119,6 +125,8 @@
                                 <dd>{preview.active_skills}</dd>
                                 <dt>Instructions</dt>
                                 <dd>{previewChars} characters</dd>
+                                <dt>Tools enabled</dt>
+                                <dd>{previewTools}</dd>
                                 <template lwc:if={preview.skill_warnings}>
                                     <dt>Warnings</dt>
                                     <dd class="warn">{preview.skill_warnings}</dd>

@@ -30,6 +30,12 @@ public with sharing class Agent_Skill_Loader {
             description='Existing bundle JSON to merge with newly loaded instructions.'
         )
         public String existingInstructionBundle;
+
+        @InvocableVariable(
+            label='Require Approval (optional, default false)'
+            description='When true, only records with ApprovalState__c = Approved load. Rejected records never load.'
+        )
+        public Boolean requireApproval;
     }
 
     public class LoaderResponse {
@@ -107,10 +113,13 @@ public with sharing class Agent_Skill_Loader {
 
         Boolean includeRefs = requestItem.includeReferences == null || requestItem.includeReferences;
         String effectiveVersion = String.isBlank(requestItem.version) ? null : requestItem.version;
-        String effectiveLocale = String.isBlank(requestItem.locale) ? 'en-US' : requestItem.locale;
+        Agent_Skill_Catalog.Options opts = new Agent_Skill_Catalog.Options();
+        opts.locale = String.isBlank(requestItem.locale) ? 'en-US' : requestItem.locale;
+        opts.version = effectiveVersion;
+        opts.requireApproval = requestItem.requireApproval == true;
 
         if (includeRefs) {
-            expandReferencesFromLoaded(seedNames, allNames, effectiveVersion, effectiveLocale);
+            expandReferencesFromLoaded(seedNames, allNames, opts);
         }
 
         // Topic-scoped pruning: when merging with existing bundle, remove topic-specific
@@ -128,7 +137,7 @@ public with sharing class Agent_Skill_Loader {
             }
         }
 
-        loadedByName.putAll(loadFromRepo(allNames, effectiveVersion, effectiveLocale));
+        loadedByName.putAll(loadFromRepo(allNames, opts));
 
         List<String> sortedNames = new List<String>(loadedByName.keySet());
         sortedNames.sort();
@@ -157,24 +166,10 @@ public with sharing class Agent_Skill_Loader {
         return response;
     }
 
-    private static Map<String, InstructionBundleItem> loadFromRepo(Set<String> names, String version, String locale) {
+    private static Map<String, InstructionBundleItem> loadFromRepo(Set<String> names, Agent_Skill_Catalog.Options opts) {
         Map<String, InstructionBundleItem> outMap = new Map<String, InstructionBundleItem>();
-        if (names.isEmpty()) {
-            return outMap;
-        }
-        for (Agent_Skills_Repo__c rec : [
-            SELECT Name, Version__c, Status__c, InstructionBody__c, Locale__c, References__c
-            FROM Agent_Skills_Repo__c
-            WHERE Name IN :names
-            AND Status__c = 'active'
-            ORDER BY Version__c DESC
-        ]) {
-            if (!matchesContext(rec.Version__c, rec.Locale__c, version, locale)) {
-                continue;
-            }
-            if (!outMap.containsKey(rec.Name)) {
-                outMap.put(rec.Name, toBundleItem(rec.Name, rec.Version__c, rec.Status__c, rec.InstructionBody__c, rec.References__c));
-            }
+        for (Agent_Skill_Catalog.Entry e : Agent_Skill_Catalog.resolve(names, opts).values()) {
+            outMap.put(e.name, toBundleItem(e.name, e.version, e.status, e.instructions, e.references));
         }
         return outMap;
     }
@@ -195,15 +190,17 @@ public with sharing class Agent_Skill_Loader {
     private static void expandReferencesFromLoaded(
         Set<String> seedNames,
         Set<String> allNames,
-        String version,
-        String locale
+        Agent_Skill_Catalog.Options opts
     ) {
         Set<String> frontier = new Set<String>();
         frontier.addAll(seedNames);
         Integer depth = 0;
         while (!frontier.isEmpty() && depth < 6) {
             Set<String> nextFrontier = new Set<String>();
-            Set<String> refs = collectReferencesFromNames(frontier, version, locale);
+            Set<String> refs = new Set<String>();
+            for (Agent_Skill_Catalog.Entry e : Agent_Skill_Catalog.resolve(frontier, opts).values()) {
+                refs.addAll(parseCsv(e.references));
+            }
             for (String refName : refs) {
                 String trimmed = refName == null ? null : refName.trim();
                 if (!String.isBlank(trimmed) && !allNames.contains(trimmed)) {
@@ -214,23 +211,6 @@ public with sharing class Agent_Skill_Loader {
             frontier = nextFrontier;
             depth++;
         }
-    }
-
-    private static Set<String> collectReferencesFromNames(
-        Set<String> names,
-        String version,
-        String locale
-    ) {
-        Set<String> refs = new Set<String>();
-        for (Agent_Skills_Repo__c rec : [
-            SELECT References__c, Version__c, Locale__c FROM Agent_Skills_Repo__c
-            WHERE Name IN :names AND Status__c = 'active'
-        ]) {
-            if (matchesContext(rec.Version__c, rec.Locale__c, version, locale)) {
-                refs.addAll(parseCsv(rec.References__c));
-            }
-        }
-        return refs;
     }
 
     private static Map<String, InstructionBundleItem> parseExistingBundle(String jsonBundle) {
@@ -275,12 +255,6 @@ public with sharing class Agent_Skill_Loader {
             }
         }
         return outSet;
-    }
-
-    private static Boolean matchesContext(String recordVersion, String recordLocale, String requestedVersion, String requestedLocale) {
-        Boolean versionMatches = String.isBlank(requestedVersion) || recordVersion == requestedVersion;
-        Boolean localeMatches = String.isBlank(requestedLocale) || recordLocale == requestedLocale;
-        return versionMatches && localeMatches;
     }
 
     private static Boolean isTopicSpecific(String name) {

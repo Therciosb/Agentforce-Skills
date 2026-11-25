@@ -24,6 +24,8 @@ public with sharing class Agent_Skill_Binding_Controller {
         @AuraEnabled public String status { get; set; }
         @AuraEnabled public String locale { get; set; }
         @AuraEnabled public String description { get; set; }
+        @AuraEnabled public Boolean requireApproval { get; set; }
+        @AuraEnabled public String agentTools { get; set; }
         @AuraEnabled public List<BindingItem> items { get; set; }
     }
 
@@ -68,7 +70,7 @@ public with sharing class Agent_Skill_Binding_Controller {
     @AuraEnabled(cacheable=true)
     public static BindingDetail getBinding(Id bindingId) {
         List<Agent_Skill_Binding__c> found = [
-            SELECT Id, Name, Agent_Developer_Name__c, Status__c, Locale__c, Description__c,
+            SELECT Id, Name, Agent_Developer_Name__c, Status__c, Locale__c, Description__c, Require_Approval__c, Agent_Tools__c,
                 (SELECT Skill_Name__c, Mode__c, Order__c FROM Items__r ORDER BY Order__c NULLS LAST, Skill_Name__c)
             FROM Agent_Skill_Binding__c
             WHERE Id = :bindingId
@@ -85,6 +87,8 @@ public with sharing class Agent_Skill_Binding_Controller {
         detail.status = b.Status__c;
         detail.locale = b.Locale__c;
         detail.description = b.Description__c;
+        detail.requireApproval = b.Require_Approval__c;
+        detail.agentTools = b.Agent_Tools__c;
         detail.items = new List<BindingItem>();
         for (Agent_Skill_Binding_Item__c item : b.Items__r) {
             BindingItem bi = new BindingItem();
@@ -156,7 +160,9 @@ public with sharing class Agent_Skill_Binding_Controller {
             Agent_Developer_Name__c = input.agentName.trim(),
             Status__c = String.isBlank(input.status) ? 'Active' : input.status,
             Locale__c = String.isBlank(input.locale) ? 'en-US' : input.locale.trim(),
-            Description__c = input.description
+            Description__c = input.description,
+            Require_Approval__c = input.requireApproval == true,
+            Agent_Tools__c = String.isBlank(input.agentTools) ? null : input.agentTools.deleteWhitespace()
         );
 
         Savepoint sp = Database.setSavepoint();
@@ -204,9 +210,22 @@ public with sharing class Agent_Skill_Binding_Controller {
         return Agent_Skill_State.resolve(new List<Agent_Skill_State.Request>{ req })[0].skillState;
     }
 
-    @AuraEnabled(cacheable=true)
+    @AuraEnabled
     public static String getScriptSnippet(String agentName) {
-        return SNIPPET.replace('{AGENT_NAME}', String.isBlank(agentName) ? 'my_agent' : agentName.trim());
+        String name = String.isBlank(agentName) ? 'my_agent' : agentName.trim();
+        String snippet = SNIPPET.replace('{AGENT_NAME}', name);
+        Agent_Skill_State.Wiring wiring = Agent_Skill_State.loadWiring(name);
+        if (wiring == null || String.isBlank(wiring.agentTools)) {
+            return snippet;
+        }
+        List<String> gated = new List<String>();
+        for (String tool : wiring.agentTools.split(',')) {
+            if (String.isNotBlank(tool)) {
+                gated.add('            ' + tool + ': @actions.' + tool);
+                gated.add('                available when @variables.skill_state.tools.' + tool + ' == True');
+            }
+        }
+        return snippet + '\n' + String.join(gated, '\n');
     }
 
     @TestVisible
@@ -218,6 +237,13 @@ public with sharing class Agent_Skill_Binding_Controller {
         }
         if (!Pattern.matches('[A-Za-z][A-Za-z0-9_]*', input.agentName.trim())) {
             errors.add('Agent developer name may contain only letters, numbers, and underscores, and must start with a letter.');
+        }
+        if (String.isNotBlank(input.agentTools)) {
+            for (String tool : input.agentTools.deleteWhitespace().split(',')) {
+                if (String.isNotBlank(tool) && !Pattern.matches('[a-z][a-z0-9_]*', tool)) {
+                    errors.add('Agent tool names must be snake_case action names as declared in the agent script: ' + tool + '.');
+                }
+            }
         }
         if (input.items == null || input.items.isEmpty()) {
             errors.add('Wire at least one skill.');

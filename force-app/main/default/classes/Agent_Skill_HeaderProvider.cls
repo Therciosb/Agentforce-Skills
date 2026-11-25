@@ -12,6 +12,12 @@ public with sharing class Agent_Skill_HeaderProvider {
             description='Locale for header resolution (e.g. en-US).'
         )
         public String locale;
+
+        @InvocableVariable(
+            label='Require Approval (optional, default false)'
+            description='When true, only Approved records produce headers.'
+        )
+        public Boolean requireApproval;
     }
 
     public class HeaderResponse {
@@ -55,24 +61,15 @@ public with sharing class Agent_Skill_HeaderProvider {
     private static HeaderResponse processRequest(HeaderRequest requestItem) {
         HeaderResponse response = new HeaderResponse();
         Set<String> requested = parseCsv(requestItem.skillNames);
-        String effectiveLocale = String.isBlank(requestItem.locale) ? 'en-US' : requestItem.locale;
+        Agent_Skill_Catalog.Options opts = new Agent_Skill_Catalog.Options();
+        opts.locale = requestItem.locale;
+        opts.requireApproval = requestItem.requireApproval == true;
 
         Map<String, String> headerByName = new Map<String, String>();
-        if (!requested.isEmpty()) {
-            for (Agent_Skills_Repo__c rec : [
-                SELECT Name, WhenToUse__c
-                FROM Agent_Skills_Repo__c
-                WHERE Name IN :requested
-                AND Status__c = 'active'
-                AND Locale__c = :effectiveLocale
-            ]) {
-                // No fallback: a blank WhenToUse__c is treated as missing.
-                if (String.isBlank(rec.WhenToUse__c)) {
-                    continue;
-                }
-                if (!headerByName.containsKey(rec.Name)) {
-                    headerByName.put(rec.Name, rec.WhenToUse__c.trim());
-                }
+        for (Agent_Skill_Catalog.Entry e : Agent_Skill_Catalog.resolve(requested, opts).values()) {
+            // No fallback: a blank WhenToUse__c is treated as missing.
+            if (String.isNotBlank(e.whenToUse)) {
+                headerByName.put(e.name, e.whenToUse.trim());
             }
         }
 

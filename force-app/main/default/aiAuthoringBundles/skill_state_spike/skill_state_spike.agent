@@ -92,3 +92,7 @@ subagent skill_host:
             switch_skills: @utils.setVariables
                 description: "Change which skills are active for this request."
                 with requested_skills=...
+            probe_tool: @utils.setVariables
+                description: "Test probe. Call only when the user says 'probe tool'."
+                available when @variables.skill_state.tools.probe_tool == True
+                with probe_active="probe tool called"

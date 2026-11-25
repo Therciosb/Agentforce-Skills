@@ -21,6 +21,18 @@ public with sharing class Agent_Skill_LoadAndCompose_v2 {
         public String locale;
 
         @InvocableVariable(
+            label='Require Approval (optional, default false)'
+            description='When true, only Approved instruction records load.'
+        )
+        public Boolean requireApproval;
+
+        @InvocableVariable(
+            label='Known Action Names CSV (optional)'
+            description='Agent Script action names the agent exposes; validates [[tool:Name]] indicators.'
+        )
+        public String knownActionNames;
+
+        @InvocableVariable(
             label='Max Reference Depth (optional, default 4)'
             description='Maximum depth for reference expansion in composer.'
         )
@@ -88,6 +100,7 @@ public with sharing class Agent_Skill_LoadAndCompose_v2 {
             loaderReq.instructionNames = sanitizeNames(req != null ? req.instructionNames : null);
             loaderReq.existingInstructionBundle = req != null ? req.existingInstructionBundle : null;
             loaderReq.locale = req != null ? req.locale : null;
+            loaderReq.requireApproval = req != null && req.requireApproval == true;
             loaderReq.includeReferences = (req != null && req.includeReferences != null) ? req.includeReferences : true;
             loaderReqs.add(loaderReq);
         }
@@ -134,6 +147,9 @@ public with sharing class Agent_Skill_LoadAndCompose_v2 {
                     composerReq.requiredNames = sanitizeNames(req != null ? req.instructionNames : null);
                     composerReq.maxReferenceDepth = (req != null && req.maxReferenceDepth != null) ? req.maxReferenceDepth : 4;
                     composerReq.includeReferenceExpansion = (req != null && req.includeReferenceExpansion != null) ? req.includeReferenceExpansion : true;
+                    composerReq.locale = req != null ? req.locale : null;
+                    composerReq.requireApproval = req != null && req.requireApproval == true;
+                    composerReq.knownActionNames = req != null ? req.knownActionNames : null;
 
                     List<Agent_Skill_PromptComposer.ComposerResponse> composerResponses =
                         Agent_Skill_PromptComposer.compose(new List<Agent_Skill_PromptComposer.ComposerRequest>{ composerReq });

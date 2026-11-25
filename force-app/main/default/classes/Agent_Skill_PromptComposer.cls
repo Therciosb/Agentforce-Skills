@@ -1,7 +1,7 @@
 public with sharing class Agent_Skill_PromptComposer {
     private static final String LINE_SEPARATOR = '#############################################';
 
-    // Single source of truth for [[tool:Name]] validation — the support-demo tool inventory.
+    // Default [[tool:Name]] inventory (support demo), used when the request has no knownActionNames.
     private static final Set<String> KNOWN_TOOL_NAMES = new Set<String>{
         'CreateCase', 'CreateEscalationTicket', 'Route_to_ESA', 'GetOrderStatus',
         'FetchSupportHistory', 'TrackShipment', 'FetchAccountData', 'GetProductInfo',
@@ -40,6 +40,24 @@ public with sharing class Agent_Skill_PromptComposer {
             description='Whether to include deprecated instructions.'
         )
         public Boolean includeDeprecated;
+
+        @InvocableVariable(
+            label='Locale (optional, default en-US)'
+            description='Locale used when a referenced instruction is not in the bundle.'
+        )
+        public String locale;
+
+        @InvocableVariable(
+            label='Require Approval (optional, default false)'
+            description='When true, referenced instructions fetched outside the bundle must be Approved.'
+        )
+        public Boolean requireApproval;
+
+        @InvocableVariable(
+            label='Known Action Names CSV (optional)'
+            description='Agent Script action names this agent exposes (e.g. create_case). When set, [[tool:Name]] indicators are validated against it instead of the built-in support-demo inventory.'
+        )
+        public String knownActionNames;
     }
 
     public class ComposerResponse {
@@ -106,7 +124,11 @@ public with sharing class Agent_Skill_PromptComposer {
         includeNames.addAll(required);
 
         if (expandRefs && !required.isEmpty()) {
-            expandDependencies(required, includeNames, includeDeprecated, maxDepth, entriesByName);
+            Agent_Skill_Catalog.Options opts = new Agent_Skill_Catalog.Options();
+            opts.locale = requestItem.locale;
+            opts.requireApproval = requestItem.requireApproval == true;
+            opts.includeDeprecated = includeDeprecated;
+            expandDependencies(required, includeNames, opts, maxDepth, entriesByName);
         }
 
         List<String> missing = new List<String>();
@@ -141,7 +163,8 @@ public with sharing class Agent_Skill_PromptComposer {
 
         // Additive tool-cue rewrite/validation pass (composition/ordering above is unchanged).
         Set<String> unknownToolNames = new Set<String>();
-        composed = rewriteToolIndicators(composed, unknownToolNames);
+        Set<String> knownActions = parseCsv(requestItem.knownActionNames);
+        composed = rewriteToolIndicators(composed, unknownToolNames, knownActions);
         response.composedInstructions = composed;
 
         if (!unknownToolNames.isEmpty()) {
@@ -160,7 +183,7 @@ public with sharing class Agent_Skill_PromptComposer {
 
     // Additive post-composition pass: rewrite [[tool:Name]] indicators to validated plain-text cues.
     // Known names become 'the "Name" tool'; unknown names are visibly marked and collected for warnings.
-    private static String rewriteToolIndicators(String text, Set<String> unknownToolNames) {
+    private static String rewriteToolIndicators(String text, Set<String> unknownToolNames, Set<String> knownActions) {
         if (String.isBlank(text) || !text.contains('[[tool:')) {
             return text;
         }
@@ -171,8 +194,9 @@ public with sharing class Agent_Skill_PromptComposer {
         while (m.find()) {
             segments.add(text.substring(lastEnd, m.start()));
             String toolName = m.group(1);
-            if (KNOWN_TOOL_NAMES.contains(toolName)) {
-                String snakeName = toolName.replaceAll('([a-z])([A-Z])', '$1_$2').toLowerCase();
+            String snakeName = toolName.replaceAll('([a-z])([A-Z])', '$1_$2').toLowerCase();
+            Boolean known = knownActions.isEmpty() ? KNOWN_TOOL_NAMES.contains(toolName) : knownActions.contains(snakeName);
+            if (known) {
                 segments.add('@actions.' + snakeName);
             } else {
                 segments.add('[[unknown tool: ' + toolName + ']]');
@@ -187,7 +211,7 @@ public with sharing class Agent_Skill_PromptComposer {
     private static void expandDependencies(
         Set<String> seeds,
         Set<String> includeNames,
-        Boolean includeDeprecated,
+        Agent_Skill_Catalog.Options opts,
         Integer maxDepth,
         Map<String, BundleEntry> entriesByName
     ) {
@@ -199,6 +223,7 @@ public with sharing class Agent_Skill_PromptComposer {
 
         while (!frontier.isEmpty() && depth < maxDepth) {
             Set<String> nextFrontier = new Set<String>();
+            Set<String> toFetch = new Set<String>();
             for (String sourceName : frontier) {
                 BundleEntry entry = entriesByName.get(sourceName);
                 if (entry == null || String.isBlank(entry.references)) {
@@ -214,14 +239,13 @@ public with sharing class Agent_Skill_PromptComposer {
                     visited.add(target);
                     includeNames.add(target);
                     nextFrontier.add(target);
-
                     if (!entriesByName.containsKey(target)) {
-                        BundleEntry fetched = fetchActiveEntry(target, includeDeprecated);
-                        if (fetched != null) {
-                            entriesByName.put(target, fetched);
-                        }
+                        toFetch.add(target);
                     }
                 }
+            }
+            for (Agent_Skill_Catalog.Entry e : Agent_Skill_Catalog.resolve(toFetch, opts).values()) {
+                entriesByName.put(e.name, toEntry(e.name, e.status, e.instructions, e.references));
             }
             frontier = nextFrontier;
             depth++;
@@ -233,20 +257,6 @@ public with sharing class Agent_Skill_PromptComposer {
             name.startsWith('role-') || name.startsWith('skill-') || name.startsWith('workflow-') ||
             name.startsWith('core-skill-')
         );
-    }
-
-    private static BundleEntry fetchActiveEntry(String name, Boolean includeDeprecated) {
-        for (Agent_Skills_Repo__c rec : [
-            SELECT Name, Status__c, InstructionBody__c, References__c
-            FROM Agent_Skills_Repo__c
-            WHERE Name = :name
-            LIMIT 1
-        ]) {
-            if (rec.Status__c == 'active' || includeDeprecated) {
-                return toEntry(rec.Name, rec.Status__c, rec.InstructionBody__c, rec.References__c);
-            }
-        }
-        return null;
     }
 
     private static Map<String, BundleEntry> parseBundle(String jsonBundle) {

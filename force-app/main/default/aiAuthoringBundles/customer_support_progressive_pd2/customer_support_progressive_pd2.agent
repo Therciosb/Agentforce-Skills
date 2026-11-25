@@ -282,22 +282,25 @@ subagent skill_host:
                 with memory_dirty=True
             create_case: @actions.create_case
                 description: "Create a new support case from a concise, user-approved subject."
+                available when @variables.skill_state.tools.create_case == True
                 with subject=...
             create_escalation_ticket: @actions.create_escalation_ticket
                 description: "Create an escalation ticket for handoff to a human specialist. The customer ID is filled in automatically; never ask the customer for it."
-                available when @variables.ContactId and @variables.ContactId != ""
+                available when @variables.skill_state.tools.create_escalation_ticket == True and @variables.ContactId and @variables.ContactId != ""
                 with customer_id=@variables.ContactId
                 with issue_description=...
                 with issue_type=...
             get_order_status: @actions.get_order_status
                 description: "Look up the current status of an order."
+                available when @variables.skill_state.tools.get_order_status == True
                 with order_id=...
             fetch_support_history: @actions.fetch_support_history
                 description: "Fetch the support/case history for the current customer."
-                available when @variables.ContactId and @variables.ContactId != ""
+                available when @variables.skill_state.tools.fetch_support_history == True and @variables.ContactId and @variables.ContactId != ""
                 with user_id=@variables.ContactId
             track_shipment: @actions.track_shipment
                 description: "Track a shipment by carrier and tracking number."
+                available when @variables.skill_state.tools.track_shipment == True
                 with carrier=...
                 with tracking_number=...
             fetch_account_data: @actions.fetch_account_data
@@ -306,10 +309,11 @@ subagent skill_host:
                 with user_id=@variables.ContactId
             get_product_info: @actions.get_product_info
                 description: "Look up product specifications, price, and availability."
+                available when @variables.skill_state.tools.get_product_info == True
                 with product_name=...
             send_verification_email: @actions.send_verification_email
                 description: "Send a one-time verification code to the current customer."
-                available when @variables.ContactId and @variables.ContactId != ""
+                available when @variables.skill_state.tools.send_verification_email == True and @variables.ContactId and @variables.ContactId != ""
                 with customer_id=@variables.ContactId
                 with email=...
 

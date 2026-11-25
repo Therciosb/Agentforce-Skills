@@ -163,6 +163,12 @@ export default class SkillAgentWiring extends LightningElement {
         return this.preview && this.preview.skill_instructions ? this.preview.skill_instructions.length : 0;
     }
 
+    get previewTools() {
+        const tools = (this.preview && this.preview.tools) || {};
+        const enabled = Object.keys(tools).filter((t) => tools[t]).sort();
+        return enabled.length ? enabled.join(', ') : 'None';
+    }
+
     handleSelect(event) {
         this.loadBinding(event.currentTarget.dataset.id);
     }
@@ -190,13 +196,18 @@ export default class SkillAgentWiring extends LightningElement {
         this.preview = undefined;
         this.snippet = undefined;
         this.error = undefined;
-        this.draft = { id: null, name: '', agentName: '', status: 'Active', locale: 'en-US', description: '', items: [] };
+        this.draft = { id: null, name: '', agentName: '', status: 'Active', locale: 'en-US', description: '', requireApproval: false, agentTools: '', items: [] };
         this.dirty = true;
     }
 
     handleField(event) {
         const field = event.target.dataset.field;
         this.draft = { ...this.draft, [field]: event.detail.value !== undefined ? event.detail.value : event.target.value };
+        this.dirty = true;
+    }
+
+    handleApproval(event) {
+        this.draft = { ...this.draft, requireApproval: event.target.checked };
         this.dirty = true;
     }
 

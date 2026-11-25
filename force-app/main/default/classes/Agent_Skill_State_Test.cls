@@ -9,6 +9,9 @@ private class Agent_Skill_State_Test {
             skill('skill-product-information-qa', 'Skill', 'Use for product questions.'),
             skill('skill-troubleshooting-support', 'Skill', 'Use for device problems.')
         };
+        Agent_Skills_Repo__c troubleshooting = [SELECT Id FROM Agent_Skills_Repo__c WHERE Name = 'skill-troubleshooting-support'];
+        troubleshooting.InstructionBody__c = 'Open a case with [[tool:CreateCase]] when steps fail.';
+        update troubleshooting;
         Agent_Skill_Binding__c binding = new Agent_Skill_Binding__c(
             Name = 'Customer Support PD2',
             Agent_Developer_Name__c = AGENT,
@@ -65,6 +68,50 @@ private class Agent_Skill_State_Test {
         Assert.areEqual('skill-troubleshooting-support', res.activeSkills);
         Assert.isTrue(res.skillState.skill_warnings.contains('Not wired to this agent: skill-made-up'));
         Assert.isFalse(res.skillState.skill_instructions.contains('Body of skill-product-information-qa'));
+    }
+
+    @IsTest
+    static void toolFlagsFollowActiveSkills() {
+        Assert.isFalse(run(AGENT, '').skillState.tools.containsKey('create_case'));
+
+        Agent_Skill_State.Response res = run(AGENT, 'skill-troubleshooting-support');
+        Assert.isTrue(res.skillState.tools.get('create_case'));
+    }
+
+    @IsTest
+    static void agentToolsValidateToolReferences() {
+        Agent_Skill_Binding__c binding = [SELECT Id FROM Agent_Skill_Binding__c LIMIT 1];
+        binding.Agent_Tools__c = 'get_order_status, track_shipment';
+        update binding;
+
+        Agent_Skill_State.Response res = run(AGENT, 'skill-troubleshooting-support');
+
+        Assert.isFalse(res.skillState.tools.containsKey('create_case'));
+        Assert.isTrue(res.skillState.skill_warnings.contains('Unknown tool indicator(s): CreateCase'));
+    }
+
+    @IsTest
+    static void requireApprovalHidesUnapprovedSkills() {
+        Agent_Skill_Binding__c binding = [SELECT Id FROM Agent_Skill_Binding__c LIMIT 1];
+        binding.Require_Approval__c = true;
+        update binding;
+
+        Agent_Skill_State.Response res = run(AGENT, '');
+
+        Assert.isFalse(res.skillState.skill_instructions.contains('Body of skill-product-information-qa'));
+        Assert.isTrue(String.isNotBlank(res.skillState.skill_warnings));
+    }
+
+    @IsTest
+    static void usageIsLogged() {
+        Test.startTest();
+        run(AGENT, 'skill-troubleshooting-support');
+        Test.stopTest();
+
+        Agent_Skill_Usage_Log__c log = [SELECT Agent_Name__c, Active_Skills__c, Instruction_Chars__c FROM Agent_Skill_Usage_Log__c];
+        Assert.areEqual(AGENT, log.Agent_Name__c);
+        Assert.areEqual('skill-troubleshooting-support', log.Active_Skills__c);
+        Assert.isTrue(log.Instruction_Chars__c > 0);
     }
 
     @IsTest
