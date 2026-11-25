@@ -2,17 +2,20 @@
 # Customer Support Progressive Disclosure Agent
 # -----------------------------------------------------------------------------
 # Architecture
-# - start_agent (agent_router): loads role+core skills (flat),
-#   fetches lean headers for candidate_skills via Agent_Skill_HeaderProvider,
-#   the LLM sets skills_to_load (no-spaces CSV) via select_skills, and
-#   after_reasoning transitions to the generic_handler topic. The router never
-#   loads LTM so past conversations cannot bias skill selection.
-# - generic_handler (topic): ONE topic-agnostic handler. Loads OPTIONAL LTM
-#   (Agent_Context__c for ContactId) once per session, then loads skills_to_load
-#   (first run in reasoning; each selected skill cascades to its workflows via
-#   References__c), injects the composed instructions, and re-exposes the full
-#   support-demo tool catalog under reasoning.actions. Behavior for a turn is
-#   determined entirely by which skills were loaded.
+# - start_agent (agent_router): hands off to skill_host on every turn.
+# - skill_host (subagent): one host whose behavior comes from the active skills.
+#   - Agent_Skill_State resolves this agent's skill wiring (by agent_name) and
+#     returns skill_state: the skill menu, active skills, composed instructions
+#     (always-on role/core skills + active skills), and loader warnings.
+#   - The model calls switch_skills to change requested_skills. Instructions
+#     re-resolve after the tool runs, and skills reload whenever
+#     requested_skills differs from skill_state.active_skills.
+#   - Optional LTM: loads Agent_Context__c for ContactId once per session. The
+#     model records memory with update_memory; after_reasoning saves it.
+#
+# skill_state fields are read-only in Agent Script; only the Apex action writes
+# the object. Its default must contain active_skills: reading a missing field
+# makes the whole if condition evaluate false.
 #
 # Test contacts (myDevOrg) with Agent_Context__c memory. In messaging sessions
 # ContactId is filled from MessagingContactId (@MessagingEndUser.ContactId).
@@ -42,7 +45,7 @@ model_config:
 config:
     developer_name: "customer_support_progressive_pd2"
     agent_label: "Customer Support (Progressive Disclosure)"
-    description: "Router-level progressive disclosure with a single generic handler topic driven by loaded skills."
+    description: "Progressive disclosure through a single host subagent driven by an object-typed skill_state wired in the Skills app."
 
 
 access:
@@ -57,83 +60,49 @@ variables:
         source: @MessagingSession.MessagingEndUserId
     RoutableId: linked string
         source: @MessagingSession.Id
+    agent_name: mutable string = "customer_support_progressive_pd2"
+        description: "Developer name used to look up this agent's skill wiring."
+    skill_state: mutable object = {"active_skills": "unloaded"}
+        description: "Skill menu, active skills, composed instructions, and warnings from Agent_Skill_State."
+    requested_skills: mutable string = ""
+        description: "CSV of skills the model asked for. A change triggers a reload."
     context_loaded: mutable boolean = False
-    router_initialized: mutable boolean = False
+    memory_dirty: mutable boolean = False
     agent_memory: mutable string = ""
     memory_summary: mutable string = ""
     memory_goal: mutable string = ""
     memory_has_issue: mutable boolean = False
     memory_style: mutable string = ""
-    instruction_bundle_json: mutable string = ""
-    composed_instructions: mutable string = ""
-    candidate_skills: mutable string = "skill-product-information-qa,skill-troubleshooting-support,skill-support-case-management,skill-order-status-support"
-    skill_headers: mutable string = ""
-    skills_to_load: mutable string = ""
-    skills_loaded: mutable boolean = False
 
 start_agent agent_router:
-    description: "Progressive disclosure: load role/core + optional memory, fetch candidate headers, select skills, route."
-
-    actions:
-        load_skills_init:
-            description: "Load role and core skills into the instruction bundle (flat, no cascade)."
-            inputs:
-                instructionNames: string
-                    description: "CSV list of role and core skill names."
-            outputs:
-                loadedInstructionBundle: string
-                    description: "Aggregated instruction bundle JSON for merge."
-                instructionsBundle: string
-                    description: "Formatted prompt (not consumed in start_agent)."
-            target: "apex://Agent_Skill_LoadAndCompose_v2"
-        get_skill_headers:
-            description: "Fetch lean Name + WhenToUse headers for candidate skills (no body, no expansion)."
-            inputs:
-                skillNames: string
-                    description: "CSV of candidate skill names."
-            outputs:
-                skillHeaders: string
-                    description: "One line per skill: '- <Name>: <WhenToUse__c>'."
-                missingNames: string
-                    description: "CSV of names inactive, not found, or missing WhenToUse."
-            target: "apex://Agent_Skill_HeaderProvider"
+    description: "Hand off to the skill host."
 
     reasoning:
         instructions: ->
-            if @variables.skills_to_load != "":
-                transition to @subagent.generic_handler
-
-            if @variables.router_initialized == False:
-                run @actions.load_skills_init
-                    with instructionNames="role-customer-support-agent,core-skill-ltmManagement-service-agent,core-skill-txt-response-guidelines"
-                    set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
-
-                run @actions.get_skill_headers
-                    with skillNames=@variables.candidate_skills
-                    set @variables.skill_headers=@outputs.skillHeaders
-
-                set @variables.router_initialized=True
-
-            | You are the router. Your MANDATORY FIRST ACTION on every turn is to evaluate the user's message against the available skill headers and select which skills are needed.
-            | Available skills (choose from these names only):
-            | {!@variables.skill_headers}
-            |
-            | YOU MUST ALWAYS CALL {!@actions.select_skills} WITH YOUR SELECTED SKILLS BEFORE DOING ANYTHING ELSE. Do not answer the user directly.
-            | If one or more skills match, select them as a comma-separated list. If unclear or greeting, select "skill-product-information-qa". Never respond without calling select_skills.
-        actions:
-            select_skills: @utils.setVariables
-                description: "Record the chosen skill names to load for this request."
-                with skills_to_load=...
-
-    after_reasoning:
-        transition to @subagent.generic_handler
+            transition to @subagent.skill_host
 
 
-subagent generic_handler:
-    label: "Generic Handler"
-    description: "Single generic handler. Loads the router-selected skills and re-exposes the full support-demo tool catalog; behavior is driven by the loaded skills."
+subagent skill_host:
+    label: "Skill Host"
+    description: "Single host subagent. Behavior and tool use are driven by the active skills."
 
     actions:
+        load_skill_state:
+            description: "Resolve requested skills against this agent's wiring and return the skill state."
+            inputs:
+                agentName: string
+                    description: "Developer name of the calling agent."
+                requestedSkills: string
+                    description: "CSV of skill names to activate."
+            outputs:
+                skillState: object
+                    description: "Skill menu, active skills, composed instructions, and warnings."
+                    complex_data_type_name: "@apexClassType/c__Agent_Skill_State$SkillState"
+                    filter_from_agent: True
+                activeSkills: string
+                    description: "CSV of the skills actually activated."
+                    filter_from_agent: True
+            target: "apex://Agent_Skill_State"
         load_user_memory:
             description: "Load persistent memory for this contact (optional LTM)."
             inputs:
@@ -151,19 +120,23 @@ subagent generic_handler:
                 memoryStyle: string
                     description: "Communication style."
             target: "apex://LoadAgentMemory"
-        load_skills:
-            description: "Load the selected skills (cascading to workflows via References), merge with role/core, and compose instructions."
+        save_context:
+            description: "Persist an Agent_Context__c memory checkpoint (optional LTM)."
             inputs:
-                instructionNames: string
-                    description: "CSV of router-selected skill names."
-                existingInstructionBundle: string
-                    description: "Existing bundle JSON (role + core from start_agent)."
+                contact_id: string
+                    description: "Contact ID."
+                new_summary: string
+                    description: "Structured Markdown conversation summary."
+                new_goal: string
+                    description: "Pending goal or empty string."
+                has_issue: boolean
+                    description: "Unresolved issue flag."
+                new_style: string
+                    description: "Communication style: concise, detailed, or formal."
             outputs:
-                instructionsBundle: string
-                    description: "Formatted prompt-ready instruction text."
-                loadedInstructionBundle: string
-                    description: "Raw instruction bundle JSON for merge."
-            target: "apex://Agent_Skill_LoadAndCompose_v2"
+                success: boolean
+                    description: "Whether save succeeded."
+            target: "flow://Save_Agent_ContextObject"
         create_case:
             description: "Create a new support case from a concise subject line."
             inputs:
@@ -257,23 +230,6 @@ subagent generic_handler:
                 token: string
                     description: "Verification token reference."
             target: "flow://SendVerificationEmail"
-        save_context:
-            description: "Persist an Agent_Context__c memory checkpoint (optional LTM)."
-            inputs:
-                contact_id: string
-                    description: "Contact ID."
-                new_summary: string
-                    description: "Structured Markdown conversation summary."
-                new_goal: string
-                    description: "Pending goal or empty string."
-                has_issue: boolean
-                    description: "Unresolved issue flag."
-                new_style: string
-                    description: "Communication style: concise, detailed, or formal."
-            outputs:
-                success: boolean
-                    description: "Whether save succeeded."
-            target: "flow://Save_Agent_ContextObject"
 
     reasoning:
         instructions: ->
@@ -288,29 +244,42 @@ subagent generic_handler:
                     set @variables.memory_goal=@outputs.memoryGoal
                     set @variables.memory_has_issue=@outputs.hasIssue
                     set @variables.memory_style=@outputs.memoryStyle
-                    set @variables.context_loaded=True
+                set @variables.context_loaded=True
 
-            if @variables.skills_loaded == False:
-                run @actions.load_skills
-                    with instructionNames=@variables.skills_to_load
-                    with existingInstructionBundle=@variables.instruction_bundle_json
-                    set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
-                    set @variables.composed_instructions=@outputs.instructionsBundle
-                    set @variables.skills_loaded=True
+            if @variables.requested_skills != @variables.skill_state.active_skills:
+                run @actions.load_skill_state
+                    with agentName=@variables.agent_name
+                    with requestedSkills=@variables.requested_skills
+                    set @variables.skill_state=@outputs.skillState
+                    set @variables.requested_skills=@outputs.activeSkills
 
+            | Skills available to this agent:
+            | {!@variables.skill_state.skill_menu}
+            |
+            | Active skills: {!@variables.skill_state.active_skills}
+            | Before answering, check the request against the skills above. If it needs a skill that is not active, call {!@actions.switch_skills} with the complete CSV of skill names to use (no spaces after commas), then answer using the reloaded instructions. Keep a skill active while the conversation still needs it.
+            |
             | agent_memory (empty if none):
             | {!@variables.agent_memory}
             |
             | Follow these instructions. They determine what to do and which tools to use:
-            | {!@variables.composed_instructions}
+            | {!@variables.skill_state.skill_instructions}
+
+            if @variables.ContactId and @variables.ContactId != "":
+                | Before your final answer on each turn, call {!@actions.update_memory} once to record the conversation so far. It is saved automatically.
 
         actions:
-            load_skills: @actions.load_skills
-                description: "Load selected skills into instruction bundle."
-                with instructionNames=@variables.skills_to_load
-                with existingInstructionBundle=@variables.instruction_bundle_json
-                set @variables.instruction_bundle_json=@outputs.loadedInstructionBundle
-                set @variables.composed_instructions=@outputs.instructionsBundle
+            switch_skills: @utils.setVariables
+                description: "Change which skills are active for this request. Pass the complete CSV of skill names from the skill menu."
+                with requested_skills=...
+            update_memory: @utils.setVariables
+                description: "Record long-term memory for this customer. Do not respond to the user in the same step."
+                available when @variables.ContactId and @variables.ContactId != ""
+                with memory_summary=...
+                with memory_goal=...
+                with memory_has_issue=...
+                with memory_style=...
+                with memory_dirty=True
             create_case: @actions.create_case
                 description: "Create a new support case from a concise, user-approved subject."
                 with subject=...
@@ -320,33 +289,36 @@ subagent generic_handler:
                 with customer_id=@variables.ContactId
                 with issue_description=...
                 with issue_type=...
-            route_to_esa: @utils.escalate
-                description: "Route the conversation to a human (Enhanced Service Agent) via Omni-Channel."
             get_order_status: @actions.get_order_status
                 description: "Look up the current status of an order."
                 with order_id=...
             fetch_support_history: @actions.fetch_support_history
-                description: "Fetch the support/case history for a user."
-                with user_id=...
+                description: "Fetch the support/case history for the current customer."
+                available when @variables.ContactId and @variables.ContactId != ""
+                with user_id=@variables.ContactId
             track_shipment: @actions.track_shipment
                 description: "Track a shipment by carrier and tracking number."
                 with carrier=...
                 with tracking_number=...
             fetch_account_data: @actions.fetch_account_data
-                description: "Fetch account details for a user."
-                with user_id=...
+                description: "Fetch account details for the current customer."
+                available when @variables.ContactId and @variables.ContactId != ""
+                with user_id=@variables.ContactId
             get_product_info: @actions.get_product_info
                 description: "Look up product specifications, price, and availability."
                 with product_name=...
             send_verification_email: @actions.send_verification_email
-                description: "Send a one-time verification code to the customer."
-                with customer_id=...
-                with email=...
-            save_context: @actions.save_context
-                description: "Persist an Agent_Context__c memory checkpoint (optional LTM)."
+                description: "Send a one-time verification code to the current customer."
                 available when @variables.ContactId and @variables.ContactId != ""
+                with customer_id=@variables.ContactId
+                with email=...
+
+    after_reasoning:
+        if @variables.memory_dirty == True and @variables.ContactId and @variables.ContactId != "":
+            run @actions.save_context
                 with contact_id=@variables.ContactId
-                with new_summary=...
-                with new_goal=...
-                with has_issue=...
-                with new_style=...
+                with new_summary=@variables.memory_summary
+                with new_goal=@variables.memory_goal
+                with has_issue=@variables.memory_has_issue
+                with new_style=@variables.memory_style
+            set @variables.memory_dirty=False
