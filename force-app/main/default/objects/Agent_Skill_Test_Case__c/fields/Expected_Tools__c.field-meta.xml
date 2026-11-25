@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Expected_Tools__c</fullName>
+    <description>CSV of action names that must be enabled once the skills load.</description>
+    <label>Expected Tools</label>
+    <length>255</length>
+    <type>Text</type>
+</CustomField>

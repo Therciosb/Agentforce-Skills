@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Test_Case__c</fullName>
+    <label>Test Case</label>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <referenceTo>Agent_Skill_Test_Case__c</referenceTo>
+    <relationshipLabel>Results</relationshipLabel>
+    <relationshipName>Results</relationshipName>
+    <type>Lookup</type>
+</CustomField>

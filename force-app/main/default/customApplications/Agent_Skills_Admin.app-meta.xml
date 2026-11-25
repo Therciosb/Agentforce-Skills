@@ -33,6 +33,7 @@
     <tabs>Agent_Skills_Home</tabs>
     <tabs>Agent_Skills_Browse</tabs>
     <tabs>Agent_Skills_Agents</tabs>
+    <tabs>Agent_Skills_Tests</tabs>
     <tabs>Agent_Skills_Repo__c</tabs>
     <uiType>Lightning</uiType>
 </CustomApplication>

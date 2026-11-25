@@ -1,0 +1,126 @@
+<template>
+    <div class="studio">
+        <header class="bar">
+            <div class="bar__title">
+                <h1>Skill tests</h1>
+                <p class="bar__sub">Check which skills an agent picks for a message and which tools those skills enable. Export the cases to Testing Center to run them against the live agent.</p>
+            </div>
+            <div class="bar__agent">
+                <lightning-combobox label="Agent" placeholder="Select a wired agent" options={agentOptions} value={agentName} onchange={handleAgent}></lightning-combobox>
+            </div>
+        </header>
+
+        <template lwc:if={error}>
+            <div class="notice notice--error" role="alert">
+                <lightning-icon icon-name="utility:error" size="x-small" variant="error"></lightning-icon>
+                <span>{error}</span>
+            </div>
+        </template>
+
+        <template lwc:if={agentName}>
+            <div class="card">
+                <div class="card__head">
+                    <h2>Test cases</h2>
+                    <div class="card__actions">
+                        <lightning-button label="New case" icon-name="utility:add" onclick={handleNew}></lightning-button>
+                        <lightning-button label="Export spec" icon-name="utility:download" onclick={handleExport} disabled={noCases}></lightning-button>
+                        <lightning-button label="Run selected" onclick={handleRunSelected} disabled={runSelectedDisabled}></lightning-button>
+                        <lightning-button variant="brand" label="Run all" onclick={handleRunAll} disabled={runAllDisabled}></lightning-button>
+                    </div>
+                </div>
+                <template lwc:if={running}>
+                    <lightning-progress-bar value={progress} size="small"></lightning-progress-bar>
+                    <p class="hint">Running {runDone} of {runTotal}…</p>
+                </template>
+                <template lwc:if={hasCases}>
+                    <lightning-datatable
+                        key-field="Id"
+                        data={caseRows}
+                        columns={columns}
+                        onrowaction={handleRowAction}
+                        onrowselection={handleSelection}></lightning-datatable>
+                </template>
+                <template lwc:else>
+                    <p class="empty">No test cases for this agent yet.</p>
+                </template>
+            </div>
+
+            <template lwc:if={editing}>
+                <div class="card">
+                    <h2>{editTitle}</h2>
+                    <lightning-record-edit-form object-api-name="Agent_Skill_Test_Case__c" record-id={editId} onsubmit={handleSubmit} onsuccess={handleSaved} onerror={handleFormError}>
+                        <lightning-messages></lightning-messages>
+                        <div class="grid">
+                            <lightning-input-field field-name="Name" required></lightning-input-field>
+                            <lightning-input-field field-name="Active__c"></lightning-input-field>
+                        </div>
+                        <lightning-input-field field-name="Utterance__c" required></lightning-input-field>
+                        <div class="grid">
+                            <lightning-input-field field-name="Expected_Skills__c"></lightning-input-field>
+                            <lightning-input-field field-name="Expected_Tools__c"></lightning-input-field>
+                        </div>
+                        <lightning-input-field field-name="Expected_Outcome__c"></lightning-input-field>
+                        <p class="hint">Selectable skills on this agent: {selectableHint}</p>
+                        <div class="actions">
+                            <lightning-button label="Cancel" onclick={handleCancel}></lightning-button>
+                            <lightning-button variant="brand" type="submit" label="Save"></lightning-button>
+                        </div>
+                    </lightning-record-edit-form>
+                </div>
+            </template>
+
+            <template lwc:if={hasResults}>
+                <div class="card">
+                    <div class="card__head">
+                        <h2>Last run</h2>
+                        <span class={summaryClass}>{passCount} of {resultCount} passed</span>
+                    </div>
+                    <ul class="results">
+                        <template for:each={resultRows} for:item="r">
+                            <li key={r.testCaseId} class="result">
+                                <div class="result__head">
+                                    <span class={r.badgeClass}>{r.status}</span>
+                                    <span class="result__name">{r.name}</span>
+                                </div>
+                                <dl class="facts">
+                                    <dt>Expected skills</dt>
+                                    <dd>{r.expectedDisplay}</dd>
+                                    <dt>Router picked</dt>
+                                    <dd>{r.selectedSkills}</dd>
+                                    <dt>Tools enabled</dt>
+                                    <dd>{r.toolsDisplay}</dd>
+                                    <template lwc:if={r.missingTools}>
+                                        <dt>Missing tools</dt>
+                                        <dd class="warn">{r.missingTools}</dd>
+                                    </template>
+                                    <template lwc:if={r.reason}>
+                                        <dt>Why</dt>
+                                        <dd>{r.reason}</dd>
+                                    </template>
+                                    <template lwc:if={r.warnings}>
+                                        <dt>Warnings</dt>
+                                        <dd class="warn">{r.warnings}</dd>
+                                    </template>
+                                </dl>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+            </template>
+
+            <template lwc:if={spec}>
+                <div class="card">
+                    <div class="card__head">
+                        <h2>Testing Center spec</h2>
+                        <lightning-button label="Copy" icon-name="utility:copy" onclick={handleCopy}></lightning-button>
+                    </div>
+                    <p class="hint">Save as specs/{agentName}-testSpec.yaml, then run: sf agent test create --spec specs/{agentName}-testSpec.yaml --api-name {agentName}_skills</p>
+                    <pre class="code">{spec}</pre>
+                </div>
+            </template>
+        </template>
+        <template lwc:else>
+            <p class="empty">Select an agent to see its test cases.</p>
+        </template>
+    </div>
+</template>

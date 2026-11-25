@@ -207,6 +207,7 @@ public with sharing class Agent_Skill_Binding_Controller {
         Agent_Skill_State.Request req = new Agent_Skill_State.Request();
         req.agentName = agentName;
         req.requestedSkills = requestedSkills;
+        Agent_Skill_State.recordUsage = false;
         return Agent_Skill_State.resolve(new List<Agent_Skill_State.Request>{ req })[0].skillState;
     }
 

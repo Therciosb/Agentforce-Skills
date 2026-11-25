@@ -36,6 +36,9 @@ public with sharing class Agent_Skill_State {
         public String agentTools;
     }
 
+    // Off for admin previews and test runs so telemetry reflects real agent traffic.
+    public static Boolean recordUsage = true;
+
     @InvocableMethod(
         label='Agent Skill State'
         description='Resolves requested skills against the agent wiring and returns the skill state object (menu, active skills, composed instructions, warnings, tool flags).'
@@ -49,7 +52,9 @@ public with sharing class Agent_Skill_State {
             responses.add(res);
             events.add(usageEvent(req, res.skillState, System.currentTimeMillis() - started));
         }
-        publish(events);
+        if (recordUsage) {
+            publish(events);
+        }
         return responses;
     }
 

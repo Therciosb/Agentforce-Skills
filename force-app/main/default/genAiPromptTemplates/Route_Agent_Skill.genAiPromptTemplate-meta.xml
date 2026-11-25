@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GenAiPromptTemplate xmlns="http://soap.sforce.com/2006/04/metadata">
+    <activeVersionIdentifier>RouteAgentSkillv1=_1</activeVersionIdentifier>
+    <developerName>Route_Agent_Skill</developerName>
+    <masterLabel>Route Agent Skill</masterLabel>
+    <overridable>false</overridable>
+    <templateVersions>
+        <content>You decide which skills an AI agent should load to handle a customer message. Answer with STRICT JSON and nothing else.
+
+Skills the agent can activate (name: when to use):
+{!$Input:skillMenu}
+
+Skills active when nothing else is requested: {!$Input:defaultSkills}
+
+Customer message: {!$Input:utterance}
+
+Pick the smallest set of skills from the list above that the agent needs to handle this message. If the default skills are enough, return them. Use only names that appear in the list, exactly as written.
+
+Return a single JSON object:
+{&quot;skills&quot;: [&quot;skill-name&quot;], &quot;reason&quot;: &quot;one sentence explaining the choice&quot;}</content>
+        <inputs>
+            <apiName>skillMenu</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>skillMenu</masterLabel>
+            <referenceName>Input:skillMenu</referenceName>
+            <required>true</required>
+        </inputs>
+        <inputs>
+            <apiName>defaultSkills</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>defaultSkills</masterLabel>
+            <referenceName>Input:defaultSkills</referenceName>
+            <required>false</required>
+        </inputs>
+        <inputs>
+            <apiName>utterance</apiName>
+            <definition>primitive://String</definition>
+            <masterLabel>utterance</masterLabel>
+            <referenceName>Input:utterance</referenceName>
+            <required>true</required>
+        </inputs>
+        <isCitationEnabled>false</isCitationEnabled>
+        <primaryModel>sfdc_ai__DefaultOpenAIGPT4OmniMini</primaryModel>
+        <status>Published</status>
+        <versionIdentifier>RouteAgentSkillv1=_1</versionIdentifier>
+    </templateVersions>
+    <type>einstein_gpt__flex</type>
+    <visibility>Global</visibility>
+</GenAiPromptTemplate>

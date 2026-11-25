@@ -1,0 +1,25 @@
+name: "customer_support_progressive_pd2 skill routing"
+subjectType: AGENT
+subjectName: customer_support_progressive_pd2
+testCases:
+  - utterance: "Show me the status of the support cases I opened before."
+    expectedTopic: skill_host
+    expectedOutcome: "Agent helps the customer review their previous support cases, asking them to verify their identity if needed."
+  - utterance: "My phone screen keeps flickering even after a restart. What should I try?"
+    expectedTopic: skill_host
+    expectedOutcome: "Agent suggests troubleshooting steps for the flickering screen beyond a restart."
+  - utterance: "Where is my order 00000100?"
+    expectedTopic: skill_host
+    expectedActions:
+      - get_order_status
+    expectedOutcome: "Agent reports the status of order 00000100."
+  - utterance: "What is the price of the Widget X?"
+    expectedTopic: skill_host
+    expectedActions:
+      - get_product_info
+    expectedOutcome: "Agent states the price of the Widget X."
+  - utterance: "Can you track my UPS package 1Z999AA10123456784?"
+    expectedTopic: skill_host
+    expectedActions:
+      - track_shipment
+    expectedOutcome: "Agent reports the tracking status of the UPS package."
