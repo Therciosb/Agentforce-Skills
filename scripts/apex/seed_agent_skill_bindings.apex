@@ -3,8 +3,7 @@
 // sf apex run --file scripts/apex/seed_agent_skill_bindings.apex --target-org <org>
 
 Map<String, String> labels = new Map<String, String>{
-    'customer_support_progressive_pd2' => 'Customer Support (Progressive Disclosure)',
-    'skill_state_spike' => 'Skill State Spike'
+    'customer_support_progressive_pd2' => 'Customer Support (Progressive Disclosure)'
 };
 
 List<List<String>> supportItems = new List<List<String>>{

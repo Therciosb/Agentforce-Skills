@@ -124,13 +124,13 @@ public with sharing class Agent_Skill_State {
         if (names.isEmpty()) {
             return '';
         }
-        Agent_Skill_LoadAndCompose_v2.LoadAndComposeRequest loadReq = new Agent_Skill_LoadAndCompose_v2.LoadAndComposeRequest();
+        Agent_Skill_LoadAndCompose.LoadAndComposeRequest loadReq = new Agent_Skill_LoadAndCompose.LoadAndComposeRequest();
         loadReq.instructionNames = String.join(names, ',');
         loadReq.locale = wiring.locale;
         loadReq.requireApproval = wiring.requireApproval;
         loadReq.knownActionNames = wiring.agentTools;
-        Agent_Skill_LoadAndCompose_v2.LoadAndComposeResponse loadRes =
-            Agent_Skill_LoadAndCompose_v2.loadAndCompose(new List<Agent_Skill_LoadAndCompose_v2.LoadAndComposeRequest>{ loadReq })[0];
+        Agent_Skill_LoadAndCompose.LoadAndComposeResponse loadRes =
+            Agent_Skill_LoadAndCompose.loadAndCompose(new List<Agent_Skill_LoadAndCompose.LoadAndComposeRequest>{ loadReq })[0];
         if (String.isNotBlank(loadRes.warnings)) {
             warnings.add(loadRes.warnings);
         }

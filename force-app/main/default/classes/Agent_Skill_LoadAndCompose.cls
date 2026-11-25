@@ -15,6 +15,24 @@ public with sharing class Agent_Skill_LoadAndCompose {
         public String existingInstructionBundle;
 
         @InvocableVariable(
+            label='Locale (optional, default en-US)'
+            description='Locale used to resolve instruction records.'
+        )
+        public String locale;
+
+        @InvocableVariable(
+            label='Require Approval (optional, default false)'
+            description='When true, only Approved instruction records load.'
+        )
+        public Boolean requireApproval;
+
+        @InvocableVariable(
+            label='Known Action Names CSV (optional)'
+            description='Agent Script action names the agent exposes; validates [[tool:Name]] indicators.'
+        )
+        public String knownActionNames;
+
+        @InvocableVariable(
             label='Max Reference Depth (optional, default 4)'
             description='Maximum depth for reference expansion in composer.'
         )
@@ -71,67 +89,104 @@ public with sharing class Agent_Skill_LoadAndCompose {
     )
     public static List<LoadAndComposeResponse> loadAndCompose(List<LoadAndComposeRequest> requests) {
         List<LoadAndComposeResponse> responses = new List<LoadAndComposeResponse>();
-        for (LoadAndComposeRequest req : requests) {
-            responses.add(processRequest(req));
+        if (requests == null || requests.isEmpty()) {
+            return responses;
         }
+
+        // Prepare bulk loader requests
+        List<Agent_Skill_Loader.LoaderRequest> loaderReqs = new List<Agent_Skill_Loader.LoaderRequest>();
+        for (LoadAndComposeRequest req : requests) {
+            Agent_Skill_Loader.LoaderRequest loaderReq = new Agent_Skill_Loader.LoaderRequest();
+            loaderReq.instructionNames = sanitizeNames(req != null ? req.instructionNames : null);
+            loaderReq.existingInstructionBundle = req != null ? req.existingInstructionBundle : null;
+            loaderReq.locale = req != null ? req.locale : null;
+            loaderReq.requireApproval = req != null && req.requireApproval == true;
+            loaderReq.includeReferences = (req != null && req.includeReferences != null) ? req.includeReferences : true;
+            loaderReqs.add(loaderReq);
+        }
+
+        List<Agent_Skill_Loader.LoaderResponse> loaderResponses;
+        try {
+            loaderResponses = Agent_Skill_Loader.load(loaderReqs);
+        } catch (Exception ex) {
+            for (LoadAndComposeRequest req : requests) {
+                LoadAndComposeResponse errRes = new LoadAndComposeResponse();
+                errRes.instructionsBundle = '';
+                errRes.loadedInstructionBundle = '';
+                errRes.skillsLoadedCount = 0;
+                errRes.composeRan = false;
+                errRes.warnings = 'Loader execution error: ' + ex.getMessage();
+                responses.add(errRes);
+            }
+            return responses;
+        }
+
+        // Process loader responses and compose in bulk
+        for (Integer i = 0; i < requests.size(); i++) {
+            LoadAndComposeRequest req = requests[i];
+            Agent_Skill_Loader.LoaderResponse loadOut = (loaderResponses != null && loaderResponses.size() > i)
+                ? loaderResponses[i]
+                : null;
+
+            LoadAndComposeResponse resp = new LoadAndComposeResponse();
+            resp.instructionsBundle = '';
+            resp.loadedInstructionBundle = (loadOut != null && loadOut.loadedInstructionBundle != null) ? loadOut.loadedInstructionBundle : '';
+            resp.skillsLoadedCount = (loadOut != null && loadOut.skillsLoadedCount != null) ? loadOut.skillsLoadedCount : 0;
+            resp.composeRan = false;
+
+            List<String> warnParts = new List<String>();
+            if (loadOut != null && String.isNotBlank(loadOut.warnings)) {
+                warnParts.add(loadOut.warnings);
+            }
+
+            Boolean loadSuccess = String.isNotBlank(resp.loadedInstructionBundle) && resp.skillsLoadedCount > 0;
+            if (loadSuccess) {
+                try {
+                    Agent_Skill_PromptComposer.ComposerRequest composerReq = new Agent_Skill_PromptComposer.ComposerRequest();
+                    composerReq.instructionBundle = resp.loadedInstructionBundle;
+                    composerReq.requiredNames = sanitizeNames(req != null ? req.instructionNames : null);
+                    composerReq.maxReferenceDepth = (req != null && req.maxReferenceDepth != null) ? req.maxReferenceDepth : 4;
+                    composerReq.includeReferenceExpansion = (req != null && req.includeReferenceExpansion != null) ? req.includeReferenceExpansion : true;
+                    composerReq.locale = req != null ? req.locale : null;
+                    composerReq.requireApproval = req != null && req.requireApproval == true;
+                    composerReq.knownActionNames = req != null ? req.knownActionNames : null;
+
+                    List<Agent_Skill_PromptComposer.ComposerResponse> composerResponses =
+                        Agent_Skill_PromptComposer.compose(new List<Agent_Skill_PromptComposer.ComposerRequest>{ composerReq });
+                    
+                    if (composerResponses != null && !composerResponses.isEmpty()) {
+                        Agent_Skill_PromptComposer.ComposerResponse composeOut = composerResponses[0];
+                        resp.instructionsBundle = composeOut.composedInstructions != null ? composeOut.composedInstructions : '';
+                        resp.composeRan = true;
+                        if (String.isNotBlank(composeOut.warnings)) {
+                            warnParts.add(composeOut.warnings);
+                        }
+                    }
+                } catch (Exception ex) {
+                    warnParts.add('Composer error: ' + ex.getMessage());
+                }
+            } else if (String.isBlank(resp.loadedInstructionBundle) && req != null && String.isNotBlank(req.instructionNames)) {
+                warnParts.add('No instruction bundles resolved for requested names.');
+            }
+
+            resp.warnings = String.join(warnParts, ' | ');
+            responses.add(resp);
+        }
+
         return responses;
     }
 
-    private static LoadAndComposeResponse processRequest(LoadAndComposeRequest req) {
-        LoadAndComposeResponse response = new LoadAndComposeResponse();
-        response.instructionsBundle = '';
-        response.loadedInstructionBundle = '';
-        response.skillsLoadedCount = 0;
-        response.composeRan = false;
-        response.warnings = '';
-
-        Agent_Skill_Loader.LoaderRequest loaderReq = new Agent_Skill_Loader.LoaderRequest();
-        loaderReq.instructionNames = req.instructionNames != null ? req.instructionNames : '';
-        loaderReq.existingInstructionBundle = req.existingInstructionBundle;
-        loaderReq.includeReferences = req.includeReferences == null ? true : req.includeReferences;
-
-        List<Agent_Skill_Loader.LoaderResponse> loaderRes = Agent_Skill_Loader.load(
-            new List<Agent_Skill_Loader.LoaderRequest>{ loaderReq }
-        );
-        Agent_Skill_Loader.LoaderResponse loadOut = loaderRes[0];
-
-        response.loadedInstructionBundle = loadOut.loadedInstructionBundle;
-        response.skillsLoadedCount = loadOut.skillsLoadedCount != null ? loadOut.skillsLoadedCount : 0;
-
-        List<String> warnParts = new List<String>();
-        if (String.isNotBlank(loadOut.warnings)) {
-            warnParts.add(loadOut.warnings);
+    private static String sanitizeNames(String rawNames) {
+        if (String.isBlank(rawNames)) {
+            return '';
         }
-
-        Boolean loadSuccess = String.isNotBlank(loadOut.loadedInstructionBundle)
-            && response.skillsLoadedCount > 0;
-
-        if (loadSuccess) {
-            Agent_Skill_PromptComposer.ComposerRequest composerReq = new Agent_Skill_PromptComposer.ComposerRequest();
-            composerReq.instructionBundle = loadOut.loadedInstructionBundle;
-            composerReq.requiredNames = req.instructionNames != null ? req.instructionNames : '';
-            composerReq.maxReferenceDepth = req.maxReferenceDepth != null ? req.maxReferenceDepth : 4;
-            composerReq.includeReferenceExpansion = req.includeReferenceExpansion == null
-                ? true
-                : req.includeReferenceExpansion;
-
-            List<Agent_Skill_PromptComposer.ComposerResponse> composerRes =
-                Agent_Skill_PromptComposer.compose(
-                    new List<Agent_Skill_PromptComposer.ComposerRequest>{ composerReq }
-                );
-            Agent_Skill_PromptComposer.ComposerResponse composeOut = composerRes[0];
-
-            response.instructionsBundle = composeOut.composedInstructions != null
-                ? composeOut.composedInstructions
-                : '';
-            response.composeRan = true;
-
-            if (String.isNotBlank(composeOut.warnings)) {
-                warnParts.add(composeOut.warnings);
+        List<String> cleanedTokens = new List<String>();
+        for (String token : rawNames.split(',')) {
+            String trimmed = token.trim();
+            if (String.isNotBlank(trimmed)) {
+                cleanedTokens.add(trimmed);
             }
         }
-
-        response.warnings = String.join(warnParts, ' | ');
-        return response;
+        return String.join(cleanedTokens, ',');
     }
 }
