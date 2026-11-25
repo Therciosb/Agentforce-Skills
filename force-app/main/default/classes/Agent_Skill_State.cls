@@ -15,6 +15,9 @@ public with sharing class Agent_Skill_State {
         @InvocableVariable(required=true label='Agent Name' description='Developer name of the calling agent; selects its skill wiring.')
         public String agentName;
 
+        @InvocableVariable(label='Subagent Name' description='Developer name of the calling subagent; selects its wiring. Blank uses the agent-level wiring.')
+        public String subagentName;
+
         @InvocableVariable(label='Requested Skills' description='CSV of selectable skill names to activate. Blank activates the defaults.')
         public String requestedSkills;
     }
@@ -28,6 +31,8 @@ public with sharing class Agent_Skill_State {
     }
 
     public class Wiring {
+        // Subagent of the binding that was used; blank for an agent-level binding.
+        public String subagent;
         public List<String> always = new List<String>();
         public List<String> selectable = new List<String>();
         public List<String> defaults = new List<String>();
@@ -65,9 +70,13 @@ public with sharing class Agent_Skill_State {
         state.skill_instructions = '';
         state.tools = new Map<String, Boolean>();
 
-        Wiring wiring = loadWiring(req == null ? null : req.agentName);
+        Wiring wiring = req == null ? null : loadWiring(req.agentName, req.subagentName);
         if (wiring == null) {
-            warnings.add('No skill wiring found for agent: ' + (req == null ? null : req.agentName));
+            String target = req == null ? null : req.agentName;
+            if (req != null && String.isNotBlank(req.subagentName)) {
+                target += ' (subagent ' + req.subagentName.trim() + ')';
+            }
+            warnings.add('No skill wiring found for agent: ' + target);
             state.active_skills = '';
             state.skill_warnings = String.join(warnings, ' | ');
             return toResponse(state);
@@ -159,6 +168,7 @@ public with sharing class Agent_Skill_State {
     private static Agent_Skill_Usage__e usageEvent(Request req, SkillState state, Long durationMs) {
         return new Agent_Skill_Usage__e(
             Agent_Name__c = req == null ? null : req.agentName,
+            Subagent__c = req == null ? null : req.subagentName,
             Requested_Skills__c = req == null ? null : (req.requestedSkills == null ? null : req.requestedSkills.left(255)),
             Active_Skills__c = state.active_skills == null ? null : state.active_skills.left(255),
             Warnings__c = state.skill_warnings,
@@ -176,25 +186,58 @@ public with sharing class Agent_Skill_State {
         }
     }
 
+    public static String bindingKey(String agentName, String subagentName) {
+        String agent = agentName == null ? '' : agentName.trim().toLowerCase();
+        String subagent = subagentName == null ? '' : subagentName.trim().toLowerCase();
+        return agent + ':' + subagent;
+    }
+
     public static Wiring loadWiring(String agentName) {
+        return loadWiring(agentName, null);
+    }
+
+    // Exact subagent binding first, then the agent-level binding (blank subagent). With no subagent
+    // requested, an agent that has a single binding uses it.
+    public static Wiring loadWiring(String agentName, String subagentName) {
         if (String.isBlank(agentName)) {
             return null;
         }
         List<Agent_Skill_Binding__c> bindings = [
-            SELECT Locale__c, Require_Approval__c, Agent_Tools__c,
+            SELECT Subagent__c, Binding_Key__c, Locale__c, Require_Approval__c, Agent_Tools__c,
                 (SELECT Skill_Name__c, Mode__c FROM Items__r ORDER BY Order__c NULLS LAST, Skill_Name__c)
             FROM Agent_Skill_Binding__c
             WHERE Agent_Developer_Name__c = :agentName.trim() AND Status__c = 'Active'
-            LIMIT 1
+            ORDER BY Subagent__c NULLS FIRST
+            LIMIT 200
         ];
-        if (bindings.isEmpty()) {
+        String exactKey = bindingKey(agentName, subagentName);
+        String agentKey = bindingKey(agentName, null);
+        Agent_Skill_Binding__c chosen;
+        Agent_Skill_Binding__c agentLevel;
+        for (Agent_Skill_Binding__c b : bindings) {
+            String key = bindingKey(agentName, b.Subagent__c);
+            if (key == exactKey) {
+                chosen = b;
+            }
+            if (key == agentKey) {
+                agentLevel = b;
+            }
+        }
+        if (chosen == null) {
+            chosen = agentLevel;
+        }
+        if (chosen == null && String.isBlank(subagentName) && bindings.size() == 1) {
+            chosen = bindings[0];
+        }
+        if (chosen == null) {
             return null;
         }
         Wiring wiring = new Wiring();
-        wiring.locale = String.isBlank(bindings[0].Locale__c) ? 'en-US' : bindings[0].Locale__c;
-        wiring.requireApproval = bindings[0].Require_Approval__c == true;
-        wiring.agentTools = bindings[0].Agent_Tools__c == null ? null : bindings[0].Agent_Tools__c.deleteWhitespace();
-        for (Agent_Skill_Binding_Item__c item : bindings[0].Items__r) {
+        wiring.subagent = chosen.Subagent__c;
+        wiring.locale = String.isBlank(chosen.Locale__c) ? 'en-US' : chosen.Locale__c;
+        wiring.requireApproval = chosen.Require_Approval__c == true;
+        wiring.agentTools = chosen.Agent_Tools__c == null ? null : chosen.Agent_Tools__c.deleteWhitespace();
+        for (Agent_Skill_Binding_Item__c item : chosen.Items__r) {
             String name = item.Skill_Name__c.trim();
             if (item.Mode__c == 'Always') {
                 wiring.always.add(name);

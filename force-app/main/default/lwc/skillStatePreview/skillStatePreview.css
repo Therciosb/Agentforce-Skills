@@ -1,0 +1,91 @@
+:host {
+    display: block;
+    --ash-accent-strong: #014486;
+    --ash-ink: #16325c;
+    --ash-muted: #54698d;
+    --ash-line: #e5e9f2;
+    --ash-surface: #ffffff;
+    --ash-canvas: #f3f5fb;
+    --ash-warn: #8c4b02;
+    --ash-radius: 0.75rem;
+    color: var(--ash-ink);
+}
+
+.card {
+    position: relative;
+    background: var(--ash-surface);
+    border: 1px solid var(--ash-line);
+    border-radius: var(--ash-radius);
+    padding: 1rem 1.25rem;
+}
+.card h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+.card h3 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin: 0.75rem 0 0.35rem;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 0.5rem 1rem;
+    align-items: end;
+}
+
+.hint {
+    color: var(--ash-muted);
+    font-size: 0.8rem;
+    margin: 0.25rem 0 0.5rem;
+}
+.warn {
+    color: var(--ash-warn);
+    font-size: 0.85rem;
+    margin: 0.5rem 0;
+}
+
+.skills {
+    display: block;
+    margin-top: 0.75rem;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.facts {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.25rem 1rem;
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+}
+.facts dt,
+.facts__label {
+    color: var(--ash-muted);
+}
+.facts--compact {
+    margin-top: 0;
+    padding-bottom: 0.5rem;
+}
+
+.code {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 0.75rem;
+    background: var(--ash-canvas);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    white-space: pre-wrap;
+    max-height: 16rem;
+    overflow: auto;
+}
+.code--tall {
+    max-height: 28rem;
+}

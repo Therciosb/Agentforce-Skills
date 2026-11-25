@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Binding_Key__c</fullName>
+    <description>Agent developer name and subagent, lowercased and joined with a colon. Set by Agent_Skill_Binding_Trigger; keeps one binding per agent and subagent.</description>
+    <label>Binding Key</label>
+    <length>161</length>
+    <required>false</required>
+    <type>Text</type>
+    <externalId>true</externalId>
+    <unique>true</unique>
+    <caseSensitive>false</caseSensitive>
+</CustomField>

@@ -1,11 +1,15 @@
 public with sharing class Agent_Skill_Binding_Controller {
     private static final Set<String> MODES = new Set<String>{ 'Always', 'Selectable', 'Default' };
     private static final Set<String> WIREABLE_TYPES = new Set<String>{ 'Role', 'Core_Skill', 'Skill' };
+    private static final String DEFAULT_SUBAGENT = 'skill_host';
+    // Published subagent (plugin) developer names end with the 15-character planner Id.
+    private static final Pattern PLUGIN_SUFFIX = Pattern.compile('^(.+)_[A-Za-z0-9]{15}$');
 
     public class BindingSummary {
         @AuraEnabled public Id id;
         @AuraEnabled public String name;
         @AuraEnabled public String agentName;
+        @AuraEnabled public String subagent;
         @AuraEnabled public String status;
         @AuraEnabled public Integer alwaysCount = 0;
         @AuraEnabled public Integer selectableCount = 0;
@@ -21,6 +25,7 @@ public with sharing class Agent_Skill_Binding_Controller {
         @AuraEnabled public Id id { get; set; }
         @AuraEnabled public String name { get; set; }
         @AuraEnabled public String agentName { get; set; }
+        @AuraEnabled public String subagent { get; set; }
         @AuraEnabled public String status { get; set; }
         @AuraEnabled public String locale { get; set; }
         @AuraEnabled public String description { get; set; }
@@ -40,20 +45,31 @@ public with sharing class Agent_Skill_Binding_Controller {
         @AuraEnabled public String label;
     }
 
+    public class WiringSummary {
+        @AuraEnabled public Boolean found = false;
+        // Subagent of the binding that answers for the requested subagent; blank when the agent-level binding is used.
+        @AuraEnabled public String bindingSubagent;
+        @AuraEnabled public List<String> always = new List<String>();
+        @AuraEnabled public List<String> selectable = new List<String>();
+        @AuraEnabled public List<String> defaults = new List<String>();
+        @AuraEnabled public String agentTools;
+    }
+
     @AuraEnabled(cacheable=true)
     public static List<BindingSummary> listBindings() {
         List<BindingSummary> rows = new List<BindingSummary>();
         for (Agent_Skill_Binding__c b : [
-            SELECT Id, Name, Agent_Developer_Name__c, Status__c, (SELECT Mode__c FROM Items__r)
+            SELECT Id, Name, Agent_Developer_Name__c, Subagent__c, Status__c, (SELECT Mode__c FROM Items__r)
             FROM Agent_Skill_Binding__c
             WITH USER_MODE
-            ORDER BY Name
+            ORDER BY Agent_Developer_Name__c, Subagent__c NULLS FIRST
             LIMIT 500
         ]) {
             BindingSummary row = new BindingSummary();
             row.id = b.Id;
             row.name = b.Name;
             row.agentName = b.Agent_Developer_Name__c;
+            row.subagent = b.Subagent__c;
             row.status = b.Status__c;
             for (Agent_Skill_Binding_Item__c item : b.Items__r) {
                 if (item.Mode__c == 'Always') {
@@ -70,7 +86,7 @@ public with sharing class Agent_Skill_Binding_Controller {
     @AuraEnabled(cacheable=true)
     public static BindingDetail getBinding(Id bindingId) {
         List<Agent_Skill_Binding__c> found = [
-            SELECT Id, Name, Agent_Developer_Name__c, Status__c, Locale__c, Description__c, Require_Approval__c, Agent_Tools__c,
+            SELECT Id, Name, Agent_Developer_Name__c, Subagent__c, Status__c, Locale__c, Description__c, Require_Approval__c, Agent_Tools__c,
                 (SELECT Skill_Name__c, Mode__c, Order__c FROM Items__r ORDER BY Order__c NULLS LAST, Skill_Name__c)
             FROM Agent_Skill_Binding__c
             WHERE Id = :bindingId
@@ -84,6 +100,7 @@ public with sharing class Agent_Skill_Binding_Controller {
         detail.id = b.Id;
         detail.name = b.Name;
         detail.agentName = b.Agent_Developer_Name__c;
+        detail.subagent = b.Subagent__c;
         detail.status = b.Status__c;
         detail.locale = b.Locale__c;
         detail.description = b.Description__c;
@@ -141,6 +158,51 @@ public with sharing class Agent_Skill_Binding_Controller {
         return agents;
     }
 
+    // Subagents of the agent's most recently published version, plus subagents that already have a binding.
+    @AuraEnabled(cacheable=true)
+    public static List<String> listAgentSubagents(String agentName) {
+        Set<String> names = new Set<String>();
+        if (String.isBlank(agentName)) {
+            return new List<String>();
+        }
+        String agent = agentName.trim();
+        for (Agent_Skill_Binding__c b : [
+            SELECT Subagent__c FROM Agent_Skill_Binding__c
+            WHERE Agent_Developer_Name__c = :agent AND Subagent__c != null
+            WITH USER_MODE
+            LIMIT 200
+        ]) {
+            names.add(b.Subagent__c);
+        }
+        try {
+            String versionPattern = agent + '_v%';
+            List<GenAiPlannerDefinition> planners = [
+                SELECT Id FROM GenAiPlannerDefinition
+                WHERE DeveloperName = :agent OR DeveloperName LIKE :versionPattern
+                ORDER BY CreatedDate DESC
+                LIMIT 1
+            ];
+            if (!planners.isEmpty()) {
+                Set<Id> pluginIds = new Set<Id>();
+                for (GenAiPlannerFunctionDef f : [SELECT Plugin FROM GenAiPlannerFunctionDef WHERE PlannerId = :planners[0].Id]) {
+                    if (f.Plugin instanceof Id) {
+                        pluginIds.add((Id) f.Plugin);
+                    }
+                }
+                for (GenAiPluginDefinition p : [SELECT DeveloperName FROM GenAiPluginDefinition WHERE Id IN :pluginIds]) {
+                    Matcher m = PLUGIN_SUFFIX.matcher(p.DeveloperName);
+                    names.add(m.matches() ? m.group(1) : p.DeveloperName);
+                }
+            }
+        } catch (Exception ex) {
+            // Planner metadata is not queryable without Agentforce; the UI accepts a typed subagent name.
+            System.debug(LoggingLevel.FINE, 'Subagent discovery skipped: ' + ex.getMessage());
+        }
+        List<String> sorted = new List<String>(names);
+        sorted.sort();
+        return sorted;
+    }
+
     @AuraEnabled
     public static Id saveBinding(String payloadJson) {
         BindingDetail input;
@@ -154,10 +216,12 @@ public with sharing class Agent_Skill_Binding_Controller {
             throw new AuraHandledException(String.join(errors, ' '));
         }
 
+        String subagent = String.isBlank(input.subagent) ? null : input.subagent.trim();
         Agent_Skill_Binding__c binding = new Agent_Skill_Binding__c(
             Id = input.id,
-            Name = String.isBlank(input.name) ? input.agentName.trim() : input.name.trim(),
+            Name = String.isBlank(input.name) ? defaultName(input.agentName.trim(), subagent) : input.name.trim(),
             Agent_Developer_Name__c = input.agentName.trim(),
+            Subagent__c = subagent,
             Status__c = String.isBlank(input.status) ? 'Active' : input.status,
             Locale__c = String.isBlank(input.locale) ? 'en-US' : input.locale.trim(),
             Description__c = input.description,
@@ -185,6 +249,13 @@ public with sharing class Agent_Skill_Binding_Controller {
             Database.insert(items, AccessLevel.USER_MODE);
         } catch (DmlException ex) {
             Database.rollback(sp);
+            if (ex.getDmlType(0) == StatusCode.DUPLICATE_VALUE) {
+                throw new AuraHandledException(
+                    input.agentName.trim() + ' already has skill wiring for '
+                    + (subagent == null ? 'all subagents (agent level)' : 'subagent ' + subagent)
+                    + '. Edit that wiring instead.'
+                );
+            }
             throw new AuraHandledException(ex.getDmlMessage(0));
         } catch (Exception ex) {
             Database.rollback(sp);
@@ -203,19 +274,37 @@ public with sharing class Agent_Skill_Binding_Controller {
     }
 
     @AuraEnabled
-    public static Agent_Skill_State.SkillState previewState(String agentName, String requestedSkills) {
+    public static Agent_Skill_State.SkillState previewState(String agentName, String subagentName, String requestedSkills) {
         Agent_Skill_State.Request req = new Agent_Skill_State.Request();
         req.agentName = agentName;
+        req.subagentName = subagentName;
         req.requestedSkills = requestedSkills;
         Agent_Skill_State.recordUsage = false;
         return Agent_Skill_State.resolve(new List<Agent_Skill_State.Request>{ req })[0].skillState;
     }
 
     @AuraEnabled
-    public static String getScriptSnippet(String agentName) {
+    public static WiringSummary getWiringSummary(String agentName, String subagentName) {
+        WiringSummary summary = new WiringSummary();
+        Agent_Skill_State.Wiring wiring = Agent_Skill_State.loadWiring(agentName, subagentName);
+        if (wiring == null) {
+            return summary;
+        }
+        summary.found = true;
+        summary.bindingSubagent = wiring.subagent;
+        summary.always = wiring.always;
+        summary.selectable = wiring.selectable;
+        summary.defaults = wiring.defaults;
+        summary.agentTools = wiring.agentTools;
+        return summary;
+    }
+
+    @AuraEnabled
+    public static String getScriptSnippet(String agentName, String subagentName) {
         String name = String.isBlank(agentName) ? 'my_agent' : agentName.trim();
-        String snippet = SNIPPET.replace('{AGENT_NAME}', name);
-        Agent_Skill_State.Wiring wiring = Agent_Skill_State.loadWiring(name);
+        String subagent = String.isBlank(subagentName) ? DEFAULT_SUBAGENT : subagentName.trim();
+        String snippet = SNIPPET.replace('{AGENT_NAME}', name).replace('{SUBAGENT_NAME}', subagent);
+        Agent_Skill_State.Wiring wiring = Agent_Skill_State.loadWiring(name, subagentName);
         if (wiring == null || String.isBlank(wiring.agentTools)) {
             return snippet;
         }
@@ -229,6 +318,10 @@ public with sharing class Agent_Skill_Binding_Controller {
         return snippet + '\n' + String.join(gated, '\n');
     }
 
+    private static String defaultName(String agentName, String subagent) {
+        return subagent == null ? agentName : agentName + ' / ' + subagent;
+    }
+
     @TestVisible
     private static List<String> validate(BindingDetail input) {
         List<String> errors = new List<String>();
@@ -238,6 +331,9 @@ public with sharing class Agent_Skill_Binding_Controller {
         }
         if (!Pattern.matches('[A-Za-z][A-Za-z0-9_]*', input.agentName.trim())) {
             errors.add('Agent developer name may contain only letters, numbers, and underscores, and must start with a letter.');
+        }
+        if (String.isNotBlank(input.subagent) && !Pattern.matches('[A-Za-z][A-Za-z0-9_]*', input.subagent.trim())) {
+            errors.add('Subagent name must match the subagent block name in the agent script: letters, numbers, and underscores, starting with a letter.');
         }
         if (String.isNotBlank(input.agentTools)) {
             for (String tool : input.agentTools.deleteWhitespace().split(',')) {
@@ -289,20 +385,18 @@ public with sharing class Agent_Skill_Binding_Controller {
         '    requested_skills: mutable string = ""',
         '        description: "CSV of skills the model asked for. A change triggers a reload."',
         '',
-        'start_agent agent_router:',
-        '    description: "Hand off to the skill host."',
-        '    reasoning:',
-        '        instructions: ->',
-        '            transition to @subagent.skill_host',
-        '',
-        'subagent skill_host:',
-        '    description: "Single host subagent. Behavior and tool use are driven by the active skills."',
+        '# Each skill-driven subagent passes its own name, so it loads the skills wired to it.',
+        '# If several subagents load skills, give each its own skill_state and requested_skills variables.',
+        'subagent {SUBAGENT_NAME}:',
+        '    description: "Behavior and tool use are driven by the active skills."',
         '    actions:',
         '        load_skill_state:',
-        '            description: "Resolve requested skills against this agent\'s wiring and return the skill state."',
+        '            description: "Resolve requested skills against this subagent\'s wiring and return the skill state."',
         '            inputs:',
         '                agentName: string',
         '                    description: "Developer name of the calling agent."',
+        '                subagentName: string',
+        '                    description: "Developer name of the calling subagent."',
         '                requestedSkills: string',
         '                    description: "CSV of skill names to activate."',
         '            outputs:',
@@ -320,6 +414,7 @@ public with sharing class Agent_Skill_Binding_Controller {
         '            if @variables.requested_skills != @variables.skill_state.active_skills:',
         '                run @actions.load_skill_state',
         '                    with agentName=@variables.agent_name',
+        '                    with subagentName="{SUBAGENT_NAME}"',
         '                    with requestedSkills=@variables.requested_skills',
         '                    set @variables.skill_state=@outputs.skillState',
         '                    set @variables.requested_skills=@outputs.activeSkills',

@@ -5,9 +5,9 @@ import listBindings from '@salesforce/apex/Agent_Skill_Binding_Controller.listBi
 import getBinding from '@salesforce/apex/Agent_Skill_Binding_Controller.getBinding';
 import listWireableSkills from '@salesforce/apex/Agent_Skill_Binding_Controller.listWireableSkills';
 import listOrgAgents from '@salesforce/apex/Agent_Skill_Binding_Controller.listOrgAgents';
+import listAgentSubagents from '@salesforce/apex/Agent_Skill_Binding_Controller.listAgentSubagents';
 import saveBinding from '@salesforce/apex/Agent_Skill_Binding_Controller.saveBinding';
 import deleteBinding from '@salesforce/apex/Agent_Skill_Binding_Controller.deleteBinding';
-import previewState from '@salesforce/apex/Agent_Skill_Binding_Controller.previewState';
 import getScriptSnippet from '@salesforce/apex/Agent_Skill_Binding_Controller.getScriptSnippet';
 
 const STATUS_OPTIONS = [
@@ -35,15 +35,13 @@ export default class SkillAgentWiring extends LightningElement {
     bindings = [];
     skills = [];
     orgAgents = [];
+    discoveredSubagents = [];
     selectedId;
     draft;
     dirty = false;
     saving = false;
     loadingDetail = false;
     error;
-    preview;
-    previewing = false;
-    previewRequest = '';
     snippet;
     _wiredBindings;
 
@@ -73,16 +71,53 @@ export default class SkillAgentWiring extends LightningElement {
         }
     }
 
+    @wire(listAgentSubagents, { agentName: '$draftAgentName' })
+    wiredSubagents({ data }) {
+        this.discoveredSubagents = data || [];
+    }
+
+    get draftAgentName() {
+        return this.draft ? this.draft.agentName : undefined;
+    }
+
     get draftLocale() {
         return (this.draft && this.draft.locale) || 'en-US';
     }
 
-    get bindingRows() {
-        return this.bindings.map((b) => ({
-            ...b,
-            cssClass: b.id === this.selectedId ? 'agent agent--selected' : 'agent',
-            isInactive: b.status !== 'Active'
-        }));
+    get agentGroups() {
+        const groups = new Map();
+        this.bindings.forEach((b) => {
+            if (!groups.has(b.agentName)) {
+                groups.set(b.agentName, { agentName: b.agentName, rows: [] });
+            }
+            groups.get(b.agentName).rows.push({
+                ...b,
+                subagentLabel: b.subagent || 'All subagents (agent level)',
+                cssClass: b.id === this.selectedId ? 'agent agent--selected' : 'agent',
+                isInactive: b.status !== 'Active'
+            });
+        });
+        return [...groups.values()];
+    }
+
+    // Subagents wired for the draft's agent; '' is the agent-level wiring.
+    get wiredSubagents() {
+        if (!this.draft) {
+            return [];
+        }
+        return this.bindings.filter((b) => b.agentName === this.draft.agentName).map((b) => b.subagent || '');
+    }
+
+    get subagentChoices() {
+        return this.discoveredSubagents.map((name) => ({ label: name, value: name }));
+    }
+
+    get hasSubagentChoices() {
+        return this.discoveredSubagents.length > 0;
+    }
+
+    get draftSubagentLabel() {
+        return this.draft && this.draft.subagent ? this.draft.subagent : 'all subagents (agent level)';
     }
 
     get hasBindings() {
@@ -148,25 +183,8 @@ export default class SkillAgentWiring extends LightningElement {
         return this.saving || !this.dirty;
     }
 
-    get previewDisabled() {
-        return this.previewing || this.isNew || this.dirty;
-    }
-
-    get previewHint() {
-        if (this.isNew || this.dirty) {
-            return 'Save to preview what the agent receives.';
-        }
-        return '';
-    }
-
-    get previewChars() {
-        return this.preview && this.preview.skill_instructions ? this.preview.skill_instructions.length : 0;
-    }
-
-    get previewTools() {
-        const tools = (this.preview && this.preview.tools) || {};
-        const enabled = Object.keys(tools).filter((t) => tools[t]).sort();
-        return enabled.length ? enabled.join(', ') : 'None';
+    get previewDisabledReason() {
+        return this.isNew || this.dirty ? 'Save to preview what the agent receives.' : '';
     }
 
     handleSelect(event) {
@@ -176,7 +194,6 @@ export default class SkillAgentWiring extends LightningElement {
     async loadBinding(id) {
         this.selectedId = id;
         this.loadingDetail = true;
-        this.preview = undefined;
         this.snippet = undefined;
         this.error = undefined;
         try {
@@ -192,12 +209,32 @@ export default class SkillAgentWiring extends LightningElement {
     }
 
     handleNew() {
+        this.startDraft('');
+    }
+
+    handleAddSubagent(event) {
+        this.startDraft(event.currentTarget.dataset.agent);
+    }
+
+    startDraft(agentName) {
         this.selectedId = undefined;
-        this.preview = undefined;
         this.snippet = undefined;
         this.error = undefined;
-        this.draft = { id: null, name: '', agentName: '', status: 'Active', locale: 'en-US', description: '', requireApproval: false, agentTools: '', items: [] };
+        this.draft = { id: null, name: '', agentName, subagent: '', status: 'Active', locale: 'en-US', description: '', requireApproval: false, agentTools: '', items: [] };
         this.dirty = true;
+    }
+
+    handlePickSubagent(event) {
+        this.draft = { ...this.draft, subagent: event.detail.value };
+        this.dirty = true;
+    }
+
+    handlePreviewSubagent(event) {
+        const subagent = event.detail.subagent || '';
+        const match = this.bindings.find((b) => b.agentName === this.draft.agentName && (b.subagent || '') === subagent);
+        if (match && match.id !== this.selectedId && !this.dirty) {
+            this.loadBinding(match.id);
+        }
     }
 
     handleField(event) {
@@ -264,8 +301,12 @@ export default class SkillAgentWiring extends LightningElement {
         try {
             const id = await saveBinding({ payloadJson: JSON.stringify(this.draft) });
             await refreshApex(this._wiredBindings);
-            this.toast('Saved', `Skill wiring for ${this.draft.agentName} saved.`, 'success');
+            this.toast('Saved', `Skill wiring for ${this.draft.agentName} (${this.draftSubagentLabel}) saved.`, 'success');
             await this.loadBinding(id);
+            const preview = this.template.querySelector('c-skill-state-preview');
+            if (preview) {
+                preview.refresh();
+            }
         } catch (e) {
             this.error = errorMessage(e);
         } finally {
@@ -275,7 +316,7 @@ export default class SkillAgentWiring extends LightningElement {
 
     async handleDelete() {
         // eslint-disable-next-line no-alert
-        if (!window.confirm(`Delete the skill wiring for ${this.draft.agentName}? The agent will load no skills.`)) {
+        if (!window.confirm(`Delete the skill wiring for ${this.draft.agentName} (${this.draftSubagentLabel})? That subagent will fall back to the agent-level wiring, or load no skills if there is none.`)) {
             return;
         }
         try {
@@ -289,24 +330,9 @@ export default class SkillAgentWiring extends LightningElement {
         }
     }
 
-    handlePreviewRequest(event) {
-        this.previewRequest = event.target.value;
-    }
-
-    async handlePreview() {
-        this.previewing = true;
-        try {
-            this.preview = await previewState({ agentName: this.draft.agentName, requestedSkills: this.previewRequest });
-        } catch (e) {
-            this.error = errorMessage(e);
-        } finally {
-            this.previewing = false;
-        }
-    }
-
     async handleSnippet() {
         try {
-            this.snippet = await getScriptSnippet({ agentName: this.draft.agentName });
+            this.snippet = await getScriptSnippet({ agentName: this.draft.agentName, subagentName: this.draft.subagent });
         } catch (e) {
             this.error = errorMessage(e);
         }

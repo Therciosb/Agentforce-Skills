@@ -2,10 +2,13 @@ import { LightningElement, wire } from 'lwc';
 import { deleteRecord } from 'lightning/uiRecordApi';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import listBindings from '@salesforce/apex/Agent_Skill_Binding_Controller.listBindings';
-import previewState from '@salesforce/apex/Agent_Skill_Binding_Controller.previewState';
+import getWiringSummary from '@salesforce/apex/Agent_Skill_Binding_Controller.getWiringSummary';
 import listCases from '@salesforce/apex/Agent_Skill_Test_Runner.listCases';
 import runCase from '@salesforce/apex/Agent_Skill_Test_Runner.runCase';
 import exportTestSpec from '@salesforce/apex/Agent_Skill_Test_Runner.exportTestSpec';
+
+// lightning-combobox cannot select an empty value, so the agent-level wiring gets a stand-in value.
+const AGENT_LEVEL = '__agent__';
 
 const COLUMNS = [
     { label: 'Name', fieldName: 'Name' },
@@ -30,11 +33,16 @@ function errorMessage(error) {
     return (error && error.body && error.body.message) || (error && error.message) || 'Something went wrong.';
 }
 
+function sameSubagent(a, b) {
+    return (a || '').trim().toLowerCase() === (b || '').trim().toLowerCase();
+}
+
 export default class SkillTestStudio extends LightningElement {
     columns = COLUMNS;
     bindings = [];
     agentName;
-    cases = [];
+    subagent = '';
+    allCases = [];
     selectedIds = [];
     selectable = '';
     editing = false;
@@ -56,7 +64,41 @@ export default class SkillTestStudio extends LightningElement {
     }
 
     get agentOptions() {
-        return this.bindings.map((b) => ({ label: `${b.name} (${b.agentName})`, value: b.agentName }));
+        const seen = new Map();
+        this.bindings.forEach((b) => {
+            if (!seen.has(b.agentName)) {
+                seen.set(b.agentName, { label: b.agentName, value: b.agentName });
+            }
+        });
+        return [...seen.values()];
+    }
+
+    // Subagents wired for the selected agent; '' is the agent-level wiring.
+    get subagentNames() {
+        const names = this.bindings.filter((b) => b.agentName === this.agentName).map((b) => b.subagent || '');
+        this.allCases.forEach((c) => names.push(c.Subagent__c || ''));
+        return [...new Set(names)];
+    }
+
+    get subagentOptions() {
+        return this.subagentNames
+            .sort((a, b) => (a === '' ? -1 : b === '' ? 1 : a.localeCompare(b)))
+            .map((name) => {
+                const count = this.allCases.filter((c) => sameSubagent(c.Subagent__c, name)).length;
+                return { label: `${name || 'All subagents (agent level)'} · ${count} case${count === 1 ? '' : 's'}`, value: name || AGENT_LEVEL };
+            });
+    }
+
+    get subagentValue() {
+        return this.subagent || AGENT_LEVEL;
+    }
+
+    get subagentLabel() {
+        return this.subagent || 'agent level';
+    }
+
+    get cases() {
+        return this.allCases.filter((c) => sameSubagent(c.Subagent__c, this.subagent));
     }
 
     get caseRows() {
@@ -71,7 +113,7 @@ export default class SkillTestStudio extends LightningElement {
     }
 
     get noCases() {
-        return !this.hasCases;
+        return this.allCases.length === 0;
     }
 
     get activeCaseIds() {
@@ -91,7 +133,7 @@ export default class SkillTestStudio extends LightningElement {
     }
 
     get editTitle() {
-        return this.editId ? 'Edit test case' : 'New test case';
+        return this.editId ? 'Edit test case' : `New test case for ${this.subagentLabel}`;
     }
 
     get selectableHint() {
@@ -119,22 +161,49 @@ export default class SkillTestStudio extends LightningElement {
             ...r,
             status: r.passed ? 'Pass' : 'Fail',
             badgeClass: r.passed ? 'badge badge--pass' : 'badge badge--fail',
+            subagentDisplay: r.subagent || 'agent level',
             expectedDisplay: r.expectedSkills || 'Not checked',
+            selectedDisplay: r.selectedSkills || 'None',
             toolsDisplay: r.enabledTools || 'None'
         }));
     }
 
     async handleAgent(event) {
         this.agentName = event.detail.value;
+        this.resetPanels();
+        await this.loadCases();
+        const names = this.subagentNames;
+        this.subagent = names.includes(this.subagent) ? this.subagent : names.find((n) => n) || names[0] || '';
+        await this.loadSelectable();
+    }
+
+    async handleSubagent(event) {
+        this.setSubagent(event.detail.value === AGENT_LEVEL ? '' : event.detail.value);
+    }
+
+    handlePreviewSubagent(event) {
+        this.setSubagent(event.detail.subagent);
+    }
+
+    async setSubagent(value) {
+        if (value === this.subagent) {
+            return;
+        }
+        this.subagent = value;
+        this.resetPanels();
+        await this.loadSelectable();
+    }
+
+    resetPanels() {
         this.results = [];
+        this.selectedIds = [];
         this.spec = undefined;
         this.editing = false;
-        await Promise.all([this.loadCases(), this.loadSelectable()]);
     }
 
     async loadCases() {
         try {
-            this.cases = await listCases({ agentName: this.agentName });
+            this.allCases = await listCases({ agentName: this.agentName, subagentName: null });
             this.error = undefined;
         } catch (e) {
             this.error = errorMessage(e);
@@ -143,9 +212,8 @@ export default class SkillTestStudio extends LightningElement {
 
     async loadSelectable() {
         try {
-            const state = await previewState({ agentName: this.agentName, requestedSkills: '' });
-            const names = (state.skill_menu || '').match(/skill-[a-z0-9-]+/g) || [];
-            this.selectable = [...new Set(names)].join(', ');
+            const summary = await getWiringSummary({ agentName: this.agentName, subagentName: this.subagent });
+            this.selectable = summary.found ? summary.selectable.join(', ') : '';
         } catch (e) {
             this.selectable = '';
         }
@@ -167,6 +235,9 @@ export default class SkillTestStudio extends LightningElement {
     handleSubmit(event) {
         event.preventDefault();
         const fields = { ...event.detail.fields, Agent_Developer_Name__c: this.agentName };
+        if (!this.editId) {
+            fields.Subagent__c = this.subagent || null;
+        }
         this.template.querySelector('lightning-record-edit-form').submit(fields);
     }
 
@@ -208,7 +279,7 @@ export default class SkillTestStudio extends LightningElement {
 
     // One case per server call keeps each LLM request within its own transaction limits and lets progress render.
     async runCases(ids) {
-        const runId = `${this.agentName}-${Date.now()}`;
+        const runId = `run-${Date.now()}`;
         this.running = true;
         this.runDone = 0;
         this.runTotal = ids.length;
@@ -220,8 +291,8 @@ export default class SkillTestStudio extends LightningElement {
                 // eslint-disable-next-line no-await-in-loop
                 results.push(await runCase({ testCaseId: id, runId }));
             } catch (e) {
-                const tc = this.cases.find((c) => c.Id === id);
-                results.push({ testCaseId: id, name: tc ? tc.Name : id, passed: false, warnings: errorMessage(e) });
+                const tc = this.allCases.find((c) => c.Id === id);
+                results.push({ testCaseId: id, name: tc ? tc.Name : id, subagent: tc ? tc.Subagent__c : '', passed: false, warnings: errorMessage(e) });
             }
             this.runDone += 1;
             this.results = [...results];

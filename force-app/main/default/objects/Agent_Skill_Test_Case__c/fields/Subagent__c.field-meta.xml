@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Subagent__c</fullName>
+    <description>Subagent whose skill wiring this case routes against. Blank uses the agent-level binding.</description>
+    <label>Subagent</label>
+    <length>80</length>
+    <required>false</required>
+    <type>Text</type>
+</CustomField>

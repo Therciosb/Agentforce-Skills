@@ -3,7 +3,7 @@
         <header class="bar">
             <div class="bar__title">
                 <h1>Agent wiring</h1>
-                <p class="bar__sub">Choose which skills each agent loads. Agents read this at runtime through Agent_Skill_State.</p>
+                <p class="bar__sub">Choose which skills each subagent loads. An agent can have one wiring per subagent, plus an optional agent-level wiring that any other subagent falls back to. Agents read this at runtime through Agent_Skill_State.</p>
             </div>
             <lightning-button variant="brand" label="Wire an agent" icon-name="utility:add" onclick={handleNew}></lightning-button>
         </header>
@@ -18,20 +18,26 @@
         <div class="layout">
             <nav class="agents" aria-label="Wired agents">
                 <template lwc:if={hasBindings}>
-                    <ul>
-                        <template for:each={bindingRows} for:item="b">
-                            <li key={b.id}>
-                                <button type="button" class={b.cssClass} data-id={b.id} onclick={handleSelect}>
-                                    <span class="agent__name">{b.name}</span>
-                                    <span class="agent__dev">{b.agentName}</span>
-                                    <span class="agent__meta">
-                                        {b.alwaysCount} always · {b.selectableCount} selectable
-                                        <template lwc:if={b.isInactive}><span class="badge badge--warn">Inactive</span></template>
-                                    </span>
-                                </button>
-                            </li>
-                        </template>
-                    </ul>
+                    <template for:each={agentGroups} for:item="g">
+                        <section key={g.agentName} class="group">
+                            <h2 class="group__title">{g.agentName}</h2>
+                            <ul>
+                                <template for:each={g.rows} for:item="b">
+                                    <li key={b.id}>
+                                        <button type="button" class={b.cssClass} data-id={b.id} onclick={handleSelect}>
+                                            <span class="agent__name">{b.subagentLabel}</span>
+                                            <span class="agent__dev">{b.name}</span>
+                                            <span class="agent__meta">
+                                                {b.alwaysCount} always · {b.selectableCount} selectable
+                                                <template lwc:if={b.isInactive}><span class="badge badge--warn">Inactive</span></template>
+                                            </span>
+                                        </button>
+                                    </li>
+                                </template>
+                            </ul>
+                            <lightning-button variant="base" label="Add subagent wiring" icon-name="utility:add" data-agent={g.agentName} onclick={handleAddSubagent}></lightning-button>
+                        </section>
+                    </template>
                 </template>
                 <template lwc:else>
                     <p class="empty">No agents wired yet.</p>
@@ -49,6 +55,10 @@
                             <lightning-input label="Agent developer name" required value={draft.agentName} data-field="agentName" onchange={handleField} field-level-help="config.developer_name from the .agent file. The agent passes it as agent_name."></lightning-input>
                             <template lwc:if={hasOrgAgents}>
                                 <lightning-combobox label="Or pick an agent in this org" placeholder="Select an agent" options={agentOptions} onchange={handlePickAgent}></lightning-combobox>
+                            </template>
+                            <lightning-input label="Subagent" value={draft.subagent} data-field="subagent" onchange={handleField} placeholder="Blank for all subagents" field-level-help="Name of the subagent block in the .agent file that loads these skills. The subagent passes it as subagentName. Leave blank for an agent-level wiring that any subagent without its own wiring uses."></lightning-input>
+                            <template lwc:if={hasSubagentChoices}>
+                                <lightning-combobox label="Or pick a published subagent" placeholder="Select a subagent" options={subagentChoices} onchange={handlePickSubagent}></lightning-combobox>
                             </template>
                             <lightning-input label="Display name" value={draft.name} data-field="name" onchange={handleField}></lightning-input>
                             <lightning-combobox label="Status" options={statusOptions} value={draft.status} data-field="status" onchange={handleField}></lightning-combobox>
@@ -112,35 +122,17 @@
                         </div>
                     </template>
 
-                    <div class="card">
-                        <h2>Preview what the agent receives</h2>
-                        <div class="preview-bar">
-                            <lightning-input class="preview-bar__input" label="Requested skills (CSV, blank for defaults)" value={previewRequest} onchange={handlePreviewRequest}></lightning-input>
-                            <lightning-button label="Preview" onclick={handlePreview} disabled={previewDisabled}></lightning-button>
-                        </div>
-                        <template lwc:if={previewHint}><p class="hint">{previewHint}</p></template>
-                        <template lwc:if={preview}>
-                            <dl class="facts">
-                                <dt>Active skills</dt>
-                                <dd>{preview.active_skills}</dd>
-                                <dt>Instructions</dt>
-                                <dd>{previewChars} characters</dd>
-                                <dt>Tools enabled</dt>
-                                <dd>{previewTools}</dd>
-                                <template lwc:if={preview.skill_warnings}>
-                                    <dt>Warnings</dt>
-                                    <dd class="warn">{preview.skill_warnings}</dd>
-                                </template>
-                            </dl>
-                            <h3>Skill menu</h3>
-                            <pre class="code">{preview.skill_menu}</pre>
-                            <h3>Composed instructions</h3>
-                            <pre class="code code--tall">{preview.skill_instructions}</pre>
-                        </template>
-                    </div>
+                    <template lwc:if={draft.agentName}>
+                        <c-skill-state-preview
+                            agent-name={draft.agentName}
+                            subagent={draft.subagent}
+                            subagents={wiredSubagents}
+                            disabled-reason={previewDisabledReason}
+                            onsubagentchange={handlePreviewSubagent}></c-skill-state-preview>
+                    </template>
                 </template>
                 <template lwc:elseif={hasBindings}>
-                    <p class="empty">Select an agent to edit its skills.</p>
+                    <p class="empty">Select a subagent wiring to edit its skills.</p>
                 </template>
             </section>
         </div>

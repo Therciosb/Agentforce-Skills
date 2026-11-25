@@ -3,10 +3,13 @@
         <header class="bar">
             <div class="bar__title">
                 <h1>Skill tests</h1>
-                <p class="bar__sub">Check which skills an agent picks for a message and which tools those skills enable. Export the cases to Testing Center to run them against the live agent.</p>
+                <p class="bar__sub">Check which skills a subagent picks for a message and which tools those skills enable. Each subagent has its own skill wiring, so cases belong to a subagent. Export the cases to Testing Center to run them against the live agent.</p>
             </div>
-            <div class="bar__agent">
+            <div class="bar__pickers">
                 <lightning-combobox label="Agent" placeholder="Select a wired agent" options={agentOptions} value={agentName} onchange={handleAgent}></lightning-combobox>
+                <template lwc:if={agentName}>
+                    <lightning-combobox label="Subagent" options={subagentOptions} value={subagentValue} onchange={handleSubagent}></lightning-combobox>
+                </template>
             </div>
         </header>
 
@@ -20,7 +23,7 @@
         <template lwc:if={agentName}>
             <div class="card">
                 <div class="card__head">
-                    <h2>Test cases</h2>
+                    <h2>Test cases · {subagentLabel}</h2>
                     <div class="card__actions">
                         <lightning-button label="New case" icon-name="utility:add" onclick={handleNew}></lightning-button>
                         <lightning-button label="Export spec" icon-name="utility:download" onclick={handleExport} disabled={noCases}></lightning-button>
@@ -41,7 +44,7 @@
                         onrowselection={handleSelection}></lightning-datatable>
                 </template>
                 <template lwc:else>
-                    <p class="empty">No test cases for this agent yet.</p>
+                    <p class="empty">No test cases for this subagent yet.</p>
                 </template>
             </div>
 
@@ -54,13 +57,16 @@
                             <lightning-input-field field-name="Name" required></lightning-input-field>
                             <lightning-input-field field-name="Active__c"></lightning-input-field>
                         </div>
+                        <template lwc:if={editId}>
+                            <lightning-input-field field-name="Subagent__c"></lightning-input-field>
+                        </template>
                         <lightning-input-field field-name="Utterance__c" required></lightning-input-field>
                         <div class="grid">
                             <lightning-input-field field-name="Expected_Skills__c"></lightning-input-field>
                             <lightning-input-field field-name="Expected_Tools__c"></lightning-input-field>
                         </div>
                         <lightning-input-field field-name="Expected_Outcome__c"></lightning-input-field>
-                        <p class="hint">Selectable skills on this agent: {selectableHint}</p>
+                        <p class="hint">Selectable skills on {subagentLabel}: {selectableHint}</p>
                         <div class="actions">
                             <lightning-button label="Cancel" onclick={handleCancel}></lightning-button>
                             <lightning-button variant="brand" type="submit" label="Save"></lightning-button>
@@ -83,10 +89,12 @@
                                     <span class="result__name">{r.name}</span>
                                 </div>
                                 <dl class="facts">
+                                    <dt>Subagent</dt>
+                                    <dd>{r.subagentDisplay}</dd>
                                     <dt>Expected skills</dt>
                                     <dd>{r.expectedDisplay}</dd>
                                     <dt>Router picked</dt>
-                                    <dd>{r.selectedSkills}</dd>
+                                    <dd>{r.selectedDisplay}</dd>
                                     <dt>Tools enabled</dt>
                                     <dd>{r.toolsDisplay}</dd>
                                     <template lwc:if={r.missingTools}>
@@ -108,13 +116,19 @@
                 </div>
             </template>
 
+            <c-skill-state-preview
+                agent-name={agentName}
+                subagent={subagent}
+                subagents={subagentNames}
+                onsubagentchange={handlePreviewSubagent}></c-skill-state-preview>
+
             <template lwc:if={spec}>
                 <div class="card">
                     <div class="card__head">
                         <h2>Testing Center spec</h2>
                         <lightning-button label="Copy" icon-name="utility:copy" onclick={handleCopy}></lightning-button>
                     </div>
-                    <p class="hint">Save as specs/{agentName}-testSpec.yaml, then run: sf agent test create --spec specs/{agentName}-testSpec.yaml --api-name {agentName}_skills</p>
+                    <p class="hint">Covers every subagent of {agentName}. Save as specs/{agentName}-testSpec.yaml, then run: sf agent test create --spec specs/{agentName}-testSpec.yaml --api-name {agentName}_skills</p>
                     <pre class="code">{spec}</pre>
                 </div>
             </template>

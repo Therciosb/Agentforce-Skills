@@ -44,8 +44,13 @@ private class Agent_Skill_State_Test {
     }
 
     private static Agent_Skill_State.Response run(String agentName, String requested) {
+        return run(agentName, null, requested);
+    }
+
+    private static Agent_Skill_State.Response run(String agentName, String subagentName, String requested) {
         Agent_Skill_State.Request req = new Agent_Skill_State.Request();
         req.agentName = agentName;
+        req.subagentName = subagentName;
         req.requestedSkills = requested;
         return Agent_Skill_State.resolve(new List<Agent_Skill_State.Request>{ req })[0];
     }
@@ -124,6 +129,38 @@ private class Agent_Skill_State_Test {
 
         Assert.areEqual('', res.activeSkills);
         Assert.isTrue(res.skillState.skill_warnings.contains('No skill wiring found'));
+    }
+
+    @IsTest
+    static void subagentResolution() {
+        Agent_Skill_Binding__c agentLevel = [SELECT Id FROM Agent_Skill_Binding__c LIMIT 1];
+        Agent_Skill_Binding__c triage = new Agent_Skill_Binding__c(
+            Name = 'PD2 triage', Agent_Developer_Name__c = AGENT, Subagent__c = 'triage', Status__c = 'Active', Locale__c = 'en-US'
+        );
+        insert triage;
+        insert item(triage.Id, 'skill-troubleshooting-support', 'Default', 1);
+
+        Assert.areEqual('skill-troubleshooting-support', run(AGENT, 'Triage', '').activeSkills, 'Exact subagent match, case-insensitive');
+        Assert.areEqual('skill-product-information-qa', run(AGENT, 'billing', '').activeSkills, 'Falls back to the agent-level binding');
+        Assert.areEqual('skill-product-information-qa', run(AGENT, '').activeSkills, 'No subagent uses the agent-level binding');
+
+        agentLevel.Subagent__c = 'skill_host';
+        update agentLevel;
+        Agent_Skill_State.Response missing = run(AGENT, 'billing', '');
+        Assert.areEqual('', missing.activeSkills);
+        Assert.isTrue(missing.skillState.skill_warnings.contains('(subagent billing)'));
+        Assert.areEqual('', run(AGENT, '').activeSkills, 'Two subagent bindings and no subagent requested is ambiguous');
+
+        delete triage;
+        Assert.areEqual('skill-product-information-qa', run(AGENT, '').activeSkills, 'A single binding answers when no subagent is requested');
+    }
+
+    @IsTest
+    static void bindingKeyIsUniquePerSubagent() {
+        Agent_Skill_Binding__c dup = new Agent_Skill_Binding__c(Name = 'Dup', Agent_Developer_Name__c = AGENT.toUpperCase(), Status__c = 'Active');
+        Database.SaveResult sr = Database.insert(dup, false);
+        Assert.isFalse(sr.isSuccess(), 'Same agent with a blank subagent is a duplicate');
+        Assert.areEqual(AGENT + ':', [SELECT Binding_Key__c FROM Agent_Skill_Binding__c LIMIT 1].Binding_Key__c);
     }
 
     @IsTest

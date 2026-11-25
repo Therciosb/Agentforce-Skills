@@ -87,7 +87,7 @@ private class Agent_Skill_Binding_Controller_Test {
         Agent_Skill_Binding_Controller.saveBinding(JSON.serialize(loaded));
         Assert.areEqual(2, [SELECT COUNT() FROM Agent_Skill_Binding_Item__c WHERE Binding__c = :bindingId]);
 
-        Agent_Skill_State.SkillState state = Agent_Skill_Binding_Controller.previewState('test_agent', '');
+        Agent_Skill_State.SkillState state = Agent_Skill_Binding_Controller.previewState('test_agent', null, '');
         Assert.areEqual('skill-alpha', state.active_skills);
         Assert.isTrue(state.skill_instructions.contains('Body of role-test-agent'));
 
@@ -129,8 +129,10 @@ private class Agent_Skill_Binding_Controller_Test {
         Assert.isTrue(names.contains('skill-alpha'));
         Assert.isFalse(names.contains('workflow-alpha-steps'));
 
-        String snippet = Agent_Skill_Binding_Controller.getScriptSnippet('my_support_agent');
+        String snippet = Agent_Skill_Binding_Controller.getScriptSnippet('my_support_agent', 'billing_host');
         Assert.isTrue(snippet.contains('agent_name: mutable string = "my_support_agent"'));
+        Assert.isTrue(snippet.contains('subagent billing_host:'));
+        Assert.isTrue(snippet.contains('with subagentName="billing_host"'));
         Assert.isFalse(snippet.contains('available when'));
         Assert.isNotNull(Agent_Skill_Binding_Controller.listOrgAgents());
     }
@@ -148,13 +150,62 @@ private class Agent_Skill_Binding_Controller_Test {
         String snippet;
         System.runAs(author()) {
             loaded = Agent_Skill_Binding_Controller.getBinding(Agent_Skill_Binding_Controller.saveBinding(JSON.serialize(d)));
-            snippet = Agent_Skill_Binding_Controller.getScriptSnippet('test_agent');
+            snippet = Agent_Skill_Binding_Controller.getScriptSnippet('test_agent', null);
         }
 
         Assert.isTrue(loaded.requireApproval);
         Assert.areEqual('create_case,get_order_status', loaded.agentTools);
         Assert.isTrue(snippet.contains('get_order_status: @actions.get_order_status'));
         Assert.isTrue(snippet.contains('available when @variables.skill_state.tools.create_case == True'));
+    }
+
+    @IsTest
+    static void subagentsHaveSeparateWiring() {
+        Agent_Skill_Binding_Controller.BindingDetail billing = payload(new List<Agent_Skill_Binding_Controller.BindingItem>{
+            item('role-test-agent', 'Always'),
+            item('skill-alpha', 'Default')
+        });
+        billing.subagent = 'billing_host';
+        Agent_Skill_Binding_Controller.BindingDetail support = payload(new List<Agent_Skill_Binding_Controller.BindingItem>{
+            item('skill-beta', 'Default')
+        });
+        support.subagent = 'support_host';
+
+        Agent_Skill_Binding_Controller.WiringSummary summary;
+        Agent_Skill_State.SkillState supportState;
+        List<String> subagents;
+        String duplicateError;
+        System.runAs(author()) {
+            Agent_Skill_Binding_Controller.saveBinding(JSON.serialize(billing));
+            Agent_Skill_Binding_Controller.saveBinding(JSON.serialize(support));
+            try {
+                Agent_Skill_Binding_Controller.saveBinding(JSON.serialize(support));
+            } catch (AuraHandledException ex) {
+                duplicateError = ex.getMessage();
+            }
+            summary = Agent_Skill_Binding_Controller.getWiringSummary('test_agent', 'billing_host');
+            supportState = Agent_Skill_Binding_Controller.previewState('test_agent', 'support_host', '');
+            subagents = Agent_Skill_Binding_Controller.listAgentSubagents('test_agent');
+        }
+
+        Assert.areEqual(2, [SELECT COUNT() FROM Agent_Skill_Binding__c WHERE Agent_Developer_Name__c = 'test_agent']);
+        Assert.areEqual('test_agent:billing_host', [SELECT Binding_Key__c FROM Agent_Skill_Binding__c WHERE Subagent__c = 'billing_host'].Binding_Key__c);
+        Assert.isNotNull(duplicateError, 'Saving a second wiring for the same subagent must fail');
+        Assert.isTrue(summary.found);
+        Assert.areEqual('billing_host', summary.bindingSubagent);
+        Assert.areEqual(new List<String>{ 'role-test-agent' }, summary.always);
+        Assert.areEqual(new List<String>{ 'skill-alpha' }, summary.defaults);
+        Assert.areEqual('skill-beta', supportState.active_skills);
+        Assert.isTrue(subagents.contains('billing_host') && subagents.contains('support_host'));
+        Assert.isFalse(Agent_Skill_Binding_Controller.getWiringSummary('test_agent', 'unknown_host').found);
+    }
+
+    @IsTest
+    static void validationRejectsBadSubagentName() {
+        Agent_Skill_Binding_Controller.BindingDetail d = payload(new List<Agent_Skill_Binding_Controller.BindingItem>{ item('role-test-agent', 'Always') });
+        d.subagent = 'billing host';
+
+        Assert.isTrue(String.join(Agent_Skill_Binding_Controller.validate(d), ' ').contains('Subagent name'));
     }
 
     @IsTest

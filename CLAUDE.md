@@ -60,15 +60,15 @@ Layered classes, all in `force-app/main/default/classes/`:
 - `Agent_Skill_Loader` — resolves `instructionNames` CSV → records via the catalog, expands `References__c`, and produces a `loadedInstructionBundle` (JSON). Accepts `existingInstructionBundle` to **merge** across calls.
 - `Agent_Skill_PromptComposer` — takes a bundle JSON and recursively expands references (`maxReferenceDepth`, default 4) into a single concatenated `composedInstructions` string. Rewrites `[[tool:Name]]` indicators to `@actions.snake_name`, validated against `knownActionNames` when given.
 - `Agent_Skill_LoadAndCompose` — Loader then Composer in one call (`apex://Agent_Skill_LoadAndCompose`, or `flow://Load_And_Compose_Agent_Skills`). Optional `locale`, `requireApproval`, `knownActionNames`.
-- `Agent_Skill_State` — the action wired agents call (`apex://Agent_Skill_State`). Takes `agentName` + `requestedSkills`, reads the agent's binding, and returns a `SkillState` object: `skill_menu`, `active_skills`, `skill_instructions`, `skill_warnings`, and a `tools` map of action names the active skills reference. Publishes an `Agent_Skill_Usage__e` per call (logged to `Agent_Skill_Usage_Log__c`) unless `recordUsage` is false.
+- `Agent_Skill_State` — the action wired agents call (`apex://Agent_Skill_State`). Takes `agentName`, optional `subagentName`, and `requestedSkills`, reads the matching binding, and returns a `SkillState` object: `skill_menu`, `active_skills`, `skill_instructions`, `skill_warnings`, and a `tools` map of action names the active skills reference. Publishes an `Agent_Skill_Usage__e` per call (logged to `Agent_Skill_Usage_Log__c`) unless `recordUsage` is false.
 
 `Agent_Skill_SeedService` backs the anonymous-apex seed scripts.
 
 ### Wiring skills to agents (data, in the Admin app's Agents tab)
 
-`Agent_Skill_Binding__c` (one per agent, keyed by `Agent_Developer_Name__c`) with `Agent_Skill_Binding_Item__c` rows: `Always` (loaded every turn), `Selectable` (in the skill menu), `Default` (active when nothing else is requested). The binding also holds `Require_Approval__c` and `Agent_Tools__c` (CSV of the agent's action names; skills may only reference these). Changing wiring is a data change — no republish.
+`Agent_Skill_Binding__c` (one per agent and subagent; `Binding_Key__c` = lowercased `agent:subagent`, set by `Agent_Skill_Binding_Trigger`) with `Agent_Skill_Binding_Item__c` rows: `Always` (loaded every turn), `Selectable` (in the skill menu), `Default` (active when nothing else is requested). The binding also holds `Require_Approval__c` and `Agent_Tools__c` (CSV of the agent's action names; skills may only reference these). A blank `Subagent__c` is the agent-level wiring. `Agent_Skill_State` uses the exact subagent binding, then the agent-level one, then (only when no subagent is passed) the agent's single binding. Changing wiring is a data change — no republish.
 
-The Tests tab (`Agent_Skill_Test_Case__c` / `Agent_Skill_Test_Result__c`, `Agent_Skill_Test_Runner`) routes each utterance through the `Route_Agent_Skill` prompt template against the agent's real skill menu, checks the chosen skills and enabled tools, and exports a Testing Center spec.
+The Tests tab (`Agent_Skill_Test_Case__c` / `Agent_Skill_Test_Result__c`, `Agent_Skill_Test_Runner`) routes each utterance through the `Route_Agent_Skill` prompt template against the skill menu of the case's subagent, checks the chosen skills and enabled tools, and exports a Testing Center spec.
 
 ### How agents consume it (Agent Script, in `aiAuthoringBundles/`)
 

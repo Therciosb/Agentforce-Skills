@@ -1,6 +1,6 @@
 public with sharing class Agent_Skill_Test_Runner {
     private static final String TEMPLATE_API_NAME = 'Route_Agent_Skill';
-    private static final String HOST_SUBAGENT = 'skill_host';
+    private static final Integer RUN_ID_LENGTH = 40;
 
     // Test seam: when set, used instead of a live prompt-template call.
     @TestVisible private static String routeOverride;
@@ -9,6 +9,7 @@ public with sharing class Agent_Skill_Test_Runner {
         @AuraEnabled public Id testCaseId;
         @AuraEnabled public Id resultId;
         @AuraEnabled public String name;
+        @AuraEnabled public String subagent;
         @AuraEnabled public Boolean passed;
         @AuraEnabled public String expectedSkills;
         @AuraEnabled public String selectedSkills;
@@ -18,23 +19,34 @@ public with sharing class Agent_Skill_Test_Runner {
         @AuraEnabled public String warnings;
     }
 
+    // Blank subagentName returns every case for the agent.
     @AuraEnabled
-    public static List<Agent_Skill_Test_Case__c> listCases(String agentName) {
-        return [
-            SELECT Id, Name, Agent_Developer_Name__c, Utterance__c, Expected_Skills__c, Expected_Tools__c,
+    public static List<Agent_Skill_Test_Case__c> listCases(String agentName, String subagentName) {
+        List<Agent_Skill_Test_Case__c> cases = [
+            SELECT Id, Name, Agent_Developer_Name__c, Subagent__c, Utterance__c, Expected_Skills__c, Expected_Tools__c,
                 Expected_Outcome__c, Active__c, Last_Status__c, Last_Run__c
             FROM Agent_Skill_Test_Case__c
             WHERE Agent_Developer_Name__c = :agentName
             WITH USER_MODE
-            ORDER BY Name
+            ORDER BY Subagent__c NULLS FIRST, Name
             LIMIT 500
         ];
+        if (String.isBlank(subagentName)) {
+            return cases;
+        }
+        List<Agent_Skill_Test_Case__c> matching = new List<Agent_Skill_Test_Case__c>();
+        for (Agent_Skill_Test_Case__c tc : cases) {
+            if (String.isNotBlank(tc.Subagent__c) && tc.Subagent__c.trim().equalsIgnoreCase(subagentName.trim())) {
+                matching.add(tc);
+            }
+        }
+        return matching;
     }
 
     @AuraEnabled
     public static CaseResult runCase(Id testCaseId, String runId) {
         List<Agent_Skill_Test_Case__c> found = [
-            SELECT Id, Name, Agent_Developer_Name__c, Utterance__c, Expected_Skills__c, Expected_Tools__c
+            SELECT Id, Name, Agent_Developer_Name__c, Subagent__c, Utterance__c, Expected_Skills__c, Expected_Tools__c
             FROM Agent_Skill_Test_Case__c
             WHERE Id = :testCaseId
             WITH USER_MODE
@@ -49,7 +61,7 @@ public with sharing class Agent_Skill_Test_Runner {
 
         Agent_Skill_State.recordUsage = false;
         List<String> warnings = new List<String>();
-        Agent_Skill_State.SkillState baseline = resolveState(tc.Agent_Developer_Name__c, '');
+        Agent_Skill_State.SkillState baseline = resolveState(tc.Agent_Developer_Name__c, tc.Subagent__c, '');
 
         String raw;
         try {
@@ -75,7 +87,7 @@ public with sharing class Agent_Skill_Test_Runner {
             }
         }
 
-        Agent_Skill_State.SkillState state = resolveState(tc.Agent_Developer_Name__c, String.join(chosen, ','));
+        Agent_Skill_State.SkillState state = resolveState(tc.Agent_Developer_Name__c, tc.Subagent__c, String.join(chosen, ','));
         if (String.isNotBlank(state.skill_warnings)) {
             warnings.add(state.skill_warnings);
         }
@@ -100,6 +112,7 @@ public with sharing class Agent_Skill_Test_Runner {
         CaseResult result = new CaseResult();
         result.testCaseId = tc.Id;
         result.name = tc.Name;
+        result.subagent = tc.Subagent__c;
         result.passed = routing != null && skillsMatch && missing.isEmpty();
         result.expectedSkills = tc.Expected_Skills__c;
         result.selectedSkills = state.active_skills;
@@ -110,8 +123,9 @@ public with sharing class Agent_Skill_Test_Runner {
 
         Agent_Skill_Test_Result__c rec = new Agent_Skill_Test_Result__c(
             Test_Case__c = tc.Id,
-            Run_Id__c = runId,
+            Run_Id__c = runId == null ? null : runId.left(RUN_ID_LENGTH),
             Agent_Name__c = tc.Agent_Developer_Name__c,
+            Subagent__c = tc.Subagent__c,
             Expected_Skills__c = tc.Expected_Skills__c,
             Selected_Skills__c = result.selectedSkills.abbreviate(255),
             Enabled_Tools__c = result.enabledTools,
@@ -137,12 +151,15 @@ public with sharing class Agent_Skill_Test_Runner {
             'subjectName: ' + agentName,
             'testCases:'
         };
-        for (Agent_Skill_Test_Case__c tc : listCases(agentName)) {
+        for (Agent_Skill_Test_Case__c tc : listCases(agentName, null)) {
             if (!tc.Active__c || String.isBlank(tc.Utterance__c)) {
                 continue;
             }
             lines.add('  - utterance: ' + quote(tc.Utterance__c));
-            lines.add('    expectedTopic: ' + HOST_SUBAGENT);
+            String topic = expectedSubagent(tc);
+            if (String.isNotBlank(topic)) {
+                lines.add('    expectedTopic: ' + topic);
+            }
             Set<String> tools = csvSet(tc.Expected_Tools__c);
             if (!tools.isEmpty()) {
                 lines.add('    expectedActions:');
@@ -157,9 +174,18 @@ public with sharing class Agent_Skill_Test_Runner {
         return String.join(lines, '\n') + '\n';
     }
 
-    private static Agent_Skill_State.SkillState resolveState(String agentName, String requestedSkills) {
+    private static String expectedSubagent(Agent_Skill_Test_Case__c tc) {
+        if (String.isNotBlank(tc.Subagent__c)) {
+            return tc.Subagent__c.trim();
+        }
+        Agent_Skill_State.Wiring wiring = Agent_Skill_State.loadWiring(tc.Agent_Developer_Name__c, null);
+        return wiring == null ? null : wiring.subagent;
+    }
+
+    private static Agent_Skill_State.SkillState resolveState(String agentName, String subagentName, String requestedSkills) {
         Agent_Skill_State.Request req = new Agent_Skill_State.Request();
         req.agentName = agentName;
+        req.subagentName = subagentName;
         req.requestedSkills = requestedSkills;
         return Agent_Skill_State.resolve(new List<Agent_Skill_State.Request>{ req })[0].skillState;
     }

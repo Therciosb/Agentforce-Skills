@@ -1,0 +1,183 @@
+Name,Type__c,ExternalId__c,Description__c,WhenToUse__c,InstructionBody__c,References__c,Status__c,Version__c,Locale__c
+skill-daily-report-generation,Skill,skill-daily-report-generation:v1:en-US,This skill generates a daily report summarizing key metrics and activities.,Use when users need to create a daily report of their activities and metrics. Example user utterances include 'Generate my daily report' or 'I need a summary of today's activities.' This skill is not intended for generating reports on a weekly or monthly basis.,"# DAILY REPORT GENERATION
+
+## Purpose
+Help the user produce a concise report of one day's activities and metrics.
+
+## Steps
+### 1. Confirm the scope
+- Confirm the date (default to today) and whose activity to cover.
+- Ask which metrics or activities to include if the user has not said.
+
+### 2. Gather the data
+- Use only data the user provides or that your tools return. Never invent metrics or activities.
+- If a requested metric is unavailable, say so and continue with the rest.
+
+### 3. Write the report
+- Start with a one-line summary of the day.
+- List each metric with its value, then the main activities as bullets.
+- Keep it to what fits on one screen.
+
+### 4. Review
+Ask whether the user wants changes or more detail, and revise the report.
+
+## Out of scope
+Weekly, monthly, or other multi-day reports.",,Draft,v1,en-US
+skill-employee-password-reset,Skill,skill-employee-password-reset:v1:en-US,"This skill assists employees with password resets, account unlocks, and identity domain verification.","Use when an employee requests assistance with resetting their password, unlocking their account, or verifying their identity domain. Example user utterances include 'I need to reset my password' or 'My account is locked, can you help?' This skill is not for general account inquiries or technical support unrelated to password and account access.","# EMPLOYEE PASSWORD RESET
+
+## Purpose
+Help employees reset a password, unlock an account, or confirm their identity domain.
+
+## Steps
+### 1. Confirm identity
+Confirm who the employee is and which account or identity domain is affected before changing anything.
+
+### 2. Reset or unlock
+Run the reset with [[tool:Demo_Reset_Password]] and tell the employee how they will receive the reset link.
+
+### 3. Log the outcome
+Record the result with [[tool:Publish_Reward_Event]], including whether the reset succeeded.
+
+## Out of scope
+General account questions and technical support unrelated to password or account access.",,Draft,v1,en-US
+skill-laptop-comparison,Skill,skill-laptop-comparison:v1:en-US,Assists customers in comparing different laptop models to find the most suitable option.,"Use when customers inquire about various laptop models and need help in making a decision. For example, users might say, 'Can you help me compare the X and Y models?' or 'Which laptop is better for gaming?' This skill is not intended for troubleshooting hardware issues or providing technical support.","# LAPTOP COMPARISON
+
+## Purpose
+Help customers compare laptop models and choose the one that fits their needs.
+
+## Steps
+### 1. Understand the needs
+Ask about intended use (for example gaming, office work, or travel), budget, and must-have specifications.
+
+### 2. Compare models
+Compare the relevant models side by side on the specifications that matter for their use, and call out the key differences.
+
+### 3. Recommend
+Summarize the pros and cons of each option against the customer's needs and recommend one, explaining why.
+
+### 4. Hand off if needed
+If the customer wants to speak with a human sales specialist, follow workflow-escalate-to-human.
+
+## Rules
+- Never invent specifications or prices; say when you do not have a detail.
+- Hardware problems and technical support are out of scope.",workflow-escalate-to-human,Draft,v1,en-US
+skill-lead-generation-qualification-appointment-booking,Skill,skill-lead-generation-qualification-appointment-booking:v1:en-US,"This skill assists Sales Development Representatives in generating leads, qualifying them, and booking appointments.","Use when a Sales Development Representative needs to identify potential leads, assess their suitability, and schedule meetings. Example user utterances include 'Can you help me find leads in the technology sector?' or 'I need to qualify a lead for a follow-up appointment.' This skill is not for conducting sales pitches or handling customer service inquiries.","# LEAD GENERATION, QUALIFICATION, AND APPOINTMENT BOOKING
+
+## Purpose
+Help Sales Development Representatives find leads, qualify them, and book follow-up meetings.
+
+## Steps
+### 1. Find leads
+Confirm the target segment (industry, region, company size) and gather leads that match it from the sources available to you.
+
+### 2. Qualify
+Assess each lead against the qualifying questions (need, budget, authority, timing) and rate its fit and interest level.
+
+### 3. Book the appointment
+Confirm the lead wants a follow-up, agree on a time, and confirm the meeting details with the representative. If no scheduling tool is available, record the preferred times instead.
+
+## Out of scope
+Sales pitches and customer service requests.",,Draft,v1,en-US
+skill-smart-thermostat-wifi-troubleshooting,Skill,skill-smart-thermostat-wifi-troubleshooting:v1:en-US,First-line troubleshooting for smart thermostat Wi-Fi connectivity issues.,"Use when a customer reports that their smart thermostat is unable to connect to Wi-Fi. This skill is intended for initial troubleshooting steps, such as checking network settings or resetting the device. It is not for advanced technical support or hardware repairs. Example user utterances include 'My thermostat won't connect to Wi-Fi' or 'I need help with my smart thermostat.'","# SMART THERMOSTAT WI-FI TROUBLESHOOTING
+
+## Purpose
+Walk the customer through first-line steps when their smart thermostat cannot connect to Wi-Fi. Confirm each step's result before moving on.
+
+## Steps
+### 1. Check the network
+Ask the customer to confirm the Wi-Fi network is working and that other devices can connect to it.
+
+### 2. Check the thermostat settings
+Have the customer open the thermostat's settings, confirm Wi-Fi is enabled, and confirm it is joining the correct network.
+
+### 3. Reset the thermostat
+If it still will not connect, guide the customer through a factory reset and reconnecting it to Wi-Fi.
+
+### 4. Escalate
+If the thermostat still does not connect, follow workflow-escalate-to-human.
+
+## Out of scope
+Advanced technical support and hardware repairs.",workflow-escalate-to-human,Draft,v1,en-US
+skill-software-catalog-access,Skill,skill-software-catalog-access:1.0:en_US,Checks enterprise software catalog availability and processes access requests with business justification.,Use when a user asks to check availability or request access to enterprise software applications.,"# SOFTWARE CATALOG ACCESS
+
+## Purpose
+Check whether enterprise software is available and submit access requests with a business justification.
+
+## Steps
+### 1. Check the catalog
+Look up the application with [[tool:Demo_Check_Software_Catalog]] before promising anything.
+
+### 2. Request access
+If the application is available, ask for the business justification, then submit the request with [[tool:Demo_Submit_Software_Request]] and share the request reference.
+
+### 3. When it is not available
+If the application is not in the catalog, say so and offer to open a case through workflow-support-case-lifecycle.",workflow-support-case-lifecycle,Draft,1.0,en_US
+skill-troubleshoot-wifi-modem-connectivity,Skill,skill-troubleshoot-wifi-modem-connectivity:v1:en-US,This skill assists users in resolving Wi-Fi modem connectivity issues.,"Use when a user reports problems with their Wi-Fi modem, such as inability to connect to the internet or intermittent connectivity. Example user utterances include 'My Wi-Fi is not working' or 'I can't connect to the internet'. This skill is not for issues related to wired connections or general internet service provider outages.","# WI-FI MODEM CONNECTIVITY TROUBLESHOOTING
+
+## Purpose
+Help the customer restore internet access when their Wi-Fi modem cannot connect or keeps dropping. Confirm each step's result before moving on.
+
+## Steps
+### 1. Understand the problem
+Ask the customer to describe what is happening and when it started.
+
+### 2. Check power and lights
+Have the customer confirm the modem is on and describe its lights.
+
+### 3. Restart the modem
+Have the customer unplug the modem, wait 30 seconds, plug it back in, and wait for the lights to settle.
+
+### 4. Check the device
+Have the customer confirm their device is connected to the correct Wi-Fi network.
+
+### 5. Escalate
+If the issue persists, follow workflow-escalate-to-human.
+
+## Out of scope
+Wired connections and internet provider outages.",workflow-escalate-to-human,Draft,v1,en-US
+skill-wifi-modem-connectivity-troubleshoot,Skill,skill-wifi-modem-connectivity-troubleshoot:v1:en-US,This skill assists users in troubleshooting WiFi modem connectivity issues.,Use when a user reports problems connecting to the internet via their WiFi modem. Example user utterances include 'My WiFi is down' or 'I cannot connect to the internet.' This skill is not for issues related to wired connections or service outages from the internet service provider.,"# WI-FI MODEM TROUBLESHOOTING (EXTENDED)
+
+## Purpose
+Diagnose Wi-Fi modem connectivity problems, from basic checks to the modem's admin settings. Confirm each step's result before moving on.
+
+## Steps
+### 1. Identify the issue
+Ask the customer to describe the problem and work out whether it is the modem, the router, or one device.
+
+### 2. Basic checks
+- Confirm the modem is powered on and its lights look normal.
+- Have the customer unplug the modem for 30 seconds, plug it back in, and wait for the lights to settle.
+
+### 3. Check other devices
+- Ask whether other devices can connect to the Wi-Fi network.
+- If they can, troubleshoot the customer's device instead of the modem.
+
+### 4. Advanced checks
+- Have the customer open the modem's admin page and look for error messages or incorrect settings.
+- If problems persist, suggest a factory reset of the modem and explain that custom settings will be lost.
+
+### 5. Escalate
+If the issue remains unresolved, follow workflow-escalate-to-human.
+
+## Out of scope
+Wired connections and internet provider outages.",workflow-escalate-to-human,Draft,v1,en-US
+skill-wifi-router-first-line-troubleshooting,Skill,skill-wifi-router-first-line-troubleshooting:v1:en-US,This skill assists in first-line troubleshooting for wifi router issues.,"Use when a customer reports problems with their wifi router connectivity. The skill provides step-by-step troubleshooting steps, such as checking the power source, restarting the router, and verifying device connections. If the issue persists after following these steps, the customer will be escalated to a human specialist for further assistance. This skill is not intended for advanced network configuration or hardware repairs.","# WI-FI ROUTER FIRST-LINE TROUBLESHOOTING
+
+## Purpose
+Resolve common Wi-Fi router connection problems with basic checks. Confirm each step's result before moving on.
+
+## Steps
+### 1. Check power
+Confirm the router is plugged in and powered on.
+
+### 2. Restart the router
+Have the customer unplug the router, wait 30 seconds, plug it back in, and wait for it to finish starting.
+
+### 3. Check the connection
+Have the customer confirm their device is connected to the correct Wi-Fi network.
+
+### 4. Escalate
+If the problem continues, follow workflow-escalate-to-human.
+
+## Out of scope
+Advanced network configuration and hardware repairs.",workflow-escalate-to-human,Draft,v1,en-US

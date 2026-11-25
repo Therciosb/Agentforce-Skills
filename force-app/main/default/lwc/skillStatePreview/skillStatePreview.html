@@ -1,0 +1,62 @@
+<template>
+    <div class="card">
+        <h2>Preview what the agent receives</h2>
+        <p class="hint">Pick a subagent and the skills it should activate to see the exact skill state Agent_Skill_State returns for {agentName}.</p>
+        <div class="grid">
+            <lightning-combobox label="Subagent" options={subagentOptions} value={subagentValue} onchange={handleSubagent}></lightning-combobox>
+            <div class="facts facts--compact">
+                <span class="facts__label">Always loaded</span>
+                <span>{alwaysDisplay}</span>
+            </div>
+        </div>
+
+        <template lwc:if={error}>
+            <p class="warn">{error}</p>
+        </template>
+        <template lwc:if={loading}>
+            <lightning-spinner alternative-text="Loading wiring" size="small"></lightning-spinner>
+        </template>
+        <template lwc:if={notWired}>
+            <p class="warn">No active skill wiring for {subagentLabel}. Wire it on the Agents tab.</p>
+        </template>
+        <template lwc:if={fallbackNotice}>
+            <p class="hint">{fallbackNotice}</p>
+        </template>
+
+        <template lwc:if={hasSkillOptions}>
+            <lightning-checkbox-group
+                class="skills"
+                label="Skills to activate"
+                options={skillOptions}
+                value={selectedSkills}
+                onchange={handleSkills}></lightning-checkbox-group>
+            <template lwc:if={selectionHint}><p class="hint">{selectionHint}</p></template>
+        </template>
+
+        <div class="actions">
+            <template lwc:if={disabledReason}><span class="hint">{disabledReason}</span></template>
+            <lightning-button variant="brand" label="Preview" onclick={handlePreview} disabled={previewDisabled}></lightning-button>
+        </div>
+
+        <template lwc:if={preview}>
+            <dl class="facts">
+                <dt>Subagent</dt>
+                <dd>{subagentLabel}</dd>
+                <dt>Active skills</dt>
+                <dd>{preview.active_skills}</dd>
+                <dt>Instructions</dt>
+                <dd>{previewChars} characters</dd>
+                <dt>Tools enabled</dt>
+                <dd>{previewTools}</dd>
+                <template lwc:if={preview.skill_warnings}>
+                    <dt>Warnings</dt>
+                    <dd class="warn">{preview.skill_warnings}</dd>
+                </template>
+            </dl>
+            <h3>Skill menu</h3>
+            <pre class="code">{preview.skill_menu}</pre>
+            <h3>Composed instructions</h3>
+            <pre class="code code--tall">{preview.skill_instructions}</pre>
+        </template>
+    </div>
+</template>

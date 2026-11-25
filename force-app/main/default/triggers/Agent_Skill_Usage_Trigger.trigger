@@ -3,6 +3,7 @@ trigger Agent_Skill_Usage_Trigger on Agent_Skill_Usage__e (after insert) {
     for (Agent_Skill_Usage__e e : Trigger.new) {
         logs.add(new Agent_Skill_Usage_Log__c(
             Agent_Name__c = e.Agent_Name__c,
+            Subagent__c = e.Subagent__c,
             Requested_Skills__c = e.Requested_Skills__c,
             Active_Skills__c = e.Active_Skills__c,
             Warnings__c = e.Warnings__c,

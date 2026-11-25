@@ -19,7 +19,7 @@ private class Agent_Skill_Test_Runner_Test {
         }
         insert repo;
 
-        Agent_Skill_Binding__c binding = new Agent_Skill_Binding__c(Name = 'Runner', Agent_Developer_Name__c = AGENT, Status__c = 'Active', Locale__c = 'en-US');
+        Agent_Skill_Binding__c binding = new Agent_Skill_Binding__c(Name = 'Runner', Agent_Developer_Name__c = AGENT, Subagent__c = 'skill_host', Status__c = 'Active', Locale__c = 'en-US');
         insert binding;
         insert new List<Agent_Skill_Binding_Item__c>{
             new Agent_Skill_Binding_Item__c(Binding__c = binding.Id, Skill_Name__c = 'role-runner', Mode__c = 'Always', Order__c = 1),
@@ -86,6 +86,40 @@ private class Agent_Skill_Test_Runner_Test {
     }
 
     @IsTest
+    static void longRunIdIsTruncated() {
+        String runId = AGENT + '-skill_host-' + Datetime.now().getTime();
+        Agent_Skill_Test_Runner.CaseResult r = runAsAuthor('{"skills": ["skill-orders"], "reason": "Order question."}', runId);
+
+        Assert.isTrue(r.passed, String.valueOf(r));
+        Assert.areEqual(runId.left(40), [SELECT Run_Id__c FROM Agent_Skill_Test_Result__c].Run_Id__c);
+    }
+
+    @IsTest
+    static void casesRunAgainstTheirSubagent() {
+        Agent_Skill_Binding__c faqHost = new Agent_Skill_Binding__c(Name = 'FAQ host', Agent_Developer_Name__c = AGENT, Subagent__c = 'faq_host', Status__c = 'Active', Locale__c = 'en-US');
+        insert faqHost;
+        insert new Agent_Skill_Binding_Item__c(Binding__c = faqHost.Id, Skill_Name__c = 'skill-faq', Mode__c = 'Default', Order__c = 1);
+        Agent_Skill_Test_Case__c tc = testCase();
+        tc.Subagent__c = 'faq_host';
+        update tc;
+
+        Agent_Skill_Test_Runner.CaseResult r = runAsAuthor('{"skills": ["skill-orders"], "reason": "Order question."}', 'run-sub');
+        Integer faqCases;
+        Integer otherCases;
+        System.runAs(author()) {
+            faqCases = Agent_Skill_Test_Runner.listCases(AGENT, 'faq_host').size();
+            otherCases = Agent_Skill_Test_Runner.listCases(AGENT, 'skill_host').size();
+        }
+
+        Assert.isFalse(r.passed, 'skill-orders is not wired to faq_host');
+        Assert.areEqual('faq_host', r.subagent);
+        Assert.isTrue(r.warnings.contains('Not wired to this agent: skill-orders'));
+        Assert.areEqual('faq_host', [SELECT Subagent__c FROM Agent_Skill_Test_Result__c].Subagent__c);
+        Assert.areEqual(1, faqCases);
+        Assert.areEqual(0, otherCases);
+    }
+
+    @IsTest
     static void wrongRouteFailsWithMissingTools() {
         Agent_Skill_Test_Runner.CaseResult r = runAsAuthor('Sure! {"skills": ["skill-faq"], "reason": "General question."}', 'run-2');
 
@@ -108,12 +142,12 @@ private class Agent_Skill_Test_Runner_Test {
         Integer caseCount;
         System.runAs(author()) {
             yaml = Agent_Skill_Test_Runner.exportTestSpec(AGENT);
-            caseCount = Agent_Skill_Test_Runner.listCases(AGENT).size();
+            caseCount = Agent_Skill_Test_Runner.listCases(AGENT, null).size();
         }
 
         Assert.isTrue(yaml.contains('subjectName: ' + AGENT));
         Assert.isTrue(yaml.contains('utterance: "Where is my \\"order\\" 123?"'), yaml);
-        Assert.isTrue(yaml.contains('expectedTopic: skill_host'));
+        Assert.isTrue(yaml.contains('expectedTopic: skill_host'), 'Uses the subagent of the agent binding');
         Assert.isTrue(yaml.contains('      - get_order_status'));
         Assert.isTrue(yaml.contains('expectedOutcome: "Agent reports the order status."'), yaml);
         Assert.areEqual(1, caseCount);

@@ -38,8 +38,13 @@
     margin-top: 0.25rem;
     max-width: 48rem;
 }
-.bar__agent {
-    min-width: 20rem;
+.bar__pickers {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+.bar__pickers lightning-combobox {
+    min-width: 16rem;
 }
 
 .notice {

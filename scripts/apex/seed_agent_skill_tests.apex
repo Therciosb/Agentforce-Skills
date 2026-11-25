@@ -4,6 +4,7 @@
 // Testing Center sessions are anonymous, so those tools are never available there.
 
 String agentName = 'customer_support_progressive_pd2';
+String subagentName = 'skill_host';
 // name, utterance, expected skills, expected tools, expected outcome
 List<List<String>> rows = new List<List<String>>{
     new List<String>{ 'Product price', 'What is the price of the Widget X?', 'skill-product-information-qa', 'get_product_info',
@@ -24,6 +25,7 @@ for (List<String> r : rows) {
     cases.add(new Agent_Skill_Test_Case__c(
         Name = r[0],
         Agent_Developer_Name__c = agentName,
+        Subagent__c = subagentName,
         Utterance__c = r[1],
         Expected_Skills__c = r[2],
         Expected_Tools__c = String.isBlank(r[3]) ? null : r[3],

@@ -71,6 +71,16 @@
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
+        <editable>false</editable>
+        <field>Agent_Skill_Binding__c.Binding_Key__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Agent_Skill_Binding__c.Subagent__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
         <editable>true</editable>
         <field>Agent_Skill_Binding__c.Require_Approval__c</field>
         <readable>true</readable>
@@ -78,6 +88,11 @@
     <fieldPermissions>
         <editable>false</editable>
         <field>Agent_Skill_Usage_Log__c.Agent_Name__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Agent_Skill_Usage_Log__c.Subagent__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -132,6 +147,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Agent_Skill_Test_Case__c.Subagent__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Agent_Skill_Test_Case__c.Expected_Skills__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -173,6 +193,11 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>Agent_Skill_Test_Result__c.Agent_Name__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Agent_Skill_Test_Result__c.Subagent__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

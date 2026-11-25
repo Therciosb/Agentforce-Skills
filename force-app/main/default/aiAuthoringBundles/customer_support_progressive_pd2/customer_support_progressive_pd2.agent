@@ -92,6 +92,8 @@ subagent skill_host:
             inputs:
                 agentName: string
                     description: "Developer name of the calling agent."
+                subagentName: string
+                    description: "Developer name of the calling subagent."
                 requestedSkills: string
                     description: "CSV of skill names to activate."
             outputs:
@@ -249,6 +251,7 @@ subagent skill_host:
             if @variables.requested_skills != @variables.skill_state.active_skills:
                 run @actions.load_skill_state
                     with agentName=@variables.agent_name
+                    with subagentName="skill_host"
                     with requestedSkills=@variables.requested_skills
                     set @variables.skill_state=@outputs.skillState
                     set @variables.requested_skills=@outputs.activeSkills

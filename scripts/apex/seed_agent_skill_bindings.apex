@@ -1,9 +1,14 @@
 // Seeds Agent_Skill_Binding__c wiring for the demo agents. Safe to re-run:
-// bindings upsert by Agent_Developer_Name__c and their items are replaced.
+// bindings upsert by Binding_Key__c (agent and subagent) and their items are replaced.
 // sf apex run --file scripts/apex/seed_agent_skill_bindings.apex --target-org <org>
 
 Map<String, String> labels = new Map<String, String>{
     'customer_support_progressive_pd2' => 'Customer Support (Progressive Disclosure)'
+};
+
+// Subagent block in each agent's script that loads skills.
+Map<String, String> subagents = new Map<String, String>{
+    'customer_support_progressive_pd2' => 'skill_host'
 };
 
 List<List<String>> supportItems = new List<List<String>>{
@@ -26,12 +31,14 @@ for (String agentName : labels.keySet()) {
     bindings.add(new Agent_Skill_Binding__c(
         Name = labels.get(agentName),
         Agent_Developer_Name__c = agentName,
+        Subagent__c = subagents.get(agentName),
+        Binding_Key__c = Agent_Skill_State.bindingKey(agentName, subagents.get(agentName)),
         Status__c = 'Active',
         Locale__c = 'en-US',
         Agent_Tools__c = agentTools.get(agentName)
     ));
 }
-upsert bindings Agent_Developer_Name__c;
+upsert bindings Binding_Key__c;
 
 delete [SELECT Id FROM Agent_Skill_Binding_Item__c WHERE Binding__c IN :bindings];
 
