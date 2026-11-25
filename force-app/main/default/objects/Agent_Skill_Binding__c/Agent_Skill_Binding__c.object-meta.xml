@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Wires Agent Skills to one agent. Agent_Skill_State loads the binding by agent developer name at runtime.</description>
+    <enableReports>true</enableReports>
+    <enableSearch>true</enableSearch>
+    <label>Agent Skill Binding</label>
+    <nameField>
+        <label>Binding Name</label>
+        <type>Text</type>
+    </nameField>
+    <pluralLabel>Agent Skill Bindings</pluralLabel>
+    <sharingModel>ReadWrite</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

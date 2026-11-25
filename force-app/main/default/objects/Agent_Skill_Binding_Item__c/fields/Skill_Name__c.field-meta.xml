@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Skill_Name__c</fullName>
+    <description>Name of an Agent_Skills_Repo__c record (role-, core-skill-, or skill-). Resolved by name so version and locale selection still apply.</description>
+    <label>Skill Name</label>
+    <length>255</length>
+    <required>true</required>
+    <type>Text</type>
+</CustomField>

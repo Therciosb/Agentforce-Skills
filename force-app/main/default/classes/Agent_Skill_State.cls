@@ -106,6 +106,7 @@ public with sharing class Agent_Skill_State {
         }
         Agent_Skill_LoadAndCompose_v2.LoadAndComposeRequest loadReq = new Agent_Skill_LoadAndCompose_v2.LoadAndComposeRequest();
         loadReq.instructionNames = String.join(names, ',');
+        loadReq.locale = wiring.locale;
         Agent_Skill_LoadAndCompose_v2.LoadAndComposeResponse loadRes =
             Agent_Skill_LoadAndCompose_v2.loadAndCompose(new List<Agent_Skill_LoadAndCompose_v2.LoadAndComposeRequest>{ loadReq })[0];
         if (String.isNotBlank(loadRes.warnings)) {
@@ -121,25 +122,33 @@ public with sharing class Agent_Skill_State {
         return res;
     }
 
-    @TestVisible
-    private static Wiring loadWiring(String agentName) {
-        if (agentName != 'customer_support_progressive_pd2' && agentName != 'skill_state_spike') {
+    public static Wiring loadWiring(String agentName) {
+        if (String.isBlank(agentName)) {
+            return null;
+        }
+        List<Agent_Skill_Binding__c> bindings = [
+            SELECT Locale__c,
+                (SELECT Skill_Name__c, Mode__c FROM Items__r ORDER BY Order__c NULLS LAST, Skill_Name__c)
+            FROM Agent_Skill_Binding__c
+            WHERE Agent_Developer_Name__c = :agentName.trim() AND Status__c = 'Active'
+            LIMIT 1
+        ];
+        if (bindings.isEmpty()) {
             return null;
         }
         Wiring wiring = new Wiring();
-        wiring.always.addAll(new List<String>{
-            'role-customer-support-agent',
-            'core-skill-ltmManagement-service-agent',
-            'core-skill-txt-response-guidelines'
-        });
-        wiring.selectable.addAll(new List<String>{
-            'skill-product-information-qa',
-            'skill-troubleshooting-support',
-            'skill-support-case-management',
-            'skill-order-status-support'
-        });
-        wiring.defaults.add('skill-product-information-qa');
-        wiring.locale = 'en-US';
+        wiring.locale = String.isBlank(bindings[0].Locale__c) ? 'en-US' : bindings[0].Locale__c;
+        for (Agent_Skill_Binding_Item__c item : bindings[0].Items__r) {
+            String name = item.Skill_Name__c.trim();
+            if (item.Mode__c == 'Always') {
+                wiring.always.add(name);
+            } else {
+                wiring.selectable.add(name);
+                if (item.Mode__c == 'Default') {
+                    wiring.defaults.add(name);
+                }
+            }
+        }
         return wiring;
     }
 }

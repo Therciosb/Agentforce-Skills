@@ -1,0 +1,140 @@
+<template>
+    <div class="wiring">
+        <header class="bar">
+            <div class="bar__title">
+                <h1>Agent wiring</h1>
+                <p class="bar__sub">Choose which skills each agent loads. Agents read this at runtime through Agent_Skill_State.</p>
+            </div>
+            <lightning-button variant="brand" label="Wire an agent" icon-name="utility:add" onclick={handleNew}></lightning-button>
+        </header>
+
+        <template lwc:if={error}>
+            <div class="notice notice--error" role="alert">
+                <lightning-icon icon-name="utility:error" size="x-small" variant="error"></lightning-icon>
+                <span>{error}</span>
+            </div>
+        </template>
+
+        <div class="layout">
+            <nav class="agents" aria-label="Wired agents">
+                <template lwc:if={hasBindings}>
+                    <ul>
+                        <template for:each={bindingRows} for:item="b">
+                            <li key={b.id}>
+                                <button type="button" class={b.cssClass} data-id={b.id} onclick={handleSelect}>
+                                    <span class="agent__name">{b.name}</span>
+                                    <span class="agent__dev">{b.agentName}</span>
+                                    <span class="agent__meta">
+                                        {b.alwaysCount} always · {b.selectableCount} selectable
+                                        <template lwc:if={b.isInactive}><span class="badge badge--warn">Inactive</span></template>
+                                    </span>
+                                </button>
+                            </li>
+                        </template>
+                    </ul>
+                </template>
+                <template lwc:else>
+                    <p class="empty">No agents wired yet.</p>
+                </template>
+            </nav>
+
+            <section class="editor">
+                <template lwc:if={loadingDetail}>
+                    <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+                </template>
+                <template lwc:if={draft}>
+                    <div class="card">
+                        <h2>Agent</h2>
+                        <div class="grid">
+                            <lightning-input label="Agent developer name" required value={draft.agentName} data-field="agentName" onchange={handleField} field-level-help="config.developer_name from the .agent file. The agent passes it as agent_name."></lightning-input>
+                            <template lwc:if={hasOrgAgents}>
+                                <lightning-combobox label="Or pick an agent in this org" placeholder="Select an agent" options={agentOptions} onchange={handlePickAgent}></lightning-combobox>
+                            </template>
+                            <lightning-input label="Display name" value={draft.name} data-field="name" onchange={handleField}></lightning-input>
+                            <lightning-combobox label="Status" options={statusOptions} value={draft.status} data-field="status" onchange={handleField}></lightning-combobox>
+                            <lightning-input label="Locale" value={draft.locale} data-field="locale" onchange={handleField}></lightning-input>
+                        </div>
+                        <lightning-textarea label="Description" value={draft.description} data-field="description" onchange={handleField}></lightning-textarea>
+                    </div>
+
+                    <div class="card">
+                        <h2>Skills</h2>
+                        <p class="hint">Always skills load on every turn. Selectable skills appear in the agent's skill menu. Default skills are active when the agent has not asked for anything else. Workflows load through the References of the skills that use them.</p>
+                        <lightning-dual-listbox
+                            label="Wired skills"
+                            source-label="Available"
+                            selected-label="Wired to this agent"
+                            options={skillOptions}
+                            value={wiredNames}
+                            onchange={handleSkillsChange}></lightning-dual-listbox>
+
+                        <template lwc:if={hasItems}>
+                            <ol class="items">
+                                <template for:each={itemRows} for:item="i">
+                                    <li key={i.key} class="item">
+                                        <span class="item__pos">{i.position}</span>
+                                        <span class="item__main">
+                                            <span class="item__name">{i.skillName} <span class={i.badgeClass}>{i.badge}</span></span>
+                                            <span class="item__desc">{i.whenToUse}</span>
+                                        </span>
+                                        <lightning-combobox class="item__mode" variant="label-hidden" label="Mode" options={i.modeOptions} value={i.mode} data-index={i.index} onchange={handleMode}></lightning-combobox>
+                                        <lightning-button-icon icon-name="utility:arrowup" variant="bare" alternative-text="Move up" data-index={i.index} data-step="-1" disabled={i.isFirst} onclick={handleMove}></lightning-button-icon>
+                                        <lightning-button-icon icon-name="utility:arrowdown" variant="bare" alternative-text="Move down" data-index={i.index} data-step="1" disabled={i.isLast} onclick={handleMove}></lightning-button-icon>
+                                        <lightning-button-icon icon-name="utility:close" variant="bare" alternative-text="Remove" data-index={i.index} onclick={handleRemove}></lightning-button-icon>
+                                    </li>
+                                </template>
+                            </ol>
+                        </template>
+                    </div>
+
+                    <div class="actions">
+                        <template lwc:if={draft.id}>
+                            <lightning-button variant="destructive-text" label="Delete" onclick={handleDelete}></lightning-button>
+                        </template>
+                        <lightning-button label="Agent Script snippet" icon-name="utility:copy" onclick={handleSnippet}></lightning-button>
+                        <lightning-button variant="brand" label="Save" disabled={saveDisabled} onclick={handleSave}></lightning-button>
+                    </div>
+
+                    <template lwc:if={snippet}>
+                        <div class="card">
+                            <div class="card__head">
+                                <h2>Agent Script snippet</h2>
+                                <lightning-button label="Copy" icon-name="utility:copy" onclick={handleCopy}></lightning-button>
+                            </div>
+                            <p class="hint">Paste into the agent's .agent file, then add the tools your skills use under load_skill_state. No skill names go in the script.</p>
+                            <pre class="code">{snippet}</pre>
+                        </div>
+                    </template>
+
+                    <div class="card">
+                        <h2>Preview what the agent receives</h2>
+                        <div class="preview-bar">
+                            <lightning-input class="preview-bar__input" label="Requested skills (CSV, blank for defaults)" value={previewRequest} onchange={handlePreviewRequest}></lightning-input>
+                            <lightning-button label="Preview" onclick={handlePreview} disabled={previewDisabled}></lightning-button>
+                        </div>
+                        <template lwc:if={previewHint}><p class="hint">{previewHint}</p></template>
+                        <template lwc:if={preview}>
+                            <dl class="facts">
+                                <dt>Active skills</dt>
+                                <dd>{preview.active_skills}</dd>
+                                <dt>Instructions</dt>
+                                <dd>{previewChars} characters</dd>
+                                <template lwc:if={preview.skill_warnings}>
+                                    <dt>Warnings</dt>
+                                    <dd class="warn">{preview.skill_warnings}</dd>
+                                </template>
+                            </dl>
+                            <h3>Skill menu</h3>
+                            <pre class="code">{preview.skill_menu}</pre>
+                            <h3>Composed instructions</h3>
+                            <pre class="code code--tall">{preview.skill_instructions}</pre>
+                        </template>
+                    </div>
+                </template>
+                <template lwc:elseif={hasBindings}>
+                    <p class="empty">Select an agent to edit its skills.</p>
+                </template>
+            </section>
+        </div>
+    </div>
+</template>

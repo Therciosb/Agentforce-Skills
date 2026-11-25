@@ -15,6 +15,12 @@ public with sharing class Agent_Skill_LoadAndCompose_v2 {
         public String existingInstructionBundle;
 
         @InvocableVariable(
+            label='Locale (optional, default en-US)'
+            description='Locale used to resolve instruction records.'
+        )
+        public String locale;
+
+        @InvocableVariable(
             label='Max Reference Depth (optional, default 4)'
             description='Maximum depth for reference expansion in composer.'
         )
@@ -81,6 +87,7 @@ public with sharing class Agent_Skill_LoadAndCompose_v2 {
             Agent_Skill_Loader.LoaderRequest loaderReq = new Agent_Skill_Loader.LoaderRequest();
             loaderReq.instructionNames = sanitizeNames(req != null ? req.instructionNames : null);
             loaderReq.existingInstructionBundle = req != null ? req.existingInstructionBundle : null;
+            loaderReq.locale = req != null ? req.locale : null;
             loaderReq.includeReferences = (req != null && req.includeReferences != null) ? req.includeReferences : true;
             loaderReqs.add(loaderReq);
         }

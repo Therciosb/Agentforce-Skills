@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Binding__c</fullName>
+    <label>Binding</label>
+    <referenceTo>Agent_Skill_Binding__c</referenceTo>
+    <relationshipLabel>Binding Items</relationshipLabel>
+    <relationshipName>Items</relationshipName>
+    <relationshipOrder>0</relationshipOrder>
+    <reparentableMasterDetail>false</reparentableMasterDetail>
+    <type>MasterDetail</type>
+    <writeRequiresMasterRead>false</writeRequiresMasterRead>
+</CustomField>
