@@ -271,6 +271,8 @@ In logic, write `@variables.loyalty_tier`. In prompt text, write `{!@variables.l
 
 `None` means unset and works for every type. `""` means an empty string. Check both for strings. Append strings with `+`.
 
+Fields of an `object` variable are addressable with dot notation, in logic and in prompt text: `if @variables.order_summary.days_since_order <= 60:` and `{!@variables.Lead_Record.S4STiming}`. The guide shows reads only. It has no example of `set` or `@utils.setVariables` writing a single field, so assign the whole object (usually from an action output) unless a validate run proves otherwise.
+
 List items are zero-indexed. `@variables.questions[2]` is the third string. On a list of objects, `@variables.accounts[3].data.Name` returns the raw field. `json_path(@variables.accounts, "$[3].data.Name")` returns the value wrapped as a JSON string. Helpers: `len`, `max`, `min`, `to_json`, `json_path`.
 
 System variables:
@@ -304,7 +306,7 @@ There are two `actions` lists, and they do different jobs.
 | `include_in_progress_indicator` | Show progress while it runs. |
 | `require_user_confirmation` | Ask the customer before running. |
 
-Input and output types include `string`, `number`, `integer`, `long`, `boolean`, `object`, `date`, `datetime`, `time`, `currency`, and `list[<type>]`. `id` is deprecated. Complex objects need `complex_data_type_name` (a Lightning type, including custom Lightning types). Set `filter_from_agent: True` on an output to keep it out of the model's context. If a required input is left unbound, the model tries to slot-fill it.
+Input and output types include `string`, `number`, `integer`, `long`, `boolean`, `object`, `date`, `datetime`, `time`, `currency`, and `list[<type>]`. `id` is deprecated. Complex objects need `complex_data_type_name`: a Lightning type (including custom Lightning types) or an Apex class such as `@apexClassType/c__MyClass$Result`. Set `filter_from_agent: True` on an output to keep it out of the model's context. If a required input is left unbound, the model tries to slot-fill it.
 
 ```
 actions:
@@ -623,7 +625,7 @@ Moving an agent between orgs is metadata. Current API packaging uses `AiAgentDef
 
 **A transition drops work.** Expected. The current prompt is discarded. `after_reasoning` on the source subagent does not run. Put the save before the transition, or save again in the destination.
 
-**Personalization is blank.** The upstream output name does not match the `set`. The string is `""` and the check was only `is None`, or the reverse. Object fields need `.data.<field>` or `json_path`.
+**Personalization is blank.** The upstream output name does not match the `set`. The string is `""` and the check was only `is None`, or the reverse. Object fields are read as `@variables.obj.field`. Items in a list of records need `[n].data.<field>` or `json_path`.
 
 **Parse errors on `&` or `*`.** Anchors and aliases are not part of Agent Script. Repeat the block.
 
