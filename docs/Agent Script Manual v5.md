@@ -271,7 +271,12 @@ In logic, write `@variables.loyalty_tier`. In prompt text, write `{!@variables.l
 
 `None` means unset and works for every type. `""` means an empty string. Check both for strings. Append strings with `+`.
 
-Fields of an `object` variable are addressable with dot notation, in logic and in prompt text: `if @variables.order_summary.days_since_order <= 60:` and `{!@variables.Lead_Record.S4STiming}`. The guide shows reads only. It has no example of `set` or `@utils.setVariables` writing a single field, so assign the whole object (usually from an action output) unless a validate run proves otherwise.
+Fields of an `object` variable are addressable with dot notation, in logic and in prompt text: `if @variables.order_summary.days_since_order <= 60:` and `{!@variables.Lead_Record.S4STiming}`. Fields are read-only. Assign the whole object, usually from an action output. Tested in November 2026:
+
+- `set @variables.obj.field = ...` fails validate with "Cannot resolve variable name from expression".
+- `@utils.setVariables` with `with obj.field=...` passes `sf agent validate` but fails the full compile that `sf agent preview start` runs ("error compiling").
+- An Apex inner-class output (`complex_data_type_name: "@apexClassType/c__MyClass$Inner"`) assigns to a `mutable object` variable, and its fields read correctly in `if`, in `set`, and in `{! }`.
+- Reading a field that is missing from the object (for example, on a `{}` default) makes the whole `if` evaluate false with no error in the trace, even inside `is None or ...`. Give the default the fields you test, for example `= {"active_skills": "unloaded"}`.
 
 List items are zero-indexed. `@variables.questions[2]` is the third string. On a list of objects, `@variables.accounts[3].data.Name` returns the raw field. `json_path(@variables.accounts, "$[3].data.Name")` returns the value wrapped as a JSON string. Helpers: `len`, `max`, `min`, `to_json`, `json_path`.
 

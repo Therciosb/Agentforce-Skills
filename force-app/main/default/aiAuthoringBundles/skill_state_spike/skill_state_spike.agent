@@ -1,0 +1,94 @@
+# -----------------------------------------------------------------------------
+# Skill State Spike
+# -----------------------------------------------------------------------------
+# Test bundle for the skill_state object design. Confirms that:
+# - an Apex inner-class output assigns to a mutable object variable,
+# - object fields are readable in if conditions, set, and prompt text,
+# - skills reload deterministically when requested_skills changes mid-session.
+# Wiring is hard-coded in Agent_Skill_StateSpike until binding objects exist.
+# -----------------------------------------------------------------------------
+
+system:
+    instructions: |
+        You are a customer support AI agent.
+        Follow policy and safety constraints at all times.
+        Do not invent product facts, case updates, or troubleshooting outcomes.
+        Be concise. Respond in 2-4 sentences unless the user asks for detail.
+    messages:
+        welcome: "Skill state spike ready."
+        error: "Sorry, something went wrong in the skill state spike."
+
+model_config:
+    model: "model://sfdc_ai__DefaultVertexAIGemini35Flash"
+
+config:
+    developer_name: "skill_state_spike"
+    agent_label: "Skill State Spike"
+    description: "Test bundle for the object-typed skill_state variable and reload-on-change skill switching."
+
+access:
+    default_agent_user: "ltm_agent@00dky00000gxhj51777765750.ext"
+
+variables:
+    agent_name: mutable string = "skill_state_spike"
+    skill_state: mutable object = {"active_skills": "unloaded"}
+        description: "Skill menu, active skills, composed instructions, and warnings returned by Agent_Skill_StateSpike."
+    requested_skills: mutable string = ""
+        description: "CSV of skills the model asked for. A change triggers a reload."
+    probe_active: mutable string = ""
+        description: "Copy of skill_state.active_skills, set from an object field read."
+
+language:
+    default_locale: "en_US"
+    additional_locales: ""
+    all_additional_locales: False
+
+start_agent agent_router:
+    label: "Agent Router"
+    description: "Hand off to the skill host."
+
+    reasoning:
+        instructions: ->
+            transition to @subagent.skill_host
+
+subagent skill_host:
+    label: "Skill Host"
+    description: "Single host subagent whose behavior comes from the active skills."
+
+    actions:
+        load_skills:
+            description: "Resolve requested skills and return the skill state."
+            inputs:
+                agentName: string
+                    description: "Developer name of the calling agent."
+                requestedSkills: string
+                    description: "CSV of skill names to activate."
+            outputs:
+                skillState: object
+                    description: "Menu, active skills, composed instructions, and warnings."
+                    complex_data_type_name: "@apexClassType/c__Agent_Skill_StateSpike$SkillState"
+                    filter_from_agent: True
+                activeSkills: string
+                    description: "CSV of the skills actually activated."
+                    filter_from_agent: True
+            target: "apex://Agent_Skill_StateSpike"
+
+    reasoning:
+        instructions: ->
+            if @variables.requested_skills != @variables.skill_state.active_skills:
+                run @actions.load_skills
+                    with agentName=@variables.agent_name
+                    with requestedSkills=@variables.requested_skills
+                    set @variables.skill_state=@outputs.skillState
+                    set @variables.requested_skills=@outputs.activeSkills
+                set @variables.probe_active=@variables.skill_state.active_skills
+            | Skills available to this agent:
+            | {!@variables.skill_state.skill_menu}
+            | Active skills: {!@variables.skill_state.active_skills}
+            | If the request needs a skill that is not active, call {!@actions.switch_skills} with the complete CSV of skill names to use (no spaces after commas), then answer.
+            | Skill loader warnings: {!@variables.skill_state.skill_warnings}
+            | {!@variables.skill_state.skill_instructions}
+        actions:
+            switch_skills: @utils.setVariables
+                description: "Change which skills are active for this request."
+                with requested_skills=...
